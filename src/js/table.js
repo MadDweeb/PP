@@ -265,7 +265,6 @@ function renderZoom() {
   $("zRead").innerHTML = S.entry
     ? `Entry <b>${sgn(off, 2)}</b> ${Math.abs(off) < .05 ? "(dead centre)" : off > 0 ? "right of centre" : "left of centre"} · aim error <b>${fmt(ae, 2)}°</b>`
     : `${esc(POCKET_NAMES[S.pocket])} pocket, ${fls(len(sub(pk.c, S.ob)), 0)} from the object ball. Tap where the ball went in.`;
-  $("zOutcome").innerHTML = OUTCOME.map(([k, lbl, cls]) => `<button class="chip ${cls}" aria-pressed="${S.outcome === k}" data-k="${k}">${lbl}</button>`).join("");
 }
 /* Keep the dragged object ball where a real ball can be: fully on the cloth (centre at least one ball radius
    inside the cushions), or inside the target pocket's opening (centre at least one radius from each jaw), down to the hole. */

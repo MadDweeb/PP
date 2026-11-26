@@ -56,7 +56,7 @@ function cleanSettings(set) {
     if (["cloth", "cushion", "rail"].includes(k)) { if (/^#[0-9a-f]{6}$/i.test(v)) out[k] = String(v).toLowerCase(); }
     else if (["W", "L", "wc", "ws"].includes(k)) { if (Number.isFinite(+v) && +v > 0) out[k] = +v; }
     else if (["theme", "units", "grid"].includes(k)) { if (typeof v === "string") out[k] = v; }
-    else if (k === "labels" || k === "pinTable") out[k] = !!v;
+    else if (["labels", "pinTable", "wakeLock", "haptics"].includes(k)) out[k] = !!v;
     else if (k === "cardOrder" || k === "speedSide") { if (v && typeof v === "object") out[k] = JSON.parse(JSON.stringify(v)); }
   }
   return out;

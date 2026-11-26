@@ -9,7 +9,6 @@ function renderBreakPanel() {
   drawRail();
   $("railRead").innerHTML = S.rail == null ? "Not marked. Drag the 1-ball along the rail." :
     `1-ball <b>${railTxt(S.rail)}</b> of the ${POCKET_NAMES[S.pocket].toLowerCase()} pocket centre <button class="btn small" id="railClear">Clear</button>`;
-  $("brkOutcome").innerHTML = OUTCOME.map(([k, l, cls]) => `<button class="chip ${cls}" aria-pressed="${S.outcome === k}" data-bo="${k}">${l}</button>`).join("");
   const cur = S.scratch ? "scratch" : S.result ? sectionOf(S.result) : S.cbSec;
   $("cbSecChips").innerHTML = CB_SECS.map(([k, l]) => `<button class="chip ${k === "scratch" ? "bad" : ""}" aria-pressed="${cur === k}" data-sec="${k}">${l}</button>`).join("");
   $("madeVal").textContent = S.ballsMade == null ? "–" : S.ballsMade;
@@ -25,10 +24,10 @@ function drawRail() {
   for (let k = -n; k <= n; k++) {
     const v = k * step, xi = railX(v), big = m ? k % 5 === 0 : k % 3 === 0;
     g += `<line x1="${xi}" x2="${xi}" y1="${big ? 14 : 19}" y2="26" stroke="var(--muted)" stroke-width="1"/>`;
-    if (big) g += `<text x="${xi}" y="11" font-size="10" text-anchor="middle" fill="var(--muted)" font-family="var(--f-mono)">${k === 0 ? 0 : Math.round(toU(Math.abs(v)))}</text>`;
+    if (big) g += `<text x="${xi}" y="11" font-size="12" text-anchor="middle" fill="var(--muted)" font-family="var(--f-mono)">${k === 0 ? 0 : Math.round(toU(Math.abs(v)))}</text>`;
   }
   g += `<text x="${RAIL_PAD}" y="${RAIL_H - 4}" font-size="11" fill="var(--muted)">◀ Short (foot side)</text><text x="${RAIL_W - RAIL_PAD}" y="${RAIL_H - 4}" font-size="11" text-anchor="end" fill="var(--muted)">Long (head side) ▶</text>`;
-  g += `<text x="${RAIL_W - 2}" y="11" font-size="10" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
+  g += `<text x="${RAIL_W - 2}" y="26" font-size="12" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
   const k = (RAIL_W - 2 * RAIL_PAD) / (2 * RAIL_LIM), r = R_BALL * k;
   if (pred && pred.rail != null && pred.key === JSON.stringify(predInputs())) g += `<circle cx="${railX(pred.rail)}" cy="${46 + r}" r="${r}" fill="none" stroke="#f2c300" stroke-width="2" stroke-dasharray="4 3"/>`;
   if (S.rail != null) {

@@ -35,9 +35,6 @@ function renderTools() {
   const zc = $("zoneChips"); zc.hidden = !(S.tool === "target" && S.target);
   zc.innerHTML = ZONES.map(([k]) => `<button class="chip sm" aria-pressed="${(S.tz || "point") === k}" data-tz="${k}">${zoneName(k)}</button>`).join("");
 }
-function chips(el, list, cur, key, extraCls) {
-  $(el).innerHTML = list.map(([k, lbl, cls]) => `<button class="chip ${cls || ""}" aria-pressed="${String(cur) === String(k)}" data-key="${key}" data-k="${k}">${lbl}</button>`).join("");
-}
 function drillShots(name) { return shots.filter(s => (s.drill || "") === (name || "")); }
 function renderDrills() {
   const sel = $("drillSel"); const opt = d => `<option value="${esc(d.id)}" ${S.drillId === d.id ? "selected" : ""}>${esc(d.name)}</option>`;
@@ -81,8 +78,8 @@ function renderSessionLine() {
 }
 /* ---------- log sections: order per mode, rearrangeable, saved in settings ---------- */
 const CARD_ORDER = {
-  shot: ["marks", "pocket", "result", "tip", "note"],
-  break: ["tip", "hit", "pred", "marks", "rail", "cbfin", "balls", "rack", "tune", "note"],
+  shot: ["tip", "pocket", "marks", "note", "session"],
+  break: ["tip", "hit", "pred", "marks", "rail", "cbfin", "balls", "note", "session", "rack", "tune"],
   sim: ["tip", "hit", "simres", "simset", "marks", "tune"]
 };
 let arranging = false;
@@ -104,7 +101,7 @@ function renderCards() {
   order.forEach((k, i) => {
     const el = box.querySelector(`[data-card="${k}"]`); if (!el) return;
     box.appendChild(el);
-    const name = el.querySelector("h3").textContent;
+    const name = el.querySelector("h2").textContent;
     el.querySelector(".mv").innerHTML = `<button class="btn" data-mv="${k}" data-dir="-1" aria-label="Move ${esc(name)} up" ${i === 0 ? "disabled" : ""}>↑</button><button class="btn" data-mv="${k}" data-dir="1" aria-label="Move ${esc(name)} down" ${i === order.length - 1 ? "disabled" : ""}>↓</button>`;
   });
   box.classList.toggle("arranging", arranging);
@@ -159,10 +156,10 @@ function renderLog() {
   $("shotNo").hidden = sm;
   document.querySelector(".sessionline").hidden = sm; document.querySelector(".savebar").hidden = sm;
   renderCards();
-  $("save").textContent = bm ? "Save break" : "Save shot";
   $("notesLbl").textContent = bm ? "Note for this break" : "Note for this shot";
   renderDrills(); if (bm || sm) { $("freeRow").hidden = true; $("drillInfo").hidden = true; }
   renderSessionLine();
+  $("sessionSub").textContent = $("freeRow").hidden ? "When this session started, or start a new one" : "Name it, keep the setup as a drill, or start a new session";
   updatePin();
   $("drill").value = S.drill || "";
   $("notes").value = S.notes || "";
@@ -174,16 +171,20 @@ function renderLog() {
   const off = pocketOffset(S.entry, pk, S.ob);
   const cut = cutAngle(S.cb, S.ob, pk);
   $("openZoom").hidden = !S.ob;
-  document.querySelector('[data-card="result"]').hidden = bm || sm || !S.ob;
-  if (!S.ob) $("pocketWhat").innerHTML = `<b>Position only</b><br><span style="font-size:12px;color:var(--muted)">No object ball on the table. Pick Object ball and tap to add one.</span>`;
-  else $("pocketWhat").innerHTML = `<b>${esc(POCKET_NAMES[S.pocket])}</b><br><span class="num" style="font-size:12px;color:var(--muted)">${cut == null ? "" : "cut " + fmt(Math.abs(cut), 0) + "°" + (Math.abs(cut) < .5 ? "" : cut > 0 ? " right" : " left") + " · "}${S.entry ? "entry " + sgn(off, 2) : "entry not marked"}</span>`;
-  chips("outcomeChips", OUTCOME, S.outcome, "outcome");
+  if (!S.ob) $("pocketWhat").innerHTML = `<b>Position only</b><br><span style="font-size:.8125rem;color:var(--muted)">No object ball on the table. Pick Object ball and tap to add one.</span>`;
+  else $("pocketWhat").innerHTML = `<b>${esc(POCKET_NAMES[S.pocket])}</b><br><span class="num" style="font-size:.8125rem;color:var(--muted)">${cut == null ? "" : "cut " + fmt(Math.abs(cut), 0) + "°" + (Math.abs(cut) < .5 ? "" : cut > 0 ? " right" : " left") + " · "}${S.entry ? "entry " + sgn(off, 2) : "entry not marked"}</span>`;
   renderSpin(); renderSpeed();
-  $("save").disabled = !canSave();
+  renderSaveBar();
   renderQuick();
-  $("undo").disabled = !drillShots(S.drill).length;
 }
 
+/* The bottom bar saves without a result (the bar under the table saves with one). Disabled, it says what is missing. */
+function renderSaveBar() {
+  const bm = brkMode(), ok = canSave(), n = drillShots(S.drill).length;
+  const b = $("save"); b.disabled = !ok;
+  b.textContent = !ok ? (bm ? "Mark the cue ball to save" : "Mark where the cue ball stopped") : bm ? "Save, no 1-ball result" : S.ob ? "Save, no pocket result" : "Save shot";
+  const u = $("undo"); u.disabled = !n; u.textContent = n ? `Undo ${bm ? "break" : "shot"} ${n}` : "Undo last";
+}
 /* ---------- quick log ---------- */
 let quickBusy = false;
 function renderQuick() {

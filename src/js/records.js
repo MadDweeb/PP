@@ -54,7 +54,7 @@ async function saveShot() {
   if (!(await store.add(s))) { saveWork(); renderAll(); return; }     // not saved: keep the markers so nothing is lost
   S.result = null; S.entry = null; S.outcome = null; S.notes = ""; S.tool = "result";
   S.rail = null; S.scratch = false; S.cbSec = null; S.ballsMade = null;
-  saveWork(); renderAll();
+  saveWork(); renderAll(); buzz();
   if (!land) { try { $("tablewrap").scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); } catch (e) {} }
   if (isBrk(s)) { toast(`Break ${s.shotNo} saved` + (s.cbSec ? `, cue ball ${label(CB_SECS, s.cbSec).toLowerCase()}` : "") + (s.outcome ? `, 1-ball ${label(OUTCOME, s.outcome).toLowerCase()}` : "") + (s.rail != null && s.outcome !== "made" ? ` ${railTxt(s.rail)}` : "")); return; }
   toast(`Shot ${s.shotNo} saved` + (s.inZone === 1 ? ", in the zone" : s.inZone === 0 ? ", outside the zone" : s.cbErr != null ? `, ${fls(s.cbErr, 1)} from target` : ""));

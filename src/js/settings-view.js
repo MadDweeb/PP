@@ -21,13 +21,13 @@ function renderSettings() {
   const m = isMetric(), u = uName(), sv = v => +fmt(toU(v), m ? 1 : 2);
   $("view-settings").innerHTML = `
   <div class="panel">
-    <h3>Feedback</h3>
+    <h2>Feedback</h2>
     <p class="note">Found a bug, got confused, or have an idea? It takes a minute, and every reply is read. The app version and your phone type are filled in for you.</p>
     <div class="row"><a class="btn primary" id="fbSettings" href="#" target="_blank" rel="noopener">Send feedback</a></div>
     <p class="note" style="margin:0">App version ${esc(APP_VERSION)}</p>
   </div>
   <div class="panel">
-    <h3>Display</h3>
+    <h2>Display</h2>
     <span class="label">Theme</span>
     <div class="chips">${[["system", "Match phone"], ["light", "Light"], ["dark", "Dark"]].map(([k, l]) => `<button class="chip" aria-pressed="${settings.theme === k}" data-theme-set="${k}">${l}</button>`).join("")}</div>
     <span class="label">Units</span>
@@ -35,13 +35,19 @@ function renderSettings() {
     <p class="note">Units apply everywhere, including the CSV: in metric its distance columns end in _cm instead of _in. If you mix exports, check the column names.</p>
   </div>
   <div class="panel">
-    <h3>Table colours</h3>
+    <h2>At the table</h2>
+    <label class="switchrow"><span>Keep the screen on<small>While the Log tab is open, so the phone doesn't lock between shots</small></span><input type="checkbox" id="setWake" ${settings.wakeLock !== false ? "checked" : ""} ${wakeSupported() ? "" : "disabled"}></label>
+    ${wakeSupported() ? "" : `<p class="note">This browser can't keep the screen on. Chrome on Android can.</p>`}
+    <label class="switchrow"><span>Vibrate when a shot saves<small>A short tick, so you know it saved without looking</small></span><input type="checkbox" id="setHaptics" ${settings.haptics !== false ? "checked" : ""}></label>
+  </div>
+  <div class="panel">
+    <h2>Table colours</h2>
     ${COLOR_ROWS.map(colorBlock).join("")}
     <p class="note">Picking a cloth swatch also sets the rails to a slightly darker shade of it, the way covered cushions look. Change the rails on their own after that if yours differ.</p>
     <div class="row"><button class="btn small" id="resetColors">Back to my grey table</button></div>
   </div>
   <div class="panel">
-    <h3>Table size</h3>
+    <h2>Table size</h2>
     <div class="fields">
       <label class="field">Playing length (${u})<input id="sL" type="number" inputmode="decimal" step="${m ? 1 : .5}" value="${sv(settings.L)}"></label>
       <label class="field">Playing width (${u})<input id="sW" type="number" inputmode="decimal" step="${m ? 1 : .5}" value="${sv(settings.W)}"></label>
@@ -51,22 +57,22 @@ function renderSettings() {
     <p class="note">Set for your Rasson Accura: ${m ? "254 × 127 cm" : "100 × 50 in"} cushion to cushion, ${m ? "10.8 cm" : "4.25 in"} corner and ${m ? "12.1 cm" : "4.75 in"} side pocket mouths, measured jaw tip to jaw tip.</p>
   </div>
   <div class="panel">
-    <h3>Zones</h3>
+    <h2>Zones</h2>
     <div class="chips" id="gridChips">${[["off", "No grid"], ["8x4", "8 × 4 (diamonds)"], ["16x8", "16 × 8 (half diamonds)"]].map(([k, l]) => `<button class="chip" aria-pressed="${settings.grid === k}" data-g="${k}">${l}</button>`).join("")}</div>
     <div class="chips"><button class="chip" id="lblToggle" aria-pressed="${settings.labels}">Show zone names</button></div>
     <p class="note">Zones are named by column letter from the left (seen from the head end) and row number from the head rail, so A1 is the head-left corner. Exact coordinates are always saved too.</p>
   </div>
   <div class="panel">
-    <h3>My drills</h3>
+    <h2>My drills</h2>
     ${myDrills.length ? `<div class="shotlist">${myDrills.map(d => `<div class="shot"><span class="n"></span><span class="l1">${esc(d.name)}</span><button class="btn danger del" data-deldrill="${esc(d.id)}">${pendingDel === d.id ? "Confirm" : "Delete"}</button><span class="l2">${d.ob ? esc(POCKET_NAMES[d.pocket] || "") + " pocket" : "Position only"} · ${label(VLAB, d.tip ? vspinOf(d.tip) : d.vspin)}</span></div>`).join("")}</div>` : `<p class="note">None yet. On the Log tab, set up the balls in Free practice and tap Save as drill.</p>`}
   </div>
   <div class="panel">
-    <h3>Your data</h3>
+    <h2>Your data</h2>
     <p class="note" id="dataNote">${store.mode === "cloud" ? "Shots sync to your Claude account through this page." : "Shots are stored in this browser on this device. If the browser's data is cleared, they are gone, so keep a backup."}</p>
-    <div class="row"><button class="btn" id="loadEx">Add 20 example shots</button><button class="btn danger" id="clearAll">${pendingDel === "__all" ? "Tap again to delete all" : "Delete all shots"}</button></div>
+    <div class="row"><button class="btn" id="loadEx">Add 20 example shots</button></div>
   </div>
   <div class="panel" id="backupPanel">
-    <h3>Backup</h3>
+    <h2>Backup</h2>
     <p class="note">One file with everything: ${shots.filter(s => !isBrk(s)).length} shots, ${shots.filter(isBrk).length} breaks, ${myDrills.length} drills, your settings and your table tuning. Keep it in your files or cloud drive; restore it here or on a new phone. ${settings.lastBackup ? `Last backup: <b>${esc(new Date(settings.lastBackup).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }))}</b>.` : "<b>No backup yet.</b>"}</p>
     <div class="row"><button class="btn primary" id="backupSave">Save backup file</button><button class="btn" id="backupCopy">Copy backup</button></div>
     <textarea id="backupBox" rows="4" hidden aria-label="Backup text"></textarea>
@@ -79,8 +85,13 @@ function renderSettings() {
     </div>` : ""}
   </div>
   <div class="panel">
-    <h3>Coordinates in the CSV</h3>
+    <h2>Coordinates in the CSV</h2>
     <p class="note">x is ${isMetric() ? "centimetres" : "inches"} from the left long cushion, y is ${isMetric() ? "centimetres" : "inches"} from the head cushion, both measured to the ball's centre, with the table seen from the head end. The cut angle is + for a cut to the right. Pocket offset is + when the object ball entered right of the pocket centre, looking from where the object ball started. Tip x and y are where the cue tip hit, in cue ball radii from centre (+ is right and up), and speed_pct is the 0 to 100% bar.</p>
+  </div>
+  <div class="panel danger">
+    <h2>Delete all shots</h2>
+    <p class="note">Removes every shot and break${store.mode === "cloud" ? " from your account" : " from this device"}. It can't be undone, so save a backup first. Your drills and settings stay.</p>
+    <div class="row"><button class="btn danger" id="clearAll">${pendingDel === "__all" ? "Tap again to delete all" : "Delete all shots"}</button></div>
   </div>`;
 }
 function applySettings() {

@@ -175,7 +175,7 @@ function renderSimRes() {
   if (!m || !simBrk()) { sm.innerHTML = ""; return; }
   const d = Math.max(1, m.done), pc = v => Math.round(v / d * 100) + "%";
   const top = Object.entries(m.pockets).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${POCKET_NAMES[k].toLowerCase()} ${Math.round(v / Math.max(1, m.made) * 100)}%`).join(", ");
-  sm.innerHTML = `<h4>${m.done < m.n ? `Running breaks… ${m.done} of ${m.n}` : `${m.n} breaks`}</h4><div class="res">` + [
+  sm.innerHTML = `<h3>${m.done < m.n ? `Running breaks… ${m.done} of ${m.n}` : `${m.n} breaks`}</h3><div class="res">` + [
     ["1-ball made", pc(m.oneMade), "good"], ["Balls made per break", fmt(m.made / d, 2)],
     ["Made at least one", pc(m.some)], [`${S.rack === "8" ? 8 : S.rack === "10" ? 10 : 9} on the break`, pc(m.game)],
     ["Scratches", pc(m.scratch), m.scratch ? "bad" : ""], ["Legal breaks", pc(m.legal)],

@@ -9,6 +9,7 @@
     </nav>
   </header>
 
+  <main id="main">
   <!-- LOG -->
   <section id="view-log" class="app">
     <div class="colA">
@@ -22,10 +23,6 @@
       <span class="brktitle" id="brkTitle" hidden>Cut break</span>
       <button class="btn small" id="pinTable" aria-pressed="true" hidden>Pin table</button>
       <span class="badge" id="shotNo">Shot 1</span>
-    </div>
-    <div class="drill" id="freeRow">
-      <input id="drill" placeholder="Name this session (optional)" aria-label="Session name" autocomplete="off">
-      <button class="btn" id="saveDrill">Save as drill</button>
     </div>
     <div class="drillinfo" id="drillInfo" hidden></div>
     <div class="tablewrap" id="tablewrap">
@@ -42,14 +39,14 @@
     <div class="colB">
     <div class="cards" id="cards">
       <section class="card" data-card="marks" aria-labelledby="h-marks">
-        <div class="cardhead"><div><h3 id="h-marks">Table markers</h3><p>Pick what a tap on the table places</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-marks">Table markers</h2><p>Pick what a tap on the table places</p></div><span class="mv"></span></div>
         <div class="cardbody">
           <div class="hintrow"><span class="hint" id="hint"></span><button class="btn small" id="removeItem" hidden></button><div class="chips" id="zoneChips" hidden></div></div>
           <div class="tools" id="tools"></div>
         </div>
       </section>
       <section class="card" data-card="simset" data-only="sim" aria-labelledby="h-simset">
-        <div class="cardhead"><div><h3 id="h-simset">Shot or break</h3><p>Set up a shot or a break, then watch where the balls go. Nothing here is saved to your log.</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-simset">Shot or break</h2><p>Set up a shot or a break, then watch where the balls go. Nothing here is saved to your log.</p></div><span class="mv"></span></div>
         <div class="cardbody">
           <div class="seg2" role="tablist" aria-label="What to simulate"><button role="tab" data-simkind="shot" id="simKShot">Shot</button><button role="tab" data-simkind="break" id="simKBreak">Break</button></div>
           <select id="simPreset" aria-label="Starting layout"></select>
@@ -57,75 +54,79 @@
         </div>
       </section>
       <section class="card" data-card="simres" data-only="sim" aria-labelledby="h-simres">
-        <div class="cardhead"><div><h3 id="h-simres">Predicted result</h3><p id="simResSub">Dashed lines on the table: white for the cue ball, coloured for the others</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-simres">Predicted result</h2><p id="simResSub">Dashed lines on the table: white for the cue ball, coloured for the others</p></div><span class="mv"></span></div>
         <div class="cardbody"><div class="res" id="simRes"></div><div id="simSum"></div>
           <p class="note" style="margin:0">Top-down model: slide and roll, draw, follow and side spin, cut and spin throw, cushions with side spin, real pocket mouths. No swerve, massé, jumps or jaw facings.</p></div>
       </section>
       <section class="card" data-card="tip" aria-labelledby="h-tip">
-        <div class="cardhead"><div><h3 id="h-tip">Cue ball tip</h3><p>Drag the blue point, or tap the ball to enlarge it</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-tip">Cue ball tip</h2><p>Drag the blue point, or tap the ball to enlarge it</p></div><span class="mv"></span></div>
         <div class="cardbody"><div class="spinrow">
           <svg id="cueball" viewBox="-1.3 -1.3 2.6 2.6" tabindex="0" role="slider" aria-label="Tip contact point on the cue ball. Tap to enlarge, or use arrow keys."></svg>
           <div class="spininfo"><span class="nm" id="spinName"></span><span class="off" id="spinOff"></span><span class="warn" id="spinWarn"></span><button class="btn small" id="tipCentre">Centre</button></div>
         </div></div>
       </section>
       <section class="card" data-card="hit" data-only="break sim" aria-labelledby="h-hit">
-        <div class="cardhead"><div><h3 id="h-hit">Hit on the 1-ball</h3><p id="hitSub">Slide the cue ball across the 1-ball: full, 3/4, 1/2 or 1/4, left or right</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-hit">Hit on the 1-ball</h2><p id="hitSub">Slide the cue ball across the 1-ball: full, 3/4, 1/2 or 1/4, left or right</p></div><span class="mv"></span></div>
         <div class="cardbody"><div class="spinrow" id="hitRow">
           <svg id="hitBall" viewBox="-2.4 -1.3 4.8 2.6" tabindex="0" role="slider" aria-label="How full you hit the 1-ball. Drag left or right, or use arrow keys."></svg>
           <div class="spininfo"><span class="nm" id="hitName"></span><span class="off" id="hitOff"></span><span class="off" id="hitNeed"></span><span class="hitbtns"><button class="btn small" id="hitFull">Full ball</button><button class="btn small" id="hitPot" hidden>Pot it</button></span></div>
         </div></div>
       </section>
       <section class="card" data-card="pred" data-only="break" aria-labelledby="h-pred">
-        <div class="cardhead"><div><h3 id="h-pred">Predicted path</h3><p>Yellow dashes on the table. A guide only until you tune it to your table</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-pred">Predicted path</h2><p>Yellow dashes on the table. A guide only until you tune it to your table</p></div><span class="mv"></span></div>
         <div class="cardbody"><div class="predread" id="predRead" aria-live="off"></div></div>
       </section>
       <section class="card" data-card="rail" data-only="break" aria-labelledby="h-rail">
-        <div class="cardhead"><div><h3 id="h-rail">1-ball result</h3><p>Pick the target pocket, drag the 1-ball to where it hit the rail, then pick the result</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-rail">1-ball result</h2><p>Pick the target pocket and drag the 1-ball to where it hit the rail. Tap the result under the table to save.</p></div><span class="mv"></span></div>
         <div class="cardbody">
           <div class="chips" id="brkPocket"></div>
           <svg id="rail" role="slider" tabindex="0" aria-label="Where the 1-ball reached the side rail. Arrow keys move it."></svg>
           <div class="readout" id="railRead"></div>
-          <div class="chips" id="brkOutcome"></div>
         </div>
       </section>
       <section class="card" data-card="cbfin" data-only="break" aria-labelledby="h-cbfin">
-        <div class="cardhead"><div><h3 id="h-cbfin">Cue ball finish</h3><p>Tap the table for the exact spot, or pick a section</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-cbfin">Cue ball finish</h2><p>Tap the table for the exact spot, or pick a section</p></div><span class="mv"></span></div>
         <div class="cardbody"><div class="chips" id="cbSecChips"></div></div>
       </section>
       <section class="card" data-card="balls" data-only="break" aria-labelledby="h-balls">
-        <div class="cardhead"><div><h3 id="h-balls">Balls made</h3><p>Optional: how many went down on the break</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-balls">Balls made</h2><p>Optional: how many went down on the break</p></div><span class="mv"></span></div>
         <div class="cardbody"><div class="stepper"><button class="btn small" id="madeMinus" aria-label="One fewer">−</button><b id="madeVal">–</b><button class="btn small" id="madePlus" aria-label="One more">+</button><button class="btn small" id="madeClear">Clear</button></div></div>
       </section>
       <section class="card" data-card="rack" data-only="break" aria-labelledby="h-rack">
-        <div class="cardhead"><div><h3 id="h-rack">Rack</h3><p>Which game you are breaking</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-rack">Rack</h2><p>Which game you are breaking</p></div><span class="mv"></span></div>
         <div class="cardbody"><div class="chips" id="rackChips"></div></div>
       </section>
       <section class="card" data-card="pocket" data-only="shot" aria-labelledby="h-pocket">
-        <div class="cardhead"><div><h3 id="h-pocket">Pocket entry</h3><p>Where the object ball crossed the pocket mouth</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-pocket">Pocket entry</h2><p>Where the object ball crossed the pocket mouth</p></div><span class="mv"></span></div>
         <div class="cardbody"><div class="pocketline">
           <div class="what" id="pocketWhat"></div>
           <button class="btn primary" id="openZoom">Mark pocket entry</button>
         </div></div>
       </section>
-      <section class="card" data-card="result" data-only="shot" aria-labelledby="h-result">
-        <div class="cardhead"><div><h3 id="h-result">Pocket result</h3><p>Did the object ball go in?</p></div><span class="mv"></span></div>
-        <div class="cardbody"><div class="chips" id="outcomeChips"></div></div>
-      </section>
       <section class="card" data-card="tune" data-only="break sim" aria-labelledby="h-tune">
-        <div class="cardhead"><div><h3 id="h-tune">Tune to your table</h3><p>Cloth, cushions and break speed used for the predicted path. Shared with the Simulator tab.</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-tune">Tune to your table</h2><p>Cloth, cushions and break speed used for the predicted path. Shared with the Simulator tab.</p></div><span class="mv"></span></div>
         <div class="cardbody"><details class="tunebox" id="tuneBox"><summary>Show the settings</summary>
           <p class="note" style="margin:8px 0 0">Every table plays differently. Break a few times, then move these until the predicted path matches where your 1-ball and cue ball really went. Saved on this device.</p>
           <div class="knobs" id="knobs"></div>
           <div class="tunerow"><span id="tuneState"></span><button class="btn small" id="resetKnobs">Reset to defaults</button></div>
         </details></div>
       </section>
+      <section class="card" data-card="session" data-only="shot break" aria-labelledby="h-session">
+        <div class="cardhead"><div><h2 id="h-session">Session</h2><p id="sessionSub">Name it, keep the setup as a drill, or start a new session</p></div><span class="mv"></span></div>
+        <div class="cardbody">
+          <div class="drill" id="freeRow">
+            <input id="drill" placeholder="Name this session (optional)" aria-label="Session name" autocomplete="off">
+            <button class="btn" id="saveDrill">Save as drill</button>
+          </div>
+          <div class="sessionline"><span id="sessionText"></span><button class="btn small" id="newSession">New session</button></div>
+        </div>
+      </section>
       <section class="card" data-card="note" data-only="shot break" aria-labelledby="h-note">
-        <div class="cardhead"><div><h3 id="h-note"><label for="notes" id="notesLbl">Note</label></h3><p id="notesSub">Optional</p></div><span class="mv"></span></div>
+        <div class="cardhead"><div><h2 id="h-note"><label for="notes" id="notesLbl">Note</label></h2><p id="notesSub">Optional</p></div><span class="mv"></span></div>
         <div class="cardbody"><textarea id="notes" rows="1" placeholder="Anything worth remembering"></textarea></div>
       </section>
     </div>
     <div class="cardsbar"><span class="sidectl" id="sideCtl" hidden>Speed bar <button class="chip sm" data-vside="left">Left</button><button class="chip sm" data-vside="right">Right</button></span><button class="btn small" id="arrangeReset" hidden>Reset order</button><button class="btn small" id="arrange" aria-pressed="false">Rearrange sections</button></div>
-    <div class="sessionline"><span id="sessionText"></span><button class="btn small" id="newSession">New session</button></div>
     <a class="fblink" id="fbLog" href="#" target="_blank" rel="noopener">Something not right, or an idea? Send feedback</a>
     <div class="savebar">
       <button class="btn" id="undo">Undo last</button>
@@ -142,6 +143,7 @@
 
   <!-- SETTINGS -->
   <section id="view-settings" class="app" hidden></section>
+  </main>
 </div>
 
 <div class="sheet" id="sheet" hidden>
@@ -150,7 +152,6 @@
     <p class="note">Drag the object ball to where its centre crossed the pocket mouth. The view is turned so the ball travels up the screen, so left and right are as you saw it.</p>
     <svg id="zoom" viewBox="-7 -6 14 11"><g id="zRot"><use href="#tblContent"></use><g id="zDyn"></g></g></svg>
     <div class="readout" id="zRead"></div>
-    <div class="chips" id="zOutcome"></div>
     <div class="savebar">
       <button class="btn" id="zClear">Clear</button>
       <button class="btn primary big" id="zDone">Done</button>
