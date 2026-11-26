@@ -770,6 +770,22 @@ function renderZoom() {
     : `${esc(POCKET_NAMES[S.pocket])} pocket, ${fls(len(sub(pk.c, S.ob)), 0)} from the object ball. Tap where the ball went in.`;
   $("zOutcome").innerHTML = OUTCOME.map(([k, lbl, cls]) => `<button class="chip ${cls}" aria-pressed="${S.outcome === k}" data-k="${k}">${lbl}</button>`).join("");
 }
+/* Keep the dragged object ball where a real ball can be: fully on the cloth (centre at least one ball radius
+   inside the cushions), or inside the target pocket's opening (centre at least one radius from each jaw), down to the hole. */
+function clampEntry(p) {
+  const pk = pockets()[S.pocket], side = S.pocket[0] === "S", h = pk.w / 2;
+  const t = unit(sub(pk.p2, pk.p1)), out = mul(pk.n, -1);
+  const d = sub(p, pk.c), u = dot(d, t), v = dot(d, out);
+  const uMax = Math.max(0, h - R_BALL), vMax = side ? 2.3 : 2.4;
+  const inChan = Math.abs(u) <= uMax && v <= vMax && v >= -6;
+  const W = settings.W, L = settings.L;
+  const inCloth = p.x >= R_BALL && p.x <= W - R_BALL && p.y >= R_BALL && p.y <= L - R_BALL;
+  if (inChan || inCloth) return p;
+  const a = clampBall(p);
+  const cu = Math.max(-uMax, Math.min(uMax, u)), cv = Math.max(-6, Math.min(vMax, v));
+  const b = add(pk.c, add(mul(t, cu), mul(out, cv)));
+  return len(sub(a, p)) <= len(sub(b, p)) ? a : b;
+}
 function closeZoom() { $("sheet").hidden = true; zoomOpen = false; renderTable(); }
 function zoomPoint(e) {
   const p = svgPt($("zoom"), e, $("zRot").querySelector("use")); return p;
@@ -1415,8 +1431,8 @@ tbl.addEventListener("pointermove", onTableMove);
 tbl.addEventListener("pointerup", onTableUp);
 tbl.addEventListener("pointercancel", onTableUp);
 const zoom = $("zoom");
-zoom.addEventListener("pointerdown", e => { e.preventDefault(); zoom.setPointerCapture(e.pointerId); zDrag = e.pointerId; const p = zoomPoint(e); if (p) { S.entry = { x: p.x, y: p.y }; renderZoom(); } });
-zoom.addEventListener("pointermove", e => { if (zDrag !== e.pointerId) return; const p = zoomPoint(e); if (p) { S.entry = { x: p.x, y: p.y }; renderZoom(); } });
+zoom.addEventListener("pointerdown", e => { e.preventDefault(); zoom.setPointerCapture(e.pointerId); zDrag = e.pointerId; const p = zoomPoint(e); if (p) { S.entry = clampEntry(p); renderZoom(); } });
+zoom.addEventListener("pointermove", e => { if (zDrag !== e.pointerId) return; const p = zoomPoint(e); if (p) { S.entry = clampEntry(p); renderZoom(); } });
 const zEnd = e => { if (zDrag === e.pointerId) { zDrag = null; if (S.entry && !S.outcome) { S.outcome = "made"; renderZoom(); } } };
 zoom.addEventListener("pointerup", zEnd); zoom.addEventListener("pointercancel", zEnd);
 
