@@ -342,7 +342,7 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
     </div>
   </div>
 </div>
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>
 (() => {
@@ -416,7 +416,12 @@ const findDrill = id => allDrills().find(d => d.id === id);
 
 const store = {
   mode: "local", col: null,
-  saveLocal() { if (!ls.set(LS.shots, shots)) toast("Could not save on this device. Export your CSV soon."); },
+  /* Local writes start from what is stored now, so a second open window of the app can't overwrite its shots. */
+  fresh() { const v = ls.get(LS.shots, []); return Array.isArray(v) ? v : []; },
+  saveLocal(next) {
+    if (!ls.set(LS.shots, next)) { toast("Phone storage is full. Export your CSV, then delete old shots."); return false; }
+    shots = next; return true;
+  },
   async init() {
     const c = window.claude;
     if (!c || typeof c.use !== "function") return;
@@ -448,16 +453,23 @@ const store = {
   },
   async add(shot) {
     if (this.mode === "cloud") {
-      try { await this.col.doc(shot.id).set(clean(shot)); return; }
+      try { await this.col.doc(shot.id).set(clean(shot)); return true; }
       catch (e) { toast("Sync failed, kept on this device"); this.mode = "local"; }
     }
-    shots.push(shot); this.saveLocal();
+    return this.saveLocal(this.fresh().concat([shot]));
+  },
+  async addMany(list) {
+    if (this.mode === "cloud") { for (const s of list) await this.add(s); return true; }
+    return this.saveLocal(this.fresh().concat(list));
   },
   async remove(id) {
-    if (this.mode === "cloud") { try { await this.col.doc(id).delete(); return; } catch (e) { toast("Could not delete. Try again."); return; } }
-    shots = shots.filter(s => s.id !== id); this.saveLocal();
+    if (this.mode === "cloud") { try { await this.col.doc(id).delete(); return true; } catch (e) { toast("Could not delete. Try again."); return false; } }
+    return this.saveLocal(this.fresh().filter(s => s.id !== id));
   },
-  async removeMany(ids) { for (const id of ids) await this.remove(id); },
+  async removeMany(ids) {
+    if (this.mode === "cloud") { let ok = true; for (const id of ids) ok = (await this.remove(id)) && ok; return ok; }
+    const drop = new Set(ids); return this.saveLocal(this.fresh().filter(s => !drop.has(s.id)));
+  },
   dcol: null,
   async addDrill(d) {
     if (this.mode === "cloud" && this.dcol) { try { await this.dcol.doc(d.id).set(clean(d)); return; } catch (e) { toast("Sync failed, kept on this device"); } }
@@ -715,7 +727,8 @@ function onTableDown(e) {
   const P = pockets(); let best = null, bd = 1e9;
   for (const k in P) { const d = len(sub(p, P[k].c)); if (d < bd) { bd = d; best = k; } }
   const offCloth = p.x < 0 || p.y < 0 || p.x > settings.W || p.y > settings.L;
-  if ((offCloth && bd < 7) || bd < 2.6) {
+  const marker = S.tool === "result" || S.tool === "target";      // a cue ball can stop right by a pocket
+  if ((offCloth && bd < 7) || (bd < 2.6 && !marker)) {
     S.pocket = best; S.entry = null; saveWork(); renderLog(); toast(POCKET_NAMES[best] + " pocket"); return;
   }
   if (offCloth) return;
@@ -979,7 +992,7 @@ function buildShot() {
     drill: S.drill || "", drillId: S.drillId || "", shotNo: drillShots(S.drill).length + 1,
     session: S.sessionId, tz: S.target ? (S.tz || "point") : null,
     inZone: (() => { const z = zoneShape(S.target, S.tz); return z ? (inZone(S.result, z) ? 1 : 0) : null; })(),
-    vspin: S.vspin, side: S.side, speed: S.speed, speedPct: S.speedPct, tip: { x: S.tip.x, y: S.tip.y }, pocket: S.pocket,
+    vspin: S.vspin, side: S.side, speed: S.speed, speedPct: S.speedPct, tip: { x: S.tip.x, y: S.tip.y },
     cb: S.cb ? { x: r2(S.cb.x), y: r2(S.cb.y) } : null,
     ob: S.ob ? { x: r2(S.ob.x), y: r2(S.ob.y) } : null,
     target: S.target ? { x: r2(S.target.x), y: r2(S.target.y) } : null,
@@ -1000,7 +1013,7 @@ async function saveShot() {
   if (!currentSessionActive()) { S.sessionId = "ses-" + nowMs.toString(36); S.sessionStart = new Date(nowMs).toISOString(); }
   S.lastShotTs = nowMs;
   const s = buildShot();
-  await store.add(s);
+  if (!(await store.add(s))) { saveWork(); renderAll(); return; }     // not saved: keep the markers so nothing is lost
   S.result = null; S.entry = null; S.outcome = null; S.notes = ""; S.tool = "result";
   saveWork(); renderAll();
   if (!land) { try { $("tablewrap").scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); } catch (e) {} }
@@ -1009,7 +1022,7 @@ async function saveShot() {
 async function undoLast() {
   const list = drillShots(S.drill); if (!list.length) return;
   const last = list[list.length - 1];
-  await store.remove(last.id);
+  if (!(await store.remove(last.id))) return;
   S.result = last.result; S.entry = last.entry; S.outcome = last.outcome; S.notes = last.notes || "";
   if (last.cb) S.cb = last.cb; S.ob = last.ob || null; S.target = last.target; if (last.pocket) S.pocket = last.pocket;
   S.tip = last.tip || tipFromLabels(last.vspin, last.side); S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip);
@@ -1104,7 +1117,8 @@ function renderStats() {
   const sess = sessions();
   if (F.session !== "__all" && !sess.some(x => x.id === F.session)) F.session = "__all";
   const list = filtered(); const t = summarize(list);
-  const bySess = sess.map(x => [x, summarize(filtered(true).filter(s => sessionOf(s) === x.id))]).filter(r => r[1].n);
+  const groups = new Map(); for (const s of filtered(true)) { const k = sessionOf(s); (groups.get(k) || groups.set(k, []).get(k)).push(s); }
+  const bySess = sess.filter(x => groups.has(x.id)).map(x => [x, summarize(groups.get(x.id))]);
   const vs = VLAB.map(([k, lbl]) => [k, lbl, summarize(list.filter(s => s.vspin === k))]).filter(r => r[2].n);
   const vchips = VSPIN.concat(shots.some(s => s.vspin === "centre") ? [["centre", "Centre ball"]] : []);
   v.innerHTML = `
@@ -1433,7 +1447,7 @@ function renderAll() {
 }
 async function addExamples() {
   const ex = exampleShots();
-  for (const s of ex) await store.add(s);
+  if (!(await store.addMany(ex))) return;
   renderAll(); toast("Added 20 example shots. Remove them from the Shots tab.");
 }
 
@@ -1468,7 +1482,7 @@ document.addEventListener("click", async e => {
   if (t.dataset.qs) return quickSave(t.dataset.qs);
   if (t.dataset.del) {
     const id = t.dataset.del;
-    if (pendingDel === id) { pendingDel = null; await store.remove(id); renderShots(); toast("Shot deleted"); }
+    if (pendingDel === id) { pendingDel = null; const ok = await store.remove(id); renderShots(); if (ok) toast("Shot deleted"); }
     else { pendingDel = id; clearTimeout(pendingT); pendingT = setTimeout(() => { pendingDel = null; renderAll(); }, 3500); renderShots(); }
     return;
   }
@@ -1493,9 +1507,9 @@ document.addEventListener("click", async e => {
     case "exportCsv": return exportCsv();
     case "copyCsv": return copyCsv();
     case "lblToggle": settings.labels = !settings.labels; saveSettings(); buildTable(); renderSettings(); return;
-    case "clearEx": await store.removeMany(shots.filter(s => s.example).map(s => s.id)); renderAll(); toast("Examples removed"); return;
+    case "clearEx": const ok = await store.removeMany(shots.filter(s => s.example).map(s => s.id)); renderAll(); if (ok) toast("Examples removed"); return;
     case "clearAll":
-      if (pendingDel === "__all") { pendingDel = null; await store.removeMany(shots.map(s => s.id)); renderAll(); toast("All shots deleted"); }
+      if (pendingDel === "__all") { pendingDel = null; const ok = await store.removeMany(shots.map(s => s.id)); renderAll(); if (ok) toast("All shots deleted"); }
       else { pendingDel = "__all"; clearTimeout(pendingT); pendingT = setTimeout(() => { pendingDel = null; renderAll(); }, 3500); renderSettings(); }
       return;
   }
@@ -1553,7 +1567,6 @@ $("spinSheet").addEventListener("click", e => { if (e.target.id === "spinSheet")
 let tipStart = null;
 cueBig.addEventListener("pointerdown", e => { e.preventDefault(); cueBig.setPointerCapture(e.pointerId); tipDrag = e.pointerId; const p = cuePoint(e); if (p) tipStart = { p, t: { x: S.tip.x, y: S.tip.y } }; });
 cueBig.addEventListener("pointermove", e => { if (tipDrag !== e.pointerId || !tipStart) return; const p = cuePoint(e); if (p) setTip(tipStart.t.x + p.x - tipStart.p.x, tipStart.t.y + p.y - tipStart.p.y); });
-cueSvg.addEventListener("pointermove", e => { if (tipDrag !== e.pointerId) return; const p = cuePoint(e); if (p) setTip(p.x, p.y); });
 const tipEnd = e => {
   if (tipDrag !== e.pointerId) return; tipDrag = null;
   // a tap without a drag puts the point where you tapped
@@ -1601,5 +1614,13 @@ const startView = (location.hash || "").slice(1);
 setView(startView === "table" ? "settings" : ["stats", "shots", "settings"].includes(startView) ? startView : "log");
 if (window.claude && typeof window.claude.use === "function") dlP = window.claude.use("downloads").catch(() => null);
 store.init();
+/* Another window of the app saved or deleted shots: pick up its changes. */
+window.addEventListener("storage", e => {
+  if (store.mode !== "local") return;
+  if (e.key === LS.shots) { shots = store.fresh(); renderAll(); }
+  if (e.key === LS.drills) { const d = ls.get(LS.drills, []); myDrills = Array.isArray(d) ? d : []; renderAll(); }
+});
+/* Ask Chrome to keep this app's data even when the phone is low on space. */
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
 })();
 </script>

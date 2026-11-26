@@ -12,7 +12,12 @@ SRC, DIST = ROOT / "src", ROOT / "dist"
 
 def main():
     frag = (SRC / "app.html").read_text(encoding="utf-8")
-    version = hashlib.sha256(frag.encode()).hexdigest()[:10]
+    # The version changes whenever any shipped file changes, so phones fetch the new service worker and cache.
+    h = hashlib.sha256()
+    for f in sorted(SRC.iterdir()):
+        if f.is_file():
+            h.update(f.name.encode()); h.update(f.read_bytes())
+    version = h.hexdigest()[:10]
     if DIST.exists():
         shutil.rmtree(DIST)
     DIST.mkdir()
