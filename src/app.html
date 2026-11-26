@@ -173,7 +173,7 @@ textarea { resize: vertical; min-height: 42px; }
 .sheet .card { width: 100%; max-width: 560px; background: var(--panel); border-radius: 16px 16px 0 0; padding: 14px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 10px; max-height: 100%; overflow: auto; }
 .sheet h2 { margin: 0; font-family: var(--f-display); text-transform: uppercase; font-size: 22px; letter-spacing: .03em; }
 #zoom { width: 100%; height: auto; aspect-ratio: 14 / 11; max-height: 52vh; background: var(--rail); border-radius: 10px; touch-action: none; display: block; }
-.readout { font-size: 14px; }
+.readout { font-size: 14px; min-height: 2.9em; }   /* fixed height so the zoom window doesn't jump while dragging */
 .readout b { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
 
 /* Stats */
@@ -770,9 +770,42 @@ function renderZoom() {
     : `${esc(POCKET_NAMES[S.pocket])} pocket, ${fls(len(sub(pk.c, S.ob)), 0)} from the object ball. Tap where the ball went in.`;
   $("zOutcome").innerHTML = OUTCOME.map(([k, lbl, cls]) => `<button class="chip ${cls}" aria-pressed="${S.outcome === k}" data-k="${k}">${lbl}</button>`).join("");
 }
+/* Keep the dragged object ball where a real ball can be: fully on the cloth (centre at least one ball radius
+   inside the cushions), or inside the target pocket's opening (centre at least one radius from each jaw), down to the hole. */
+function clampEntry(p) {
+  const pk = pockets()[S.pocket], side = S.pocket[0] === "S", h = pk.w / 2;
+  const t = unit(sub(pk.p2, pk.p1)), out = mul(pk.n, -1);
+  const d = sub(p, pk.c), u = dot(d, t), v = dot(d, out);
+  const uMax = Math.max(0, h - R_BALL), vMax = side ? 2.3 : 2.4;
+  const inChan = Math.abs(u) <= uMax && v <= vMax && v >= -6;
+  const W = settings.W, L = settings.L;
+  const inCloth = p.x >= R_BALL && p.x <= W - R_BALL && p.y >= R_BALL && p.y <= L - R_BALL;
+  if (inChan || inCloth) return p;
+  const a = clampBall(p);
+  const cu = Math.max(-uMax, Math.min(uMax, u)), cv = Math.max(-6, Math.min(vMax, v));
+  const b = add(pk.c, add(mul(t, cu), mul(out, cv)));
+  return len(sub(a, p)) <= len(sub(b, p)) ? a : b;
+}
 function closeZoom() { $("sheet").hidden = true; zoomOpen = false; renderTable(); }
+/* The finger is held inside the zoom window (inset by one ball radius), so the whole ball always stays visible. */
+/* true when a ball centred at table point q is fully inside the zoom window */
+function ballInZoom(q) {
+  const z = $("zoom"), u = $("zRot").querySelector("use"), mu = u.getScreenCTM(), m = z.getScreenCTM(); if (!mu || !m) return true;
+  const sv = toSvg(q), pt = z.createSVGPoint(); pt.x = sv.x; pt.y = sv.y; const s = pt.matrixTransform(mu);
+  const vb = z.viewBox.baseVal, k = Math.hypot(m.a, m.b) * R_BALL - .5;
+  return s.x >= m.a * vb.x + m.e + k && s.x <= m.a * (vb.x + vb.width) + m.e - k && s.y >= m.d * vb.y + m.f + k && s.y <= m.d * (vb.y + vb.height) + m.f - k;
+}
+function setEntry(p) {
+  const q = clampEntry(p);
+  if (!ballInZoom(q)) { if (S.entry) return; }      // the rail limit would push it out of the window: stay where it was
+  S.entry = q; renderZoom();
+}
 function zoomPoint(e) {
-  const p = svgPt($("zoom"), e, $("zRot").querySelector("use")); return p;
+  const z = $("zoom"), m = z.getScreenCTM(); if (!m) return null;
+  const vb = z.viewBox.baseVal, k = Math.hypot(m.a, m.b) * R_BALL;
+  const x0 = m.a * vb.x + m.e + k, x1 = m.a * (vb.x + vb.width) + m.e - k, y0 = m.d * vb.y + m.f + k, y1 = m.d * (vb.y + vb.height) + m.f - k;
+  const ev = { clientX: Math.min(x1, Math.max(x0, e.clientX)), clientY: Math.min(y1, Math.max(y0, e.clientY)) };
+  return svgPt(z, ev, $("zRot").querySelector("use"));
 }
 
 /* ---------- rendering: log ---------- */
@@ -1415,8 +1448,8 @@ tbl.addEventListener("pointermove", onTableMove);
 tbl.addEventListener("pointerup", onTableUp);
 tbl.addEventListener("pointercancel", onTableUp);
 const zoom = $("zoom");
-zoom.addEventListener("pointerdown", e => { e.preventDefault(); zoom.setPointerCapture(e.pointerId); zDrag = e.pointerId; const p = zoomPoint(e); if (p) { S.entry = { x: p.x, y: p.y }; renderZoom(); } });
-zoom.addEventListener("pointermove", e => { if (zDrag !== e.pointerId) return; const p = zoomPoint(e); if (p) { S.entry = { x: p.x, y: p.y }; renderZoom(); } });
+zoom.addEventListener("pointerdown", e => { e.preventDefault(); zoom.setPointerCapture(e.pointerId); zDrag = e.pointerId; const p = zoomPoint(e); if (p) setEntry(p); });
+zoom.addEventListener("pointermove", e => { if (zDrag !== e.pointerId) return; const p = zoomPoint(e); if (p) setEntry(p); });
 const zEnd = e => { if (zDrag === e.pointerId) { zDrag = null; if (S.entry && !S.outcome) { S.outcome = "made"; renderZoom(); } } };
 zoom.addEventListener("pointerup", zEnd); zoom.addEventListener("pointercancel", zEnd);
 
