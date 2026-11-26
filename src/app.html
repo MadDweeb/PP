@@ -253,7 +253,41 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
 .modeseg button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
 .brktitle { flex: 1; min-width: 0; font-family: var(--f-display); font-weight: 700; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; }
 #hitBall { width: 148px; height: 80px; flex: 0 0 148px; touch-action: none; user-select: none; -webkit-user-select: none; display: block; cursor: ew-resize; }
-.predread { font-size: 13px; color: var(--muted); }
+/* fixed height: the text changes while you drag the tip, hit or speed, and a changing height made the page jump */
+.predread { font-size: 14px; color: var(--muted); height: 2.9em; line-height: 1.45; overflow: hidden; contain: layout; display: flex; flex-direction: column; transition: opacity .15s; }
+.predread span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.predread.stale { opacity: .55; }
+.cards { display: flex; flex-wrap: wrap; gap: 10px; }
+.card { flex: 1 1 100%; min-width: 0; border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.card[hidden] { display: none; }
+.cardhead { display: flex; align-items: flex-start; gap: 8px; }
+.cardhead > div { flex: 1; min-width: 0; }
+.cardhead h3 { margin: 0; font-family: var(--f-display); font-size: 17px; letter-spacing: .02em; line-height: 1.2; }
+.cardhead h3 label { font: inherit; letter-spacing: inherit; text-transform: none; color: inherit; }
+.cardhead p { margin: 2px 0 0; font-size: 12px; color: var(--muted); line-height: 1.35; }
+.cardbody { display: flex; flex-direction: column; gap: 8px; }
+.card .pocketline { border: 0; padding: 0; background: none; }
+.mv { display: none; gap: 4px; flex: 0 0 auto; }
+.cards.arranging .mv { display: flex; }
+.cards.arranging .cardbody { display: none; }
+.cards.arranging .card { border-style: dashed; }
+.mv button { width: 36px; height: 32px; padding: 0; font-size: 16px; }
+.cardsbar { display: flex; gap: 6px; justify-content: flex-end; }
+.cardhead .speedread { flex: 0 0 auto; align-self: center; }
+.cards.arranging .cardhead .speedread { display: none; }
+/* cut break: tip and 1-ball hit sit side by side, compact, so they fit under the table with the speed bar */
+.cards.brk:not(.arranging) [data-card="tip"], .cards.brk:not(.arranging) [data-card="hit"] { flex: 1 1 calc(50% - 5px); }
+.cards.brk [data-card="tip"] .cardhead p, .cards.brk [data-card="hit"] .cardhead p, .cards.brk [data-card="speed"] .cardhead p { display: none; }
+.cards.brk [data-card="tip"] .spinrow, .cards.brk [data-card="hit"] .spinrow { flex-direction: column; gap: 6px; align-items: center; }
+.cards.brk #cueball { width: 96px; height: 96px; flex: 0 0 auto; }
+.cards.brk #hitBall { width: 100%; max-width: 148px; height: auto; aspect-ratio: 4.8 / 2.6; flex: 0 0 auto; }
+.cards.brk .spininfo { align-items: center; text-align: center; gap: 3px; }
+.cards.brk .spininfo .nm { font-size: 16px; }
+.cards.brk .spininfo .off { display: none; }
+.cards.brk .speedread { font-size: 13px; }
+body.pin:not(.land) .colA { position: sticky; top: var(--pinTop, 0px); z-index: 4; background: var(--bg); padding-bottom: 6px; box-shadow: 0 6px 8px -6px rgba(0,0,0,.25); }
+body.pin:not(.land) #tbl { height: max(300px, calc(100dvh - 530px)); }
+.cardsbar[hidden] { display: none; }
 .predread b { color: var(--ink); font-family: var(--f-mono); }
 #rail { width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
 .stepper { display: flex; gap: 6px; align-items: center; }
@@ -283,6 +317,7 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
     <div class="drill">
       <select id="drillSel" aria-label="Drill"></select>
       <span class="brktitle" id="brkTitle" hidden>Cut break</span>
+      <button class="btn small" id="pinTable" aria-pressed="true" hidden>Pin table</button>
       <span class="badge" id="shotNo">Shot 1</span>
     </div>
     <div class="drill" id="freeRow">
@@ -295,46 +330,78 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
       <div class="loupe" id="loupe" hidden><svg id="loupeSvg"><g id="loupeRot"><use href="#tblContent"></use></g><g id="loupeX"></g></svg></div>
     </div>
     <div class="quickbar" id="quickbar" aria-live="polite"></div>
-    <div class="hintrow"><span class="hint" id="hint"></span><button class="btn small" id="removeItem" hidden></button><div class="chips" id="zoneChips" hidden></div></div>
-    <div class="tools" id="tools"></div>
     </div>
     <div class="colB">
-    <div class="group" id="brkPanel" hidden>
-      <div class="group"><span class="label">Rack</span><div class="chips" id="rackChips"></div></div>
-      <div class="group"><span class="label">1-ball at the side rail: drag it to where it hit</span>
-        <div class="chips" id="brkPocket"></div>
-        <svg id="rail" role="slider" tabindex="0" aria-label="Where the 1-ball reached the side rail. Arrow keys move it."></svg>
-        <div class="readout" id="railRead"></div>
-        <div class="predread" id="predRead"></div>
-        <div class="chips" id="brkOutcome"></div>
-      </div>
-      <div class="group"><span class="label">Cue ball finish: tap the table for the exact spot, or pick a section</span>
-        <div class="chips" id="cbSecChips"></div>
-      </div>
-      <div class="group"><span class="label">Balls made on the break (optional)</span>
-        <div class="stepper"><button class="btn small" id="madeMinus" aria-label="One fewer">−</button><b id="madeVal">–</b><button class="btn small" id="madePlus" aria-label="One more">+</button><button class="btn small" id="madeClear">Clear</button></div>
-      </div>
+    <div class="cards" id="cards">
+      <section class="card" data-card="marks" aria-labelledby="h-marks">
+        <div class="cardhead"><div><h3 id="h-marks">Table markers</h3><p>Pick what a tap on the table places</p></div><span class="mv"></span></div>
+        <div class="cardbody">
+          <div class="hintrow"><span class="hint" id="hint"></span><button class="btn small" id="removeItem" hidden></button><div class="chips" id="zoneChips" hidden></div></div>
+          <div class="tools" id="tools"></div>
+        </div>
+      </section>
+      <section class="card" data-card="tip" aria-labelledby="h-tip">
+        <div class="cardhead"><div><h3 id="h-tip">Cue ball tip</h3><p>Drag the blue point, or tap the ball to enlarge it</p></div><span class="mv"></span></div>
+        <div class="cardbody"><div class="spinrow">
+          <svg id="cueball" viewBox="-1.3 -1.3 2.6 2.6" tabindex="0" role="slider" aria-label="Tip contact point on the cue ball. Tap to enlarge, or use arrow keys."></svg>
+          <div class="spininfo"><span class="nm" id="spinName"></span><span class="off" id="spinOff"></span><span class="warn" id="spinWarn"></span><button class="btn small" id="tipCentre">Centre</button></div>
+        </div></div>
+      </section>
+      <section class="card" data-card="hit" data-only="break" aria-labelledby="h-hit">
+        <div class="cardhead"><div><h3 id="h-hit">Hit on the 1-ball</h3><p>Slide the cue ball across the 1-ball: full, 3/4, 1/2 or 1/4, left or right</p></div><span class="mv"></span></div>
+        <div class="cardbody"><div class="spinrow" id="hitRow">
+          <svg id="hitBall" viewBox="-2.4 -1.3 4.8 2.6" tabindex="0" role="slider" aria-label="How full you hit the 1-ball. Drag left or right, or use arrow keys."></svg>
+          <div class="spininfo"><span class="nm" id="hitName"></span><span class="off" id="hitOff"></span><button class="btn small" id="hitFull">Full ball</button></div>
+        </div></div>
+      </section>
+      <section class="card" data-card="speed" aria-labelledby="h-speed">
+        <div class="cardhead"><div><h3 id="h-speed"><label for="speed">Speed</label></h3><p>Percent of your full power</p></div><div class="speedread" id="speedRead"></div><span class="mv"></span></div>
+        <div class="cardbody">
+          <div class="speedbar"><div class="sbtrack" id="sbTrack"><span>Soft</span><span>Medium</span><span>Firm</span><span>Power</span></div><div class="sbdim" id="sbDim"></div><input type="range" id="speed" min="0" max="100" step="1" aria-label="Speed, percent of your power"></div>
+        </div>
+      </section>
+      <section class="card" data-card="pred" data-only="break" aria-labelledby="h-pred">
+        <div class="cardhead"><div><h3 id="h-pred">Predicted path</h3><p>Yellow dashes on the table. Untuned physics, so a guide only</p></div><span class="mv"></span></div>
+        <div class="cardbody"><div class="predread" id="predRead" aria-live="off"></div></div>
+      </section>
+      <section class="card" data-card="rail" data-only="break" aria-labelledby="h-rail">
+        <div class="cardhead"><div><h3 id="h-rail">1-ball result</h3><p>Pick the target pocket, drag the 1-ball to where it hit the rail, then pick the result</p></div><span class="mv"></span></div>
+        <div class="cardbody">
+          <div class="chips" id="brkPocket"></div>
+          <svg id="rail" role="slider" tabindex="0" aria-label="Where the 1-ball reached the side rail. Arrow keys move it."></svg>
+          <div class="readout" id="railRead"></div>
+          <div class="chips" id="brkOutcome"></div>
+        </div>
+      </section>
+      <section class="card" data-card="cbfin" data-only="break" aria-labelledby="h-cbfin">
+        <div class="cardhead"><div><h3 id="h-cbfin">Cue ball finish</h3><p>Tap the table for the exact spot, or pick a section</p></div><span class="mv"></span></div>
+        <div class="cardbody"><div class="chips" id="cbSecChips"></div></div>
+      </section>
+      <section class="card" data-card="balls" data-only="break" aria-labelledby="h-balls">
+        <div class="cardhead"><div><h3 id="h-balls">Balls made</h3><p>Optional: how many went down on the break</p></div><span class="mv"></span></div>
+        <div class="cardbody"><div class="stepper"><button class="btn small" id="madeMinus" aria-label="One fewer">−</button><b id="madeVal">–</b><button class="btn small" id="madePlus" aria-label="One more">+</button><button class="btn small" id="madeClear">Clear</button></div></div>
+      </section>
+      <section class="card" data-card="rack" data-only="break" aria-labelledby="h-rack">
+        <div class="cardhead"><div><h3 id="h-rack">Rack</h3><p>Which game you are breaking</p></div><span class="mv"></span></div>
+        <div class="cardbody"><div class="chips" id="rackChips"></div></div>
+      </section>
+      <section class="card" data-card="pocket" data-only="shot" aria-labelledby="h-pocket">
+        <div class="cardhead"><div><h3 id="h-pocket">Pocket entry</h3><p>Where the object ball crossed the pocket mouth</p></div><span class="mv"></span></div>
+        <div class="cardbody"><div class="pocketline">
+          <div class="what" id="pocketWhat"></div>
+          <button class="btn primary" id="openZoom">Mark pocket entry</button>
+        </div></div>
+      </section>
+      <section class="card" data-card="result" data-only="shot" aria-labelledby="h-result">
+        <div class="cardhead"><div><h3 id="h-result">Pocket result</h3><p>Did the object ball go in?</p></div><span class="mv"></span></div>
+        <div class="cardbody"><div class="chips" id="outcomeChips"></div></div>
+      </section>
+      <section class="card" data-card="note" aria-labelledby="h-note">
+        <div class="cardhead"><div><h3 id="h-note"><label for="notes" id="notesLbl">Note</label></h3><p id="notesSub">Optional</p></div><span class="mv"></span></div>
+        <div class="cardbody"><textarea id="notes" rows="1" placeholder="Anything worth remembering"></textarea></div>
+      </section>
     </div>
-    <div class="pocketline">
-      <div class="what" id="pocketWhat"></div>
-      <button class="btn primary" id="openZoom">Mark pocket entry</button>
-    </div>
-    <div class="group"><span class="label">Pocket result</span><div class="chips" id="outcomeChips"></div></div>
-    <div class="group"><span class="label">Spin: drag the blue point, or tap the ball to enlarge it</span>
-      <div class="spinrow">
-        <svg id="cueball" viewBox="-1.3 -1.3 2.6 2.6" tabindex="0" role="slider" aria-label="Tip contact point on the cue ball. Tap to enlarge, or use arrow keys."></svg>
-        <div class="spininfo"><span class="nm" id="spinName"></span><span class="off" id="spinOff"></span><span class="warn" id="spinWarn"></span><button class="btn small" id="tipCentre">Centre</button></div>
-      </div>
-      <div class="spinrow" id="hitRow" hidden>
-        <svg id="hitBall" viewBox="-2.4 -1.3 4.8 2.6" tabindex="0" role="slider" aria-label="How full you hit the 1-ball. Drag left or right, or use arrow keys."></svg>
-        <div class="spininfo"><span class="nm" id="hitName"></span><span class="off" id="hitOff"></span><button class="btn small" id="hitFull">Full ball</button></div>
-      </div>
-    </div>
-    <div class="group"><label class="label" for="speed">Speed</label>
-      <div class="speedbar"><div class="sbtrack" id="sbTrack"><span>Soft</span><span>Medium</span><span>Firm</span><span>Power</span></div><div class="sbdim" id="sbDim"></div><input type="range" id="speed" min="0" max="100" step="1" aria-label="Speed, percent of your power"></div>
-      <div class="speedread" id="speedRead"></div>
-    </div>
-    <div class="group"><label class="label" for="notes">Note for this shot</label><textarea id="notes" rows="1" placeholder="Optional"></textarea></div>
+    <div class="cardsbar"><button class="btn small" id="arrange" aria-pressed="false">Rearrange sections</button><button class="btn small" id="arrangeReset" hidden>Reset order</button></div>
     <div class="sessionline"><span id="sessionText"></span><button class="btn small" id="newSession">New session</button></div>
     <div class="savebar">
       <button class="btn" id="undo">Undo last</button>
@@ -1287,15 +1354,77 @@ function renderSessionLine() {
   } else el.textContent = "Your next shot starts a new session.";
   $("newSession").hidden = !currentSessionActive();
 }
+/* ---------- log sections: order per mode, rearrangeable, saved in settings ---------- */
+const CARD_ORDER = {
+  shot: ["marks", "pocket", "result", "tip", "speed", "note"],
+  break: ["tip", "hit", "speed", "pred", "marks", "rail", "cbfin", "balls", "rack", "note"]
+};
+let arranging = false;
+function cardOrder(m) {
+  const def = CARD_ORDER[m], saved = (settings.cardOrder && settings.cardOrder[m]) || [];
+  const o = saved.filter(k => def.includes(k));
+  for (const k of def) if (!o.includes(k)) o.splice(Math.min(def.indexOf(k), o.length), 0, k);   // new sections slot in near their default place
+  return o;
+}
+function renderCards() {
+  const m = brkMode() ? "break" : "shot", box = $("cards"), order = cardOrder(m);
+  for (const el of box.querySelectorAll(".card")) {
+    const only = el.dataset.only;
+    el.hidden = !!only && only !== m;
+  }
+  order.forEach((k, i) => {
+    const el = box.querySelector(`[data-card="${k}"]`); if (!el) return;
+    box.appendChild(el);
+    const name = el.querySelector("h3").textContent;
+    el.querySelector(".mv").innerHTML = `<button class="btn" data-mv="${k}" data-dir="-1" aria-label="Move ${esc(name)} up" ${i === 0 ? "disabled" : ""}>↑</button><button class="btn" data-mv="${k}" data-dir="1" aria-label="Move ${esc(name)} down" ${i === order.length - 1 ? "disabled" : ""}>↓</button>`;
+  });
+  box.classList.toggle("arranging", arranging);
+  box.classList.toggle("brk", m === "break");
+  $("arrange").textContent = arranging ? "Done" : "Rearrange sections";
+  $("arrange").setAttribute("aria-pressed", arranging);
+  $("arrangeReset").hidden = !arranging;
+  updatePin();
+}
+function moveCard(k, dir) {
+  const m = brkMode() ? "break" : "shot", o = cardOrder(m), i = o.indexOf(k), j = i + dir;
+  if (i < 0 || j < 0 || j >= o.length) return;
+  [o[i], o[j]] = [o[j], o[i]];
+  settings.cardOrder = Object.assign({}, settings.cardOrder, { [m]: o }); saveSettings();
+  renderCards();
+  const b = document.querySelector(`[data-mv="${k}"][data-dir="${dir}"]`); if (b && !b.disabled) b.focus();
+}
+/* Pin table (portrait, cut break): the table shrinks and stays on screen while the sections scroll under it */
+function updatePin() {
+  const on = brkMode() && settings.pinTable !== false && !arranging;   // unpinned while rearranging, so the whole list is in view
+  document.body.classList.toggle("pin", on);
+  const btn = $("pinTable"); btn.hidden = !brkMode() || land; btn.setAttribute("aria-pressed", on); btn.textContent = on ? "Unpin table" : "Pin table";
+  if (!on || land) return;
+  const top = document.querySelector(".top"), a = document.querySelector(".colA"), tw = $("tablewrap");
+  const headH = top.getBoundingClientRect().height + (parseFloat(getComputedStyle(top).top) || 0);
+  a.style.setProperty("--pinTop", (headH - (tw.getBoundingClientRect().top - a.getBoundingClientRect().top) - 2) + "px");
+}
+$("pinTable").addEventListener("click", () => { settings.pinTable = settings.pinTable === false; saveSettings(); updatePin(); });
+addEventListener("resize", () => { if (brkMode()) updatePin(); });
+$("arrange").addEventListener("click", () => { arranging = !arranging; renderCards(); });
+$("arrangeReset").addEventListener("click", () => {
+  const m = brkMode() ? "break" : "shot";
+  if (settings.cardOrder) { delete settings.cardOrder[m]; saveSettings(); }
+  renderCards();
+});
+$("cards").addEventListener("click", e => {
+  const b = e.target.closest("[data-mv]"); if (!b) return;
+  moveCard(b.dataset.mv, +b.dataset.dir);
+});
 function renderLog() {
   const bm = brkMode();
   $("modeShot").setAttribute("aria-selected", !bm); $("modeBreak").setAttribute("aria-selected", bm);
-  $("drillSel").hidden = bm; $("brkTitle").hidden = !bm; $("hitRow").hidden = !bm;
-  document.querySelector(".pocketline").hidden = bm; $("brkPanel").hidden = !bm;
+  $("drillSel").hidden = bm; $("brkTitle").hidden = !bm;
+  renderCards();
   $("save").textContent = bm ? "Save break" : "Save shot";
-  document.querySelector('label[for="notes"]').textContent = bm ? "Note for this break" : "Note for this shot";
+  $("notesLbl").textContent = bm ? "Note for this break" : "Note for this shot";
   renderDrills(); if (bm) { $("freeRow").hidden = true; $("drillInfo").hidden = true; }
   renderSessionLine();
+  updatePin();
   $("drill").value = S.drill || "";
   $("notes").value = S.notes || "";
   $("shotNo").textContent = (bm ? "Break " : "Shot ") + (drillShots(S.drill).length + 1);
@@ -1305,7 +1434,7 @@ function renderLog() {
   const off = pocketOffset(S.entry, pk, S.ob);
   const cut = cutAngle(S.cb, S.ob, pk);
   $("openZoom").hidden = !S.ob;
-  $("outcomeChips").parentElement.hidden = !S.ob;
+  document.querySelector('[data-card="result"]').hidden = bm || !S.ob;
   if (!S.ob) $("pocketWhat").innerHTML = `<b>Position only</b><br><span style="font-size:12px;color:var(--muted)">No object ball on the table. Pick Object ball and tap to add one.</span>`;
   else $("pocketWhat").innerHTML = `<b>${esc(POCKET_NAMES[S.pocket])}</b><br><span class="num" style="font-size:12px;color:var(--muted)">${cut == null ? "" : "cut " + fmt(Math.abs(cut), 0) + "°" + (Math.abs(cut) < .5 ? "" : cut > 0 ? " right" : " left") + " · "}${S.entry ? "entry " + sgn(off, 2) : "entry not marked"}</span>`;
   chips("outcomeChips", OUTCOME, S.outcome, "outcome");
@@ -1999,10 +2128,13 @@ function predSvg() {
 function renderPredText() {
   const el = $("predRead"); if (!el) return;
   const ok = pred && pred.key === JSON.stringify(predInputs());
-  if (!ok) { el.textContent = "Working out the predicted 1-ball line…"; return; }
+  // while a new prediction is being worked out, keep the old text (dimmed) so nothing moves
+  if (!ok) { if (!el.innerHTML) el.textContent = "Working it out…"; el.classList.add("stale"); return; }
+  el.classList.remove("stale");
   const pn = POCKET_NAMES[S.pocket].toLowerCase();
-  el.innerHTML = `Predicted (yellow dashes): 1-ball ` + (pred.made ? `<b>made</b> in the ${pn}` : pred.rail != null ? `reaches the ${pn} rail <b>${railTxt(pred.rail)}</b>` : pred.onePocket ? `goes in the ${POCKET_NAMES[pred.onePocket] ? POCKET_NAMES[pred.onePocket].toLowerCase() : "another"} pocket` : pred.otherFirst ? `heads to the <b>other side rail</b>, not the ${pn}` : `doesn't reach the ${pn} rail`) +
-    `; cue ball ${pred.scratch ? "<b>scratches</b>" : pred.cbEnd ? "finishes " + label(CB_SECS, sectionOf(pred.cbEnd)).toLowerCase() : ""}. Untuned physics, so treat it as a guide.`;
+  const one = pred.made ? `<b>made</b> in the ${pn}` : pred.rail != null ? `${pn} rail, <b>${railTxt(pred.rail)}</b>` : pred.onePocket ? `goes in the ${POCKET_NAMES[pred.onePocket] ? POCKET_NAMES[pred.onePocket].toLowerCase() : "another pocket"}` : pred.otherFirst ? `heads to the <b>other side rail</b>` : `doesn't reach the ${pn} rail`;
+  const cb = pred.scratch ? "<b>scratches</b>" : pred.cbEnd ? `finishes <b>${label(CB_SECS, sectionOf(pred.cbEnd)).toLowerCase()}</b>` : "–";
+  el.innerHTML = `<span>1-ball: ${one}</span><span>Cue ball: ${cb}</span>`;
   drawRail();
 }
 
@@ -2355,14 +2487,12 @@ if (!pockets()[S.pocket]) S.pocket = "FR";
 function placeColumns() {
   const a = document.querySelector(".colA"), b = document.querySelector(".colB");
   const top = [$("modeSeg"), document.querySelector(".drill"), $("freeRow"), $("drillInfo")];
-  const under = [document.querySelector(".hintrow"), $("tools")];
-  if (land) { b.prepend(...top, ...under); }
-  else { a.prepend(...top); a.append(...under); }
+  if (land) b.prepend(...top); else a.prepend(...top);
 }
 function applyOrientation() {
   land = !!(LAND_MQ && LAND_MQ.matches);
   document.body.classList.toggle("land", land);
-  placeColumns(); buildTable(); if (view === "stats") renderStats();
+  placeColumns(); buildTable(); updatePin(); if (view === "stats") renderStats();
 }
 land = !!(LAND_MQ && LAND_MQ.matches); document.body.classList.toggle("land", land); placeColumns();
 if (LAND_MQ) { if (LAND_MQ.addEventListener) LAND_MQ.addEventListener("change", applyOrientation); else if (LAND_MQ.addListener) LAND_MQ.addListener(applyOrientation); }
