@@ -543,6 +543,7 @@ const DEFAULTS = {
   mu_r: 0.010,                 // rolling resistance
   mu_sp: 0.02,                 // spinning (side spin) friction
   e_b: 0.95,                   // ball-ball restitution
+  pack: 0.5,                   // rack tightness: share of the balls behind a still, frozen ball that move with it when it is hit (0 = loose balls)
   e_c: 0.80,                   // cushion restitution
   mu_c: 0.20,                  // cushion friction
   vmax: 300,                   // cue ball speed at 100 %, in/s (about 7.6 m/s)
@@ -646,6 +647,7 @@ function clothStep(b, dt, P) {
 
 /* Ball-ball collision with friction at the contact point (throw). Alciatore's speed-dependent friction fit. */
 function ballBall(A, B, P, t) {
+  if (A.state === "still" && B.state !== "still") { const T = A; A = B; B = T; }   // A is the moving ball
   let nx = B.x - A.x, ny = B.y - A.y; const d = hyp(nx, ny);
   if (d >= 2 * R || d === 0) return false;
   nx /= d; ny /= d;
@@ -653,7 +655,21 @@ function ballBall(A, B, P, t) {
   if (rvn <= 0) return false;                         // separating
   // push apart to touching
   const ov = (2 * R - d) / 2; A.x -= nx * ov; A.y -= ny * ov; B.x += nx * ov; B.y += ny * ov;
-  const Jn = (1 + P.e_b) / 2 * rvn;                   // per unit mass
+  /* Tight rack: a still ball frozen against still balls behind it can't move off on its own; the balls behind take
+     part of the push at the same instant, so the ball that hits it meets a heavier target and comes back off it more
+     steeply. This is what sends the 1-ball back toward a side pocket off the second row. Not applied to the cue ball's
+     own hit, so the break's first contact is unchanged. */
+  const backers = []; let M = 1;
+  if (P.pack > 0 && B.state === "still" && A.id !== "cb" && P._balls) {
+    for (const C of P._balls) {
+      if (C === A || C === B || C.potted || C.state !== "still") continue;
+      const ux = C.x - B.x, uy = C.y - B.y, du = hyp(ux, uy);
+      if (du > 2 * R + 0.01) continue;
+      const w = (ux * nx + uy * ny) / du;
+      if (w > 0.05) { backers.push([C, ux / du, uy / du, w]); M += P.pack * w * w; }
+    }
+  }
+  const Jn = (1 + P.e_b) * M / (1 + M) * rvn;         // per unit mass of A; (1 + e)/2 rvn when nothing is behind B
   // contact point velocities (3D)
   const n3 = [nx, ny, 0];
   const wA = cross(A.w, n3.map(c => c * R)), wB = cross(B.w, n3.map(c => -c * R));
@@ -668,7 +684,9 @@ function ballBall(A, B, P, t) {
   }
   // impulses (per unit mass): on A = -Jn n + Jt tdir ; on B = opposite
   A.vx += -Jn * nx + Jt * tdir[0]; A.vy += -Jn * ny + Jt * tdir[1];
-  B.vx += Jn * nx - Jt * tdir[0]; B.vy += Jn * ny - Jt * tdir[1];
+  const V = Jn / M;                                  // B and the share of the balls behind it move off together
+  B.vx += V * nx - Jt * tdir[0]; B.vy += V * ny - Jt * tdir[1];
+  for (const [C, ux, uy, w] of backers) { C.vx += P.pack * V * w * ux; C.vy += P.pack * V * w * uy; C.state = "sliding"; C.events.push({ t, type: "hit", other: B.id, x: C.x, y: C.y }); }
   const f = 5 / (2 * R * R);
   const tA = cross(n3.map(c => c * R), tdir.map(c => c * Jt)), tB = cross(n3.map(c => -c * R), tdir.map(c => -c * Jt));
   for (let i = 0; i < 3; i++) { A.w[i] += f * tA[i]; B.w[i] += f * tB[i]; }
@@ -737,6 +755,7 @@ function simulate(spec, params) {
   const P = Object.assign({}, DEFAULTS, params || {});
   const geo = geometry(P);
   const balls = spec.balls.map(b => makeBall(b.id, b));
+  Object.defineProperty(P, "_balls", { value: balls, enumerable: false });
   strike(balls[spec.cue || 0], spec.aim, spec.tip || { x: 0, y: 0 }, spec.speed, P);
   const dt = spec.dt || 4e-4, sample = spec.sample || 1 / 120, tMax = spec.tMax || 30;
   let seed = (spec.seed == null ? 12345 : spec.seed) >>> 0;
@@ -2369,7 +2388,8 @@ const KNOBS = [
   ["e_c", "Cushion bounce", .55, .95, .01, 2, "How lively the rails are."],
   ["mu_c", "Cushion grip", 0, .4, .01, 2, "How much side spin changes the angle off a rail."],
   ["mu_sp", "Side spin fade", .005, .06, .001, 3, "How quickly side spin dies on the cloth."],
-  ["e_b", "Ball bounce", .85, .99, .01, 2, "Ball-on-ball restitution: how hard the 1-ball comes off the rack."],
+  ["e_b", "Ball bounce", .8, 1, .01, 2, "Ball-on-ball restitution. 1.00 is the physical limit (a perfectly elastic ball); real balls are about 0.93 to 0.98."],
+  ["pack", "Rack tightness", 0, 1, .05, 2, "How frozen the rack is. Tighter racks send the 1-ball back off the second row more steeply, toward the side pocket. 0 = loose balls."],
   ["vmax", "Top shot speed at 100 %", 180, 400, 5, 0, "Simulator shots, in inches per second (300 ≈ 7.6 m/s)."],
   ["vbreak", "Top break speed at 100 %", 300, 520, 5, 0, "Inches per second at full power (420 ≈ 24 mph)."],
   ["squirt", "Squirt at half-tip side", 0, 4, .1, 1, "Degrees the cue ball pushes off line with side. Low-deflection shafts ≈ 1."]
