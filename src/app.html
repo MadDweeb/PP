@@ -127,6 +127,14 @@ body.land #strip { max-width: 620px; margin: 0 auto; }
 .btn.big { padding: 14px; font-size: 17px; font-family: var(--f-display); letter-spacing: .04em; text-transform: uppercase; flex: 1; }
 .btn:disabled { opacity: .45; cursor: default; }
 .savebar { display: flex; gap: 8px; }
+/* Quick log: one tap under the table saves the shot */
+.quickbar { display: flex; gap: 8px; align-items: stretch; }
+.quickbar .qmsg { flex: 1; text-align: center; font-size: 13px; color: var(--muted); padding: 10px 4px; border: 1px dashed var(--line); border-radius: 10px; }
+.quickbar .qs { flex: 1; padding: 12px 6px; border-radius: 10px; font-weight: 700; font-size: 15px; color: #fff; border: 0; line-height: 1.15; }
+.quickbar .qs small { display: block; font-weight: 500; font-size: 11px; opacity: .85; }
+.quickbar .qs.good { background: var(--good); } .quickbar .qs.warn { background: var(--warn); } .quickbar .qs.bad { background: var(--bad); }
+.quickbar .qs.plain { background: var(--accent); color: var(--accent-ink); }
+.quickbar .qs:disabled { opacity: .5; }
 textarea, .field input, .field select { width: 100%; padding: 9px 11px; border: 1px solid var(--line); background: var(--panel); border-radius: 9px; }
 textarea { resize: vertical; min-height: 42px; }
 
@@ -264,6 +272,7 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
       <svg id="tbl" role="img" aria-label="Pool table. Tap to place balls and markers."></svg>
       <div class="loupe" id="loupe" hidden><svg id="loupeSvg"><g id="loupeRot"><use href="#tblContent"></use></g><g id="loupeX"></g></svg></div>
     </div>
+    <div class="quickbar" id="quickbar" aria-live="polite"></div>
     <div class="hintrow"><span class="hint" id="hint"></span><button class="btn small" id="removeItem" hidden></button><div class="chips" id="zoneChips" hidden></div></div>
     <div class="tools" id="tools"></div>
     </div>
@@ -886,7 +895,24 @@ function renderLog() {
   chips("outcomeChips", OUTCOME, S.outcome, "outcome");
   renderSpin(); renderSpeed();
   $("save").disabled = !S.result;
+  renderQuick();
   $("undo").disabled = !drillShots(S.drill).length;
+}
+
+/* ---------- quick log ---------- */
+let quickBusy = false;
+function renderQuick() {
+  const q = $("quickbar");
+  if (!S.result) { q.innerHTML = `<div class="qmsg">Tap where the cue ball stopped, then tap a result here to save</div>`; return; }
+  q.innerHTML = S.ob
+    ? OUTCOME.map(([k, lbl, cls]) => `<button class="qs ${cls}" data-qs="${k}" ${quickBusy ? "disabled" : ""}>${lbl}<small>save shot</small></button>`).join("")
+    : `<button class="qs plain" data-qs="none" ${quickBusy ? "disabled" : ""}>Save shot<small>position only</small></button>`;
+}
+async function quickSave(k) {
+  if (quickBusy || !S.result) return;
+  quickBusy = true; renderQuick();
+  try { if (k !== "none") S.outcome = k; await saveShot(); }
+  finally { quickBusy = false; renderQuick(); }
 }
 
 /* ---------- spin: cue ball picker ---------- */
@@ -1340,6 +1366,7 @@ document.addEventListener("click", async e => {
   if (t.id === "spinDone") { $("spinSheet").hidden = true; saveWork(); return; }
   if (t.dataset.g) { settings.grid = t.dataset.g; saveSettings(); buildTable(); renderSettings(); return; }
   if (t.dataset.action === "examples" || t.id === "loadEx") return addExamples();
+  if (t.dataset.qs) return quickSave(t.dataset.qs);
   if (t.dataset.del) {
     const id = t.dataset.del;
     if (pendingDel === id) { pendingDel = null; await store.remove(id); renderShots(); toast("Shot deleted"); }
