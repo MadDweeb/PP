@@ -132,7 +132,7 @@ textarea { resize: vertical; min-height: 42px; }
 
 /* Spin: drag the tip contact point on a cue ball */
 .spinrow { display: flex; gap: 14px; align-items: center; }
-#cueball { width: 148px; height: 148px; flex: 0 0 148px; user-select: none; -webkit-user-select: none; display: block; cursor: zoom-in; border-radius: 50%; }
+#cueball { width: 148px; height: 148px; flex: 0 0 148px; touch-action: none; user-select: none; -webkit-user-select: none; display: block; cursor: zoom-in; border-radius: 50%; }
 #cueBig { width: min(86vw, 50vh, 360px); height: min(86vw, 50vh, 360px); margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; display: block; cursor: crosshair; border-radius: 50%; }
 .spinbig { display: flex; flex-direction: column; gap: 2px; align-items: center; text-align: center; }
 .spinbig .nm { font-family: var(--f-display); font-weight: 700; font-size: 24px; letter-spacing: .02em; }
@@ -273,7 +273,7 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
       <button class="btn primary" id="openZoom">Mark pocket entry</button>
     </div>
     <div class="group"><span class="label">Pocket result</span><div class="chips" id="outcomeChips"></div></div>
-    <div class="group"><span class="label">Spin: tap the cue ball to set where the tip hit</span>
+    <div class="group"><span class="label">Spin: drag the blue point, or tap the ball to enlarge it</span>
       <div class="spinrow">
         <svg id="cueball" viewBox="-1.3 -1.3 2.6 2.6" tabindex="0" role="slider" aria-label="Tip contact point on the cue ball. Tap to enlarge, or use arrow keys."></svg>
         <div class="spininfo"><span class="nm" id="spinName"></span><span class="off" id="spinOff"></span><span class="warn" id="spinWarn"></span><button class="btn small" id="tipCentre">Centre</button></div>
@@ -891,7 +891,7 @@ function setTip(x, y) {
   S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); renderSpin();
 }
 function cuePoint(e) {
-  const svg = $("cueBig"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const svg = e.currentTarget && e.currentTarget.id === "cueball" ? $("cueball") : $("cueBig"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
   const m = svg.getScreenCTM(); if (!m) return null; const q = pt.matrixTransform(m.inverse()); return { x: q.x, y: -q.y };
 }
 function renderSpeed() {
@@ -1370,7 +1370,25 @@ document.addEventListener("input", e => {
 $("speed").addEventListener("input", e => { S.speedPct = +e.target.value; S.speed = speedOf(S.speedPct); renderSpeed(); saveWork(); });
 const cueSvg = $("cueball"), cueBig = $("cueBig");
 const openSpin = () => { $("spinSheet").hidden = false; renderSpin(); };
-cueSvg.addEventListener("click", openSpin);
+/* Small ball: press on the blue point and drag to move it here; a tap anywhere else on the ball enlarges it. */
+let smallTouch = null;
+cueSvg.addEventListener("pointerdown", e => {
+  e.preventDefault(); const p = cuePoint(e); if (!p) return;
+  cueSvg.setPointerCapture(e.pointerId);
+  const onPoint = Math.hypot(p.x - S.tip.x, p.y - S.tip.y) < .34;
+  smallTouch = { id: e.pointerId, p, t: { x: S.tip.x, y: S.tip.y }, onPoint, moved: false };
+});
+cueSvg.addEventListener("pointermove", e => {
+  const st = smallTouch; if (!st || st.id !== e.pointerId) return; const p = cuePoint(e); if (!p) return;
+  if (Math.hypot(p.x - st.p.x, p.y - st.p.y) > .05) st.moved = true;
+  if (st.onPoint) setTip(st.t.x + p.x - st.p.x, st.t.y + p.y - st.p.y);
+});
+const smallEnd = e => {
+  const st = smallTouch; if (!st || st.id !== e.pointerId) return; smallTouch = null;
+  if (st.onPoint) { saveWork(); return; }                  // started on the point: never enlarge
+  if (!st.moved && e.type === "pointerup") openSpin();
+};
+cueSvg.addEventListener("pointerup", smallEnd); cueSvg.addEventListener("pointercancel", smallEnd);
 $("spinSheet").addEventListener("click", e => { if (e.target.id === "spinSheet") { $("spinSheet").hidden = true; saveWork(); } });
 /* Drag is relative: the point moves with the finger from wherever it lands, so the finger never hides it. */
 let tipStart = null;
