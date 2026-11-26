@@ -247,6 +247,14 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
 .note { font-size: 13px; color: var(--muted); margin: 0; }
 
+/* Cut break mode */
+.modeseg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.modeseg button { border: 0; background: none; border-radius: 7px; padding: 7px 4px; font-weight: 600; font-size: 14px; color: var(--muted); }
+.modeseg button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.brktitle { flex: 1; min-width: 0; font-family: var(--f-display); font-weight: 700; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; }
+#rail { width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+.stepper { display: flex; gap: 6px; align-items: center; }
+.stepper b { min-width: 3ch; text-align: center; font-family: var(--f-mono); font-size: 16px; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 14px; font-weight: 500; z-index: 30; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
 @media (prefers-reduced-motion: no-preference) { .toast { animation: rise .18s ease-out; } @keyframes rise { from { transform: translate(-50%, 8px); opacity: 0; } } }
 </style>
@@ -265,8 +273,13 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
   <!-- LOG -->
   <section id="view-log" class="app">
     <div class="colA">
+    <nav class="modeseg" id="modeSeg" role="tablist" aria-label="What you are logging">
+      <button role="tab" id="modeShot" data-mode="shot">Shots</button>
+      <button role="tab" id="modeBreak" data-mode="break">Cut break</button>
+    </nav>
     <div class="drill">
       <select id="drillSel" aria-label="Drill"></select>
+      <span class="brktitle" id="brkTitle" hidden>Cut break</span>
       <span class="badge" id="shotNo">Shot 1</span>
     </div>
     <div class="drill" id="freeRow">
@@ -283,6 +296,21 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
     <div class="tools" id="tools"></div>
     </div>
     <div class="colB">
+    <div class="group" id="brkPanel" hidden>
+      <div class="group"><span class="label">Rack</span><div class="chips" id="rackChips"></div></div>
+      <div class="group"><span class="label">1-ball at the side rail: drag it to where it hit</span>
+        <div class="chips" id="brkPocket"></div>
+        <svg id="rail" role="slider" tabindex="0" aria-label="Where the 1-ball reached the side rail. Arrow keys move it."></svg>
+        <div class="readout" id="railRead"></div>
+        <div class="chips" id="brkOutcome"></div>
+      </div>
+      <div class="group"><span class="label">Cue ball</span>
+        <div class="chips"><button class="chip bad" id="scratchChip" aria-pressed="false">Scratch</button></div>
+      </div>
+      <div class="group"><span class="label">Balls made on the break (optional)</span>
+        <div class="stepper"><button class="btn small" id="madeMinus" aria-label="One fewer">−</button><b id="madeVal">–</b><button class="btn small" id="madePlus" aria-label="One more">+</button><button class="btn small" id="madeClear">Clear</button></div>
+      </div>
+    </div>
     <div class="pocketline">
       <div class="what" id="pocketWhat"></div>
       <button class="btn primary" id="openZoom">Mark pocket entry</button>
@@ -373,6 +401,11 @@ const HINTS = {
   target: "Tap where you want the cue ball to finish.",
   result: "Tap where the cue ball actually stopped. Drag to fine-tune."
 };
+const TOOLS_BRK = [["cb", "Break spot"], ["result", "CB finish"]];
+const HINTS_BRK = {
+  cb: "Tap or drag behind the head string to set where you broke from. The white box is the break box.",
+  result: "Tap where the cue ball stopped. Tap a side pocket to change the target."
+};
 const ZONES = [["point", "Point"], ["c3", "3 in circle"], ["c6", "6 in circle"], ["half", "Half-diamond box"], ["dia", "Diamond box"]];
 const SESSION_GAP_MS = 2 * 3600e3;
 const LS = { shots: "psl.shots.v1", work: "psl.work.v1", settings: "psl.settings.v1", drills: "psl.drills.v1" };
@@ -390,6 +423,31 @@ const S = Object.assign({
 }, ls.get(LS.work, {}));
 if (!S.tip) S.tip = tipFromLabels(S.vspin, S.side);
 if (S.speedPct == null) S.speedPct = pctFromSpeed(S.speed);
+/* ---------- cut break mode ----------
+   Breaks are saved in the same list as shots, marked kind: "break", so storage, sessions and CSV
+   export stay in one place. The shot stats leave them out; they get their own stats. */
+const BRK_DRILL = "Cut break";
+const RACKS = [["9", "9-ball"], ["10", "10-ball"]];
+const RAIL_LIM = 12;                        // the rail strip shows 12 in either side of the side pocket centre
+const isBrk = s => !!s && s.kind === "break";
+const brkMode = () => S.mode === "break";
+const MODE_KEYS = ["tip", "vspin", "side", "speed", "speedPct", "pocket", "cb", "ob", "target", "result", "entry", "outcome", "tool", "tz", "drill", "drillId"];
+if (!S.stash || typeof S.stash !== "object") S.stash = {};
+if (!S.rack) S.rack = "9";
+if (S.mode !== "break") S.mode = "shot";
+const BRK_START = { tip: { x: 0, y: -.1 }, speedPct: 90, pocket: "SL", cb: { x: 37, y: 22 }, ob: null, target: null, result: null, entry: null, outcome: null, tool: "result", tz: "point", drill: BRK_DRILL, drillId: "" };
+function setMode(m) {
+  if (S.mode === m) return;
+  const keep = {}; for (const k of MODE_KEYS) keep[k] = S[k];
+  S.stash[S.mode] = JSON.parse(JSON.stringify(keep));
+  const next = S.stash[m] ? S.stash[m] : m === "break" ? BRK_START : { tool: "result", drill: "", drillId: "", pocket: "FR", cb: { x: 20, y: 52 }, ob: { x: 40, y: 82 }, target: { x: 30, y: 70 }, result: null, entry: null, outcome: null };
+  Object.assign(S, JSON.parse(JSON.stringify(next)));
+  if (!S.tip) S.tip = { x: 0, y: 0 }; if (S.speedPct == null) S.speedPct = 40;
+  S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); S.speed = speedOf(S.speedPct);
+  if (m === "break") { S.ob = null; S.target = null; S.entry = null; S.drill = BRK_DRILL; S.drillId = ""; if (S.pocket !== "SL" && S.pocket !== "SR") S.pocket = "SL"; if (S.tool !== "cb") S.tool = "result"; }
+  S.mode = m; S.rail = null; S.scratch = false; S.ballsMade = null;
+  saveWork();
+}
 let shots = ls.get(LS.shots, []);
 if (!Array.isArray(shots)) shots = [];
 let myDrills = ls.get(LS.drills, []);
@@ -566,9 +624,9 @@ const sessionOf = s => s.session || ("day-" + String(s.local || s.ts || "").slic
 function sessionLabel(ts) {
   try { return new Date(ts).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }); } catch (e) { return String(ts).slice(0, 16); }
 }
-function sessions() {
+function sessions(keep) {
   const m = new Map();
-  for (const s of shots) { const k = sessionOf(s); const e = m.get(k); if (!e) m.set(k, { id: k, start: s.ts, n: 1 }); else { e.n++; if (s.ts < e.start) e.start = s.ts; } }
+  for (const s of shots) { if (keep && !keep(s)) continue; const k = sessionOf(s); const e = m.get(k); if (!e) m.set(k, { id: k, start: s.ts, n: 1 }); else { e.n++; if (s.ts < e.start) e.start = s.ts; } }
   return [...m.values()].sort((a, b) => a.start < b.start ? 1 : -1);
 }
 function zone(p, cols, rows) {
@@ -672,7 +730,44 @@ function line(a, b, color, dash, op = .7) {
   const p = toSvg(a), q = toSvg(b);
   return `<line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}" stroke="${color}" stroke-opacity="${op}" stroke-width="1.3" ${dash ? `stroke-dasharray="${dash}"` : ""} vector-effect="non-scaling-stroke"/>`;
 }
+const BALL_COL = { 1: "#f2c300", 2: "#1f4fbf", 3: "#d0302a", 4: "#6a2c91", 5: "#ef7d1a", 6: "#1d8a4a", 7: "#7a1f1f", 8: "#151515", 9: "#f2c300", 10: "#1f4fbf" };
+/* The rack with the 1 on the foot spot: 9-ball diamond (9 in the middle) or 10-ball triangle (10 in the middle of the third row) */
+function rackBalls(kind) {
+  const rows = kind === "10" ? [1, 2, 3, 4] : [1, 2, 3, 2, 1], mid = kind === "10" ? 10 : 9, d = 2 * R_BALL, out = [];
+  const rest = kind === "10" ? [2, 3, 4, 5, 6, 7, 8, 9] : [2, 3, 4, 5, 6, 7, 8];
+  rows.forEach((n, r) => { for (let i = 0; i < n; i++) {
+    const num = r === 0 ? 1 : (r === 2 && i === 1) ? mid : rest.shift();
+    out.push({ n: num, x: settings.W / 2 + (i - (n - 1) / 2) * d, y: settings.L * .75 + r * d * Math.sqrt(3) / 2 });
+  } });
+  return out;
+}
+function numBall(p, n) {
+  const q = toSvg(p), stripe = n > 8;
+  return (stripe ? `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="#fbfaf4" stroke="#1b1b1b" stroke-opacity=".5" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${q.x - R_BALL * .98}" y="${q.y - R_BALL * .55}" width="${R_BALL * 1.96}" height="${R_BALL * 1.1}" fill="${BALL_COL[n]}"/>`
+    : `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="${BALL_COL[n]}" stroke="#1b1b1b" stroke-opacity=".5" stroke-width="1" vector-effect="non-scaling-stroke"/>`) +
+    `<circle cx="${q.x}" cy="${q.y}" r=".5" fill="#fffdf4"/><text x="${q.x}" y="${q.y + .02}" font-size="${n > 9 ? .55 : .7}" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="#1b1b1b" font-family="var(--f-body)">${n}</text>`;
+}
+/* Break box: head string to head rail, between the outer head-rail diamonds */
+function breakBoxSvg() {
+  const a = toSvg({ x: settings.W / 4, y: settings.L / 4 });
+  return `<rect x="${a.x}" y="${a.y}" width="${settings.W / 2}" height="${settings.L / 4}" fill="#ffffff" fill-opacity=".06" stroke="#ffffff" stroke-opacity=".75" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+}
+/* where the 1-ball reached the side rail: + is long (past the pocket, toward the head rail) */
+const railPoint = (pocket, v) => ({ x: pocket === "SL" ? R_BALL : settings.W - R_BALL, y: settings.L / 2 - v });
+function dynBreak() {
+  const P = pockets(), pk = P[S.pocket]; let g = breakBoxSvg();
+  const pc = toSvg(pk.c);
+  g += `<circle cx="${pc.x}" cy="${pc.y}" r="${pk.w / 2 + 1}" fill="none" stroke="var(--marker)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>`;
+  const rack = rackBalls(S.rack);
+  if (S.cb) g += line(S.cb, rack[0], "#ffffff", "2 3", .45);
+  for (const b of rack) g += numBall(b, b.n);
+  if (S.rail != null) { const q = toSvg(railPoint(S.pocket, S.rail)); g += `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="#f2c300" fill-opacity=".9" stroke="#1b1b1b" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`; }
+  if (S.cb) g += ballSvg(S.cb, "cb", S.tool === "cb");
+  if (S.result && !S.scratch) g += ballSvg(S.result, "result", S.tool === "result");
+  return g;
+}
 function dynTable() {
+  if (brkMode()) return dynBreak();
   const P = pockets(); const pk = P[S.pocket]; let g = "";
   // target pocket ring
   const pc = toSvg(pk.c);
@@ -721,6 +816,8 @@ function svgPt(svg, e, el) {
   return { x: q.x, y: settings.L - q.y, sx: q.x, sy: q.y };
 }
 let drag = null;
+/* in break mode the cue ball starts behind the head string */
+function placeFor(p) { const q = clampBall(p); if (brkMode() && S.tool === "cb") q.y = Math.min(q.y, settings.L / 4); return q; }
 function onTableDown(e) {
   const svg = $("tbl"); const p = svgPt(svg, e, $("tblContent")); if (!p) return;
   // pocket tap: near a mouth, or anywhere off the cloth near a pocket
@@ -729,13 +826,15 @@ function onTableDown(e) {
   const offCloth = p.x < 0 || p.y < 0 || p.x > settings.W || p.y > settings.L;
   const marker = S.tool === "result" || S.tool === "target";      // a cue ball can stop right by a pocket
   if ((offCloth && bd < 7) || (bd < 2.6 && !marker)) {
-    S.pocket = best; S.entry = null; saveWork(); renderLog(); toast(POCKET_NAMES[best] + " pocket"); return;
+    if (brkMode() && best[0] !== "S") { if (offCloth) return; }
+    else { S.pocket = best; S.entry = null; if (brkMode()) S.rail = null; saveWork(); renderLog(); toast(POCKET_NAMES[best] + " pocket"); return; }
   }
   if (offCloth) return;
   e.preventDefault();
   svg.setPointerCapture(e.pointerId);
   drag = { id: e.pointerId };
-  S[S.tool] = clampBall(p);
+  S[S.tool] = placeFor(p);
+  if (brkMode() && S.tool === "result") S.scratch = false;
   if (S.tool === "ob" || S.tool === "cb") S.entry = null;
   showLoupe(p, e);
   renderTable(); renderTools();
@@ -743,7 +842,7 @@ function onTableDown(e) {
 function onTableMove(e) {
   if (!drag || e.pointerId !== drag.id) return;
   const p = svgPt($("tbl"), e, $("tblContent")); if (!p) return;
-  S[S.tool] = clampBall(p);
+  S[S.tool] = placeFor(p);
   showLoupe(p, e);
   renderTable();
 }
@@ -844,11 +943,14 @@ const ICONS = {
   result: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#fbfaf4" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.6" fill="#c23b2e"/></svg>`
 };
 function renderTools() {
-  $("tools").innerHTML = TOOLS.map(([k, lbl]) => {
-    const set = S[k] ? zone(S[k], 4, 8) : (k === "target" || k === "ob" ? "none" : "not set");
+  const bm = brkMode();
+  if (bm && S.tool !== "cb" && S.tool !== "result") S.tool = "result";
+  $("tools").style.gridTemplateColumns = bm ? "repeat(2, 1fr)" : "";
+  $("tools").innerHTML = (bm ? TOOLS_BRK : TOOLS).map(([k, lbl]) => {
+    const set = bm && k === "result" && S.scratch ? "scratch" : S[k] ? zone(S[k], 4, 8) : (k === "target" || k === "ob" ? "none" : "not set");
     return `<button class="tool" aria-pressed="${S.tool === k}" data-tool="${k}">${ICONS[k]}<span>${lbl}</span><span class="set num">${set}</span></button>`;
   }).join("");
-  $("hint").textContent = HINTS[S.tool];
+  $("hint").textContent = (bm ? HINTS_BRK : HINTS)[S.tool];
   const rm = $("removeItem"); const can = (S.tool === "ob" || S.tool === "target") && S[S.tool];
   rm.hidden = !can; if (can) rm.textContent = S.tool === "ob" ? "Remove object ball" : "Remove target";
   const zc = $("zoneChips"); zc.hidden = !(S.tool === "target" && S.target);
@@ -899,11 +1001,19 @@ function renderSessionLine() {
   $("newSession").hidden = !currentSessionActive();
 }
 function renderLog() {
-  renderDrills(); renderSessionLine();
+  const bm = brkMode();
+  $("modeShot").setAttribute("aria-selected", !bm); $("modeBreak").setAttribute("aria-selected", bm);
+  $("drillSel").hidden = bm; $("brkTitle").hidden = !bm;
+  document.querySelector(".pocketline").hidden = bm; $("brkPanel").hidden = !bm;
+  $("save").textContent = bm ? "Save break" : "Save shot";
+  document.querySelector('label[for="notes"]').textContent = bm ? "Note for this break" : "Note for this shot";
+  renderDrills(); if (bm) { $("freeRow").hidden = true; $("drillInfo").hidden = true; }
+  renderSessionLine();
   $("drill").value = S.drill || "";
   $("notes").value = S.notes || "";
-  $("shotNo").textContent = "Shot " + (drillShots(S.drill).length + 1);
+  $("shotNo").textContent = (bm ? "Break " : "Shot ") + (drillShots(S.drill).length + 1);
   renderTable(); renderTools();
+  if (bm) renderBreakPanel();
   const P = pockets(); const pk = P[S.pocket];
   const off = pocketOffset(S.entry, pk, S.ob);
   const cut = cutAngle(S.cb, S.ob, pk);
@@ -913,7 +1023,7 @@ function renderLog() {
   else $("pocketWhat").innerHTML = `<b>${esc(POCKET_NAMES[S.pocket])}</b><br><span class="num" style="font-size:12px;color:var(--muted)">${cut == null ? "" : "cut " + fmt(Math.abs(cut), 0) + "°" + (Math.abs(cut) < .5 ? "" : cut > 0 ? " right" : " left") + " · "}${S.entry ? "entry " + sgn(off, 2) : "entry not marked"}</span>`;
   chips("outcomeChips", OUTCOME, S.outcome, "outcome");
   renderSpin(); renderSpeed();
-  $("save").disabled = !S.result;
+  $("save").disabled = !canSave();
   renderQuick();
   $("undo").disabled = !drillShots(S.drill).length;
 }
@@ -922,13 +1032,19 @@ function renderLog() {
 let quickBusy = false;
 function renderQuick() {
   const q = $("quickbar");
+  if (brkMode()) {
+    if (!canSave()) { q.innerHTML = `<div class="qmsg">Tap where the cue ball stopped (or Scratch), then tap the 1-ball result here to save</div>`; return; }
+    q.innerHTML = OUTCOME.map(([k, lbl, cls]) => `<button class="qs ${cls}" data-qs="${k}" ${quickBusy ? "disabled" : ""}>1-ball ${lbl.toLowerCase()}<small>save break</small></button>`).join("");
+    return;
+  }
   if (!S.result) { q.innerHTML = `<div class="qmsg">Tap where the cue ball stopped, then tap a result here to save</div>`; return; }
   q.innerHTML = S.ob
     ? OUTCOME.map(([k, lbl, cls]) => `<button class="qs ${cls}" data-qs="${k}" ${quickBusy ? "disabled" : ""}>${lbl}<small>save shot</small></button>`).join("")
     : `<button class="qs plain" data-qs="none" ${quickBusy ? "disabled" : ""}>Save shot<small>position only</small></button>`;
 }
+const canSave = () => brkMode() ? !!(S.result || S.scratch) : !!S.result;
 async function quickSave(k) {
-  if (quickBusy || !S.result) return;
+  if (quickBusy || !canSave()) return;
   quickBusy = true; renderQuick();
   try { if (k !== "none") S.outcome = k; await saveShot(); }
   finally { quickBusy = false; renderQuick(); }
@@ -981,7 +1097,25 @@ function renderSpeed() {
 }
 
 /* ---------- shot record ---------- */
+function localStamp(now) {
+  return now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0") + " " + String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+}
+function buildBreak() {
+  const now = new Date();
+  return {
+    id: uid(), kind: "break", ts: now.toISOString(), local: localStamp(now),
+    drill: BRK_DRILL, drillId: "", shotNo: drillShots(BRK_DRILL).length + 1, session: S.sessionId, rack: S.rack,
+    vspin: S.vspin, side: S.side, speed: S.speed, speedPct: S.speedPct, tip: { x: S.tip.x, y: S.tip.y },
+    cb: S.cb ? { x: r2(S.cb.x), y: r2(S.cb.y) } : null,
+    result: S.scratch || !S.result ? null : { x: r2(S.result.x), y: r2(S.result.y) },
+    scratch: S.scratch ? 1 : 0, pocket: S.pocket, outcome: S.outcome || null,
+    rail: S.rail == null ? null : r2(S.rail), ballsMade: S.ballsMade == null ? null : S.ballsMade,
+    notes: S.notes || "", example: false,
+    table: { W: settings.W, L: settings.L, wc: settings.wc, ws: settings.ws }
+  };
+}
 function buildShot() {
+  if (brkMode()) return buildBreak();
   const P = pockets(); const pk = P[S.pocket];
   const off = pocketOffset(S.entry, pk, S.ob);
   const errV = S.target && S.result ? sub(S.result, S.target) : null;
@@ -1008,21 +1142,29 @@ function buildShot() {
   };
 }
 async function saveShot() {
-  if (!S.result) { toast("Mark where the cue ball stopped first"); return; }
+  if (!canSave()) { toast(brkMode() ? "Mark where the cue ball stopped, or tap Scratch" : "Mark where the cue ball stopped first"); return; }
   const nowMs = Date.now();
   if (!currentSessionActive()) { S.sessionId = "ses-" + nowMs.toString(36); S.sessionStart = new Date(nowMs).toISOString(); }
   S.lastShotTs = nowMs;
   const s = buildShot();
   if (!(await store.add(s))) { saveWork(); renderAll(); return; }     // not saved: keep the markers so nothing is lost
   S.result = null; S.entry = null; S.outcome = null; S.notes = ""; S.tool = "result";
+  S.rail = null; S.scratch = false; S.ballsMade = null;
   saveWork(); renderAll();
   if (!land) { try { $("tablewrap").scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); } catch (e) {} }
+  if (isBrk(s)) { toast(`Break ${s.shotNo} saved` + (s.scratch ? ", scratch" : "") + (s.outcome ? `, 1-ball ${label(OUTCOME, s.outcome).toLowerCase()}` : "") + (s.rail != null && s.outcome !== "made" ? ` ${railTxt(s.rail)}` : "")); return; }
   toast(`Shot ${s.shotNo} saved` + (s.inZone === 1 ? ", in the zone" : s.inZone === 0 ? ", outside the zone" : s.cbErr != null ? `, ${fls(s.cbErr, 1)} from target` : ""));
 }
 async function undoLast() {
   const list = drillShots(S.drill); if (!list.length) return;
   const last = list[list.length - 1];
   if (!(await store.remove(last.id))) return;
+  if (isBrk(last)) {
+    S.result = last.result; S.scratch = !!last.scratch; S.outcome = last.outcome; S.rail = last.rail; S.ballsMade = last.ballsMade; S.notes = last.notes || "";
+    if (last.cb) S.cb = last.cb; S.pocket = last.pocket; S.rack = last.rack || S.rack;
+    S.tip = last.tip || S.tip; S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); S.speedPct = last.speedPct != null ? last.speedPct : S.speedPct; S.speed = speedOf(S.speedPct);
+    saveWork(); renderAll(); toast(`Break ${last.shotNo} removed. Its markers are back.`); return;
+  }
   S.result = last.result; S.entry = last.entry; S.outcome = last.outcome; S.notes = last.notes || "";
   if (last.cb) S.cb = last.cb; S.ob = last.ob || null; S.target = last.target; if (last.pocket) S.pocket = last.pocket;
   S.tip = last.tip || tipFromLabels(last.vspin, last.side); S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip);
@@ -1032,7 +1174,7 @@ async function undoLast() {
 
 /* ---------- CSV ---------- */
 const CSV_COLS = [
-  ["shot_id", s => s.id], ["timestamp_utc", s => s.ts], ["local_time", s => s.local], ["session_id", s => sessionOf(s)], ["drill", s => s.drill], ["drill_id", s => s.drillId || ""], ["shot_no", s => s.shotNo],
+  ["shot_id", s => s.id], ["record_type", s => isBrk(s) ? "break" : "shot"], ["timestamp_utc", s => s.ts], ["local_time", s => s.local], ["session_id", s => sessionOf(s)], ["drill", s => s.drill], ["drill_id", s => s.drillId || ""], ["shot_no", s => s.shotNo],
   ["vertical_spin", s => s.vspin], ["side_spin", s => s.side], ["tip_x_radii", s => s.tip && s.tip.x], ["tip_y_radii", s => s.tip && s.tip.y],
   ["tip_offset_in", s => s.tip ? r2(Math.hypot(s.tip.x, s.tip.y) * R_BALL) : null], ["speed_pct", s => s.speedPct], ["speed_1to4", s => s.speed], ["target_pocket", s => s.pocket],
   ["cb_start_x_in", s => s.cb && s.cb.x], ["cb_start_y_in", s => s.cb && s.cb.y],
@@ -1045,6 +1187,7 @@ const CSV_COLS = [
   ["cb_error_in", s => s.cbErr], ["cb_error_dx_in", s => s.cbDx], ["cb_error_dy_in", s => s.cbDy],
   ["pocket_result", s => s.outcome], ["pocket_entry_x_in", s => s.entry && s.entry.x], ["pocket_entry_y_in", s => s.entry && s.entry.y],
   ["pocket_offset_in", s => s.pocketOff], ["aim_error_deg", s => s.aimErr],
+  ["break_rack", s => isBrk(s) ? s.rack || "" : ""], ["ob1_rail_offset_in", s => isBrk(s) ? s.rail : null], ["cb_scratch", s => isBrk(s) ? (s.scratch ? 1 : 0) : null], ["balls_made", s => isBrk(s) ? s.ballsMade : null],
   ["table_w_in", s => s.table && s.table.W], ["table_l_in", s => s.table && s.table.L], ["notes", s => s.notes], ["is_example", s => s.example ? 1 : 0]
 ];
 function toCsv(list) {
@@ -1107,23 +1250,29 @@ function breakdownRows(list) {
   const [, f, cats] = BREAKS[BK];
   return cats.map(([k, l]) => [l, summarize(list.filter(s => f(s) === k))]).filter(r => r[1].n);
 }
-function filtered(ignoreSession) { return shots.filter(s => (F.drill === "__all" || (s.drill || "") === F.drill) && (F.vspin === "all" || s.vspin === F.vspin) && (ignoreSession || F.session === "__all" || sessionOf(s) === F.session)); }
+function filtered(ignoreSession) { return shots.filter(s => !isBrk(s) && (F.drill === "__all" || (s.drill || "") === F.drill) && (F.vspin === "all" || s.vspin === F.vspin) && (ignoreSession || F.session === "__all" || sessionOf(s) === F.session)); }
 const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
+let statsMode = "shot";
 function renderStats() {
   const v = $("view-stats");
-  if (!shots.length) { v.innerHTML = emptyState("No shots yet", "Log a few shots on the Log tab and your accuracy shows up here: pot rate, how far the cue ball finished from your target, and where balls enter the pocket."); return; }
-  const drills = [...new Set(shots.map(s => s.drill || ""))];
+  const hasBrk = shots.some(isBrk), hasShot = shots.some(s => !isBrk(s));
+  if (statsMode === "break" && !hasBrk && hasShot) statsMode = "shot";
+  if (statsMode === "shot" && !hasShot && hasBrk) statsMode = "break";
+  const seg = `<nav class="modeseg" role="tablist" aria-label="Stats for"><button role="tab" data-smode="shot" aria-selected="${statsMode === "shot"}">Shots</button><button role="tab" data-smode="break" aria-selected="${statsMode === "break"}">Cut breaks</button></nav>`;
+  if (statsMode === "break") { renderBreakStats(v, seg); return; }
+  if (!hasShot) { v.innerHTML = seg + emptyState("No shots yet", "Log a few shots on the Log tab and your accuracy shows up here: pot rate, how far the cue ball finished from your target, and where balls enter the pocket."); return; }
+  const drills = [...new Set(shots.filter(s => !isBrk(s)).map(s => s.drill || ""))];
   if (F.drill !== "__all" && !drills.includes(F.drill)) F.drill = "__all";
-  const sess = sessions();
+  const sess = sessions(s => !isBrk(s));
   if (F.session !== "__all" && !sess.some(x => x.id === F.session)) F.session = "__all";
   const list = filtered(); const t = summarize(list);
   const groups = new Map(); for (const s of filtered(true)) { const k = sessionOf(s); (groups.get(k) || groups.set(k, []).get(k)).push(s); }
   const bySess = sess.filter(x => groups.has(x.id)).map(x => [x, summarize(groups.get(x.id))]);
   const vs = VLAB.map(([k, lbl]) => [k, lbl, summarize(list.filter(s => s.vspin === k))]).filter(r => r[2].n);
   const vchips = VSPIN.concat(shots.some(s => s.vspin === "centre") ? [["centre", "Centre ball"]] : []);
-  v.innerHTML = `
+  v.innerHTML = seg + `
   <div class="filters">
-    <select id="fDrill" aria-label="Drill"><option value="__all">All drills (${shots.length} shots)</option>${drills.map(d => `<option value="${esc(d)}" ${F.drill === d ? "selected" : ""}>${esc(d || "Unnamed drill")} (${drillShots(d).length})</option>`).join("")}</select>
+    <select id="fDrill" aria-label="Drill"><option value="__all">All drills (${shots.filter(s => !isBrk(s)).length} shots)</option>${drills.map(d => `<option value="${esc(d)}" ${F.drill === d ? "selected" : ""}>${esc(d || "Unnamed drill")} (${drillShots(d).length})</option>`).join("")}</select>
     <select id="fSession" aria-label="Session"><option value="__all">All sessions (${sess.length})</option>${sess.map(x => `<option value="${esc(x.id)}" ${F.session === x.id ? "selected" : ""}>${esc(sessionLabel(x.start))} (${x.n})</option>`).join("")}</select>
     <div class="chips" id="fVspin">${[["all", "All spins"]].concat(vchips).map(([k, l]) => `<button class="chip" aria-pressed="${F.vspin === k}" data-f="${k}">${l}</button>`).join("")}</div>
   </div>
@@ -1319,8 +1468,13 @@ function renderShots() {
   const head = `<div class="row"><button class="btn primary" id="exportCsv">Export CSV</button><button class="btn" id="copyCsv">Copy CSV</button>${hasEx ? `<button class="btn" id="clearEx">Remove examples</button>` : ""}</div><textarea id="csvBox" rows="6" hidden aria-label="CSV text"></textarea>`;
   if (!shots.length) { v.innerHTML = head + emptyState("No shots logged", "Every shot you save appears here, newest first. Export them as CSV for your own analysis."); return; }
   const list = shots.slice().reverse();
-  v.innerHTML = head + `<p class="note">${shots.length} shots. Tap Delete twice to remove one.</p><div class="shotlist">` + list.map(s => {
+  const nb = shots.filter(isBrk).length, ns = shots.length - nb;
+  v.innerHTML = head + `<p class="note">${ns} shot${ns === 1 ? "" : "s"}${nb ? ` and ${nb} break${nb === 1 ? "" : "s"}` : ""}. Tap Delete twice to remove one.</p><div class="shotlist">` + list.map(s => {
     const oc = OUTCOME.find(o => o[0] === s.outcome);
+    if (isBrk(s)) return `<div class="shot"><span class="n">${s.shotNo}</span>
+      <span class="l1">Cut break · ${s.rack === "10" ? "10-ball" : "9-ball"}${s.example ? ' <span class="pill">example</span>' : ""}</span>
+      <button class="btn danger del" data-del="${esc(s.id)}">${pendingDel === s.id ? "Confirm" : "Delete"}</button>
+      <span class="l2">${esc(s.local || "")} · ${POCKET_NAMES[s.pocket] || ""} ${oc ? `<span class="pill ${oc[2]}">1-ball ${oc[1].toLowerCase()}</span>` : ""}${s.rail != null ? ` · <span class="num">${railTxt(s.rail)}</span>` : ""}${s.scratch ? ' · <span class="pill bad">scratch</span>' : ""}${s.ballsMade != null ? ` · ${s.ballsMade} made` : ""} · ${speedText(s)}</span></div>`;
     return `<div class="shot"><span class="n">${s.shotNo}</span>
       <span class="l1">${esc(s.drill || "Unnamed drill")}${s.example ? ' <span class="pill">example</span>' : ""}</span>
       <button class="btn danger del" data-del="${esc(s.id)}">${pendingDel === s.id ? "Confirm" : "Delete"}</button>
@@ -1428,6 +1582,195 @@ function exampleShots() {
   return out;
 }
 
+/* ---------- cut break: log panel ---------- */
+const railTxt = v => v == null ? "–" : Math.abs(v) < .05 ? "dead centre" : fl(Math.abs(v), 1) + " " + uName() + " " + (v > 0 ? "long" : "short");
+const RAIL_W = 340, RAIL_H = 96, RAIL_PAD = 18;
+const railX = v => RAIL_PAD + (Math.max(-RAIL_LIM, Math.min(RAIL_LIM, v)) + RAIL_LIM) / (2 * RAIL_LIM) * (RAIL_W - 2 * RAIL_PAD);
+function renderBreakPanel() {
+  $("rackChips").innerHTML = RACKS.map(([k, l]) => `<button class="chip" aria-pressed="${S.rack === k}" data-rack="${k}">${l}</button>`).join("");
+  $("brkPocket").innerHTML = [["SL", "Side left"], ["SR", "Side right"]].map(([k, l]) => `<button class="chip sm" aria-pressed="${S.pocket === k}" data-bpk="${k}">${l} pocket</button>`).join("");
+  drawRail();
+  $("railRead").innerHTML = S.rail == null ? "Not marked. Drag the 1-ball along the rail." :
+    `1-ball <b>${railTxt(S.rail)}</b> of the ${POCKET_NAMES[S.pocket].toLowerCase()} pocket centre <button class="btn small" id="railClear">Clear</button>`;
+  $("brkOutcome").innerHTML = OUTCOME.map(([k, l, cls]) => `<button class="chip ${cls}" aria-pressed="${S.outcome === k}" data-bo="${k}">${l}</button>`).join("");
+  $("scratchChip").setAttribute("aria-pressed", !!S.scratch);
+  $("madeVal").textContent = S.ballsMade == null ? "–" : S.ballsMade;
+}
+/* The side rail as a strip: short (foot side) on the left, long (head side) on the right, the pocket mouth in the middle */
+function drawRail() {
+  const svg = $("rail"), half = settings.ws / 2, m = isMetric();
+  let g = `<rect x="${RAIL_PAD}" y="30" width="${RAIL_W - 2 * RAIL_PAD}" height="16" rx="3" fill="var(--cushion)"/>`;
+  g += `<rect x="${railX(-half)}" y="26" width="${railX(half) - railX(-half)}" height="24" fill="var(--pocket)"/>`;
+  g += `<rect x="${RAIL_PAD}" y="46" width="${RAIL_W - 2 * RAIL_PAD}" height="${RAIL_H - 66}" fill="var(--cloth)"/>`;
+  const step = m ? 2 / 2.54 : 1, n = Math.floor(RAIL_LIM / step);
+  for (let k = -n; k <= n; k++) {
+    const v = k * step, xi = railX(v), big = m ? k % 5 === 0 : k % 3 === 0;
+    g += `<line x1="${xi}" x2="${xi}" y1="${big ? 14 : 19}" y2="26" stroke="var(--muted)" stroke-width="1"/>`;
+    if (big) g += `<text x="${xi}" y="11" font-size="10" text-anchor="middle" fill="var(--muted)" font-family="var(--f-mono)">${k === 0 ? 0 : Math.round(toU(Math.abs(v)))}</text>`;
+  }
+  g += `<text x="${RAIL_PAD}" y="${RAIL_H - 4}" font-size="11" fill="var(--muted)">◀ Short (foot side)</text><text x="${RAIL_W - RAIL_PAD}" y="${RAIL_H - 4}" font-size="11" text-anchor="end" fill="var(--muted)">Long (head side) ▶</text>`;
+  g += `<text x="${RAIL_W - 2}" y="11" font-size="10" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
+  const k = (RAIL_W - 2 * RAIL_PAD) / (2 * RAIL_LIM), r = R_BALL * k;
+  if (S.rail != null) {
+    const cx = railX(S.rail);
+    g += `<circle cx="${cx}" cy="${46 + r}" r="${r}" fill="#f2c300" stroke="#1b1b1b" stroke-width="1.5"/><circle cx="${cx}" cy="${46 + r}" r="${r * .45}" fill="#fffdf4"/><text x="${cx}" y="${46 + r + .5}" font-size="${r * .7}" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="#1b1b1b">1</text>`;
+  } else g += `<text x="${RAIL_W / 2}" y="${46 + r + 2}" font-size="11" text-anchor="middle" fill="#ffffff" fill-opacity=".85">drag here</text>`;
+  svg.setAttribute("viewBox", `0 0 ${RAIL_W} ${RAIL_H}`); svg.innerHTML = g;
+  svg.setAttribute("aria-valuetext", S.rail == null ? "not marked" : railTxt(S.rail));
+}
+let railDrag = null;
+function railFromEvent(e) {
+  const svg = $("rail"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const m = svg.getScreenCTM(); if (!m) return null; const q = pt.matrixTransform(m.inverse());
+  const v = (q.x - RAIL_PAD) / (RAIL_W - 2 * RAIL_PAD) * 2 * RAIL_LIM - RAIL_LIM;
+  return Math.round(Math.max(-RAIL_LIM, Math.min(RAIL_LIM, v)) * 10) / 10;
+}
+function setRail(v) {
+  S.rail = v; drawRail();
+  $("railRead").innerHTML = `1-ball <b>${railTxt(S.rail)}</b> of the ${POCKET_NAMES[S.pocket].toLowerCase()} pocket centre <button class="btn small" id="railClear">Clear</button>`;
+  renderTable();
+}
+function railEnd(e) {
+  if (railDrag !== e.pointerId) return; railDrag = null;
+  // a suggestion only: inside the mouth reads as made, outside as missed, unless you already picked one
+  if (S.rail != null && !S.outcome) S.outcome = Math.abs(S.rail) <= settings.ws / 2 - R_BALL * .5 ? "made" : "missed";
+  saveWork(); renderLog();
+}
+
+/* ---------- cut break: stats ---------- */
+const BF = { session: "__all", rack: "all", pocket: "all" };
+let selBrk = null;
+const CONTROL_R = 15;                       // "cue ball under control": within 15 in of the table centre
+const brkFromCentre = s => s.result ? len(sub(s.result, { x: (s.table ? s.table.W : settings.W) / 2, y: (s.table ? s.table.L : settings.L) / 2 })) : null;
+function brkSummary(list) {
+  const out = list.filter(s => s.outcome), made = out.filter(s => s.outcome === "made").length;
+  const misses = list.filter(s => s.rail != null && s.outcome !== "made"), rails = misses.map(s => s.rail);
+  const fin = list.filter(s => s.result), ctl = fin.filter(s => brkFromCentre(s) <= CONTROL_R).length;
+  const bm = list.map(s => s.ballsMade).filter(v => v != null);
+  return {
+    n: list.length, made: out.length ? made / out.length : null, madeN: out.length,
+    long: rails.length ? rails.filter(v => v > 0).length / rails.length : null, missAvg: mean(rails), missSd: sd(rails), missN: rails.length,
+    scratch: list.length ? list.filter(s => s.scratch).length / list.length : null,
+    ctl: fin.length ? ctl / fin.length : null, finN: fin.length, balls: mean(bm), ballsN: bm.length
+  };
+}
+const spotBand = s => !s.cb ? null : (x => x < 12.5 ? 0 : x < 25 ? 1 : x < 37.5 ? 2 : 3)(s.cb.x / ((s.table && s.table.W) || 50) * 50);
+const SPOTS = [[0, "Left of box"], [1, "Box, left half"], [2, "Box, right half"], [3, "Right of box"]];
+function brkRows(list, f, cats) { return cats.map(([k, l]) => [l, brkSummary(list.filter(s => f(s) === k))]).filter(r => r[1].n); }
+function brkTable(title, sub, rows) {
+  return `<div class="panel"><h3>${title}</h3>${sub ? `<div class="sub">${sub}</div>` : ""}<div class="scroll"><table class="t"><thead><tr><th></th><th>Breaks</th><th>1-ball</th><th>Misses long</th><th>Avg miss</th><th>Scratch</th><th>CB control</th></tr></thead><tbody>
+    ${rows.map(([l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.made)}</td><td>${pct(s.long)}</td><td>${s.missAvg == null ? "–" : railTxt(s.missAvg)}</td><td>${pct(s.scratch)}</td><td>${pct(s.ctl)}</td></tr>`).join("") || `<tr><td colspan="7">No breaks for this filter.</td></tr>`}
+  </tbody></table></div></div>`;
+}
+function renderBreakStats(v, seg) {
+  const all = shots.filter(isBrk);
+  if (!all.length) { v.innerHTML = seg + `<div class="empty"><strong>No breaks yet</strong><p>Pick Cut break on the Log tab to log your breaks: where the 1-ball hit the side rail, where the cue ball stopped, and scratches.</p><button class="btn" data-action="brkExamples">Try it with 20 example breaks</button></div>`; return; }
+  const sess = sessions(isBrk);
+  if (BF.session !== "__all" && !sess.some(x => x.id === BF.session)) BF.session = "__all";
+  const keep = (s, ignoreSession) => (BF.rack === "all" || (s.rack || "9") === BF.rack) && (BF.pocket === "all" || s.pocket === BF.pocket) && (ignoreSession || BF.session === "__all" || sessionOf(s) === BF.session);
+  const list = all.filter(s => keep(s)), t = brkSummary(list);
+  const groups = new Map(); for (const s of all.filter(s => keep(s, true))) { const k = sessionOf(s); (groups.get(k) || groups.set(k, []).get(k)).push(s); }
+  const bySess = sess.filter(x => groups.has(x.id)).map(x => [esc(sessionLabel(x.start)), brkSummary(groups.get(x.id))]);
+  const chipsRow = (key, opts) => `<div class="chips">${opts.map(([k, l]) => `<button class="chip sm" aria-pressed="${BF[key] === k}" data-bf="${key}" data-v="${k}">${l}</button>`).join("")}</div>`;
+  v.innerHTML = seg + `
+  <div class="filters">
+    <select id="bfSession" aria-label="Session"><option value="__all">All sessions (${sess.length})</option>${sess.map(x => `<option value="${esc(x.id)}" ${BF.session === x.id ? "selected" : ""}>${esc(sessionLabel(x.start))} (${x.n})</option>`).join("")}</select>
+    ${chipsRow("rack", [["all", "Both racks"], ["9", "9-ball"], ["10", "10-ball"]])}
+    ${chipsRow("pocket", [["all", "Both sides"], ["SL", "Side left"], ["SR", "Side right"]])}
+  </div>
+  <div class="tiles">
+    <div class="tile"><span class="v">${t.n}</span><span class="k">breaks${BF.session === "__all" ? "" : " this session"}</span></div>
+    <div class="tile"><span class="v">${t.made == null ? "–" : Math.round(t.made * 100)}<small>%</small></span><span class="k">1-ball made in the side (${t.madeN} with a result)</span></div>
+    <div class="tile"><span class="v">${t.long == null ? "–" : Math.round(t.long * 100)}<small>%</small></span><span class="k">of misses were long (${t.missN} marked)</span></div>
+    <div class="tile"><span class="v">${t.scratch == null ? "–" : Math.round(t.scratch * 100)}<small>%</small></span><span class="k">scratched</span></div>
+    <div class="tile"><span class="v">${t.ctl == null ? "–" : Math.round(t.ctl * 100)}<small>%</small></span><span class="k">cue ball within ${fls(CONTROL_R, 0)} of centre (${t.finN})</span></div>
+  </div>
+  <div class="panel">
+    <h3>1-ball at the side rail</h3>
+    <div class="sub">Each break where you marked the 1-ball. Short is the foot side of the pocket, long the head side. The dark band is the pocket mouth.</div>
+    <svg id="brkStrip" role="img" aria-label="Where the 1-ball reached the side rail"></svg>
+    <div class="legend"><span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="var(--good)"/></svg>Made</span><span><svg width="14" height="14"><circle cx="7" cy="7" r="4.5" fill="none" stroke="var(--warn)" stroke-width="2"/></svg>Rattled out</span><span><svg width="14" height="14"><path d="M3 3l8 8M11 3l-8 8" stroke="var(--bad)" stroke-width="2.2"/></svg>Missed</span></div>
+    <div class="tip" id="brkStripTip"></div>
+  </div>
+  <div class="panel">
+    <h3>Where the cue ball finished</h3>
+    <div class="sub">The ring is ${fls(CONTROL_R, 0)} around the table centre. Hollow balls are where you broke from. Tap a ball for that break.</div>
+    <div class="chartbox"><svg id="brkScatter" viewBox="${viewBox()}" role="img" aria-label="Cue ball finishing positions after the break"></svg></div>
+    <div class="tip" id="brkScTip"></div>
+  </div>
+  ${brkTable("By break spot", "Across the table, seen from the head end. The box is between the outer head-rail diamonds.", brkRows(list, spotBand, SPOTS))}
+  ${brkTable("By speed", "", brkRows(list, s => s.speed, SPEED))}
+  ${brkTable("Session by session", "Newest first.", bySess)}
+  <p class="note">Avg miss is the average distance from the pocket centre for breaks where the 1-ball didn't go in (+ long, − short). CB control counts breaks where the cue ball finished within ${fls(CONTROL_R, 0)} of the table centre; scratches don't count as a finish.</p>`;
+  drawBrkStrip(list); drawBrkScatter(list);
+}
+function brkLine(s) {
+  return `Break ${s.shotNo} · ${s.local || ""} · ${POCKET_NAMES[s.pocket] || ""}` + (s.outcome ? `, 1-ball ${label(OUTCOME, s.outcome).toLowerCase()}` : "") +
+    (s.rail != null ? ` (${railTxt(s.rail)})` : "") + (s.scratch ? " · scratch" : s.result ? ` · cue ball ${fls(brkFromCentre(s), 0)} from centre` : "") + ` · ${speedText(s)}` + (s.notes ? ` · "${s.notes}"` : "");
+}
+function drawBrkStrip(list) {
+  const svg = $("brkStrip"), pts = list.filter(s => s.rail != null);
+  const Wd = 340, H = 130, pad = 22, lim = RAIL_LIM;
+  const x = v => pad + (Math.max(-lim, Math.min(lim, v)) + lim) / (2 * lim) * (Wd - 2 * pad), half = settings.ws / 2;
+  let g = `<rect x="${x(-half)}" y="14" width="${x(half) - x(-half)}" height="${H - 46}" rx="4" fill="var(--accent-soft)"/>`;
+  const step = isMetric() ? 5 / 2.54 : 3;
+  for (let k = -Math.floor(lim / step); k <= Math.floor(lim / step); k++) { const xi = x(k * step); g += `<line x1="${xi}" x2="${xi}" y1="14" y2="${H - 32}" stroke="var(--line)"/><text x="${xi}" y="${H - 18}" font-size="11" text-anchor="middle" fill="var(--muted)" font-family="var(--f-mono)">${k === 0 ? 0 : (k > 0 ? "+" : "−") + Math.round(toU(Math.abs(k * step)))}</text>`; }
+  g += `<line x1="${x(0)}" x2="${x(0)}" y1="10" y2="${H - 32}" stroke="var(--ink)" stroke-width="1.5"/>`;
+  g += `<text x="${pad}" y="${H - 3}" font-size="11" fill="var(--muted)">◀ Short</text><text x="${Wd - pad}" y="${H - 3}" font-size="11" text-anchor="end" fill="var(--muted)">Long ▶</text><text x="${Wd - 4}" y="11" font-size="10" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
+  const bins = {}, bw = .5;
+  pts.forEach((s, i) => {
+    const b = Math.round(s.rail / bw); bins[b] = (bins[b] || 0) + 1; const k = bins[b] - 1;
+    const cx = x(b * bw), cy = H - 40 - k * 9;
+    const col = s.outcome === "made" ? "var(--good)" : s.outcome === "rattled" ? "var(--warn)" : s.outcome === "missed" ? "var(--bad)" : "var(--muted)";
+    if (s.id === selBrk) g += `<circle cx="${cx}" cy="${cy}" r="7.5" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+    if (s.outcome === "missed") g += `<path d="M${cx - 3.5} ${cy - 3.5}l7 7M${cx + 3.5} ${cy - 3.5}l-7 7" stroke="${col}" stroke-width="2.2"/>`;
+    else if (s.outcome === "rattled") g += `<circle cx="${cx}" cy="${cy}" r="3.6" fill="none" stroke="${col}" stroke-width="2"/>`;
+    else g += `<circle cx="${cx}" cy="${cy}" r="4" fill="${col}"/>`;
+    g += `<circle class="hit" data-i="${i}" cx="${cx}" cy="${cy}" r="8" fill="transparent"/>`;
+  });
+  svg.setAttribute("viewBox", `0 0 ${Wd} ${H}`); svg.innerHTML = g;
+  const misses = pts.filter(s => s.outcome !== "made").map(s => s.rail);
+  const sum = !pts.length ? "No 1-ball positions marked yet." : misses.length ? `Misses average ${railTxt(mean(misses))}${misses.length > 1 ? `, spread ±${fls(sd(misses), 1)}` : ""}. Tap a mark for that break.` : "Every marked 1-ball went in. Tap a mark for that break.";
+  $("brkStripTip").textContent = sum;
+  svg.onclick = e => { const h = e.target.closest(".hit"); if (!h) { $("brkStripTip").textContent = sum; return; } const s = pts[+h.dataset.i]; selBrk = s.id; $("brkStripTip").textContent = brkLine(s); drawBrkScatter(list); };
+}
+function drawBrkScatter(list) {
+  const svg = $("brkScatter"); svg.style.aspectRatio = aspect();
+  const c = toSvg({ x: settings.W / 2, y: settings.L / 2 });
+  let g = `<g>${staticTable()}</g>` + breakBoxSvg() + `<circle cx="${c.x}" cy="${c.y}" r="${CONTROL_R}" fill="var(--marker)" fill-opacity=".12" stroke="var(--marker)" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`;
+  const pts = list.filter(s => s.result), one = selBrk ? list.find(s => s.id === selBrk) : null;
+  const spots = new Map(); for (const s of list) if (s.cb) spots.set(s.cb.x + "," + s.cb.y, s.cb);
+  for (const p of spots.values()) g += ballSvg(p, "cb");
+  pts.forEach((s, i) => {
+    const q = toSvg(s.result), on = one && one.id === s.id;
+    g += `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="#fbfaf4" fill-opacity="${one && !on ? .35 : .9}" stroke="${on ? "var(--accent)" : "#111111"}" stroke-width="${on ? 3 : 1.2}" vector-effect="non-scaling-stroke"/><circle class="hit" data-i="${i}" cx="${q.x}" cy="${q.y}" r="${R_BALL * 2.2}" fill="transparent"/>`;
+  });
+  if (one && one.cb && one.result) g += line(one.cb, one.result, "var(--accent)", "4 3", .9);
+  svg.innerHTML = `<g transform="${rotAttr()}">${g}</g>`;
+  const scr = list.filter(s => s.scratch).length;
+  $("brkScTip").textContent = one ? brkLine(one) : `${pts.length} finishes shown${scr ? `, plus ${scr} scratch${scr === 1 ? "" : "es"}` : ""}.`;
+  svg.onclick = e => { const h = e.target.closest(".hit"); if (!h) { selBrk = null; drawBrkScatter(list); return; } selBrk = pts[+h.dataset.i].id; drawBrkScatter(list); };
+}
+function exampleBreaks() {
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const gauss = () => { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const out = [], now0 = Date.now(), half = settings.ws / 2;
+  for (let i = 0; i < 20; i++) {
+    const day = i < 10 ? 1 : 0, t = new Date(now0 - day * 86400e3 - 3600e3 + i * 120e3);
+    const rail = r2(1.4 - day * .8 + gauss() * 2.6), outcome = Math.abs(rail) < half - .6 ? "made" : Math.abs(rail) < half ? "rattled" : "missed";
+    const scratch = rnd() < .12 ? 1 : 0, res = clampBall({ x: 25 + gauss() * 9, y: 50 + gauss() * 14 });
+    out.push({ id: uid() + "b" + i, kind: "break", ts: t.toISOString(), local: t.toISOString().slice(0, 16).replace("T", " "), drill: BRK_DRILL, drillId: "", shotNo: i + 1,
+      session: "ses-example-brk-" + day, rack: "9", vspin: "stun", side: "C", speed: 4, speedPct: 85 + Math.round(gauss() * 4), tip: { x: 0, y: -.1 },
+      cb: { x: 37, y: 22 }, result: scratch ? null : { x: r2(res.x), y: r2(res.y) }, scratch, pocket: "SL", outcome, rail,
+      ballsMade: (outcome === "made" ? 1 : 0) + (rnd() < .3 ? 1 : 0), notes: "", example: true, table: { W: settings.W, L: settings.L, wc: settings.wc, ws: settings.ws } });
+  }
+  return out;
+}
+async function addBreakExamples() {
+  if (!(await store.addMany(exampleBreaks()))) return;
+  statsMode = "break"; renderAll(); toast("Added 20 example breaks. Remove them from the Shots tab.");
+}
+
 /* ---------- views ---------- */
 function emptyState(h, p) { return `<div class="empty"><strong>${h}</strong><p>${p}</p><button class="btn" data-action="examples">Try it with 20 example shots</button></div>`; }
 let view = "log";
@@ -1455,6 +1798,14 @@ async function addExamples() {
 document.addEventListener("click", async e => {
   const t = e.target.closest("button"); if (!t) return;
   if (t.dataset.view) return setView(t.dataset.view);
+  if (t.dataset.mode) { setMode(t.dataset.mode); renderLog(); return; }
+  if (t.dataset.smode) { statsMode = t.dataset.smode; renderStats(); return; }
+  if (t.dataset.rack) { S.rack = t.dataset.rack; saveWork(); renderLog(); return; }
+  if (t.dataset.bpk) { S.pocket = t.dataset.bpk; S.rail = null; saveWork(); renderLog(); return; }
+  if (t.dataset.bo) { S.outcome = S.outcome === t.dataset.bo ? null : t.dataset.bo; saveWork(); renderLog(); return; }
+  if (t.dataset.bf) { BF[t.dataset.bf] = t.dataset.v; renderStats(); return; }
+  if (t.dataset.bpick) { selBrk = selBrk === t.dataset.bpick ? null : t.dataset.bpick; renderStats(); return; }
+  if (t.dataset.action === "brkExamples") return addBreakExamples();
   if (t.dataset.tool) { S.tool = t.dataset.tool; saveWork(); renderTools(); renderTable(); return; }
   if (t.dataset.key) {
     const key = t.dataset.key; let val = t.dataset.k; if (key === "speed") val = +val;
@@ -1500,6 +1851,11 @@ document.addEventListener("click", async e => {
     case "removeItem": S[S.tool] = null; if (S.tool === "ob") { S.entry = null; S.outcome = null; } saveWork(); renderLog(); return;
     case "newSession": S.sessionId = ""; S.lastShotTs = 0; saveWork(); renderSessionLine(); toast("Your next shot starts a new session"); return;
     case "save": return saveShot();
+    case "scratchChip": S.scratch = !S.scratch; if (S.scratch) S.result = null; saveWork(); renderLog(); return;
+    case "madeMinus": S.ballsMade = S.ballsMade == null ? 0 : Math.max(0, S.ballsMade - 1); saveWork(); renderBreakPanel(); return;
+    case "madePlus": S.ballsMade = Math.min(S.rack === "10" ? 10 : 9, (S.ballsMade == null ? 0 : S.ballsMade) + 1); saveWork(); renderBreakPanel(); return;
+    case "madeClear": S.ballsMade = null; saveWork(); renderBreakPanel(); return;
+    case "railClear": S.rail = null; saveWork(); renderLog(); return;
     case "undo": return undoLast();
     case "openZoom": return openZoom();
     case "zDone": closeZoom(); saveWork(); renderLog(); return;
@@ -1527,6 +1883,7 @@ document.addEventListener("change", e => {
   }
   if (e.target.id === "fDrill") { F.drill = e.target.value; renderStats(); }
   if (e.target.id === "fSession") { F.session = e.target.value; renderStats(); }
+  if (e.target.id === "bfSession") { BF.session = e.target.value; renderStats(); }
   if (["sL", "sW", "sWc", "sWs"].includes(e.target.id)) applySettings();
   const id = e.target.id || "";
   if (id.startsWith("pick-")) { setColor(id.slice(5), e.target.value, false); renderSettings(); }
@@ -1586,6 +1943,14 @@ tbl.addEventListener("pointerdown", onTableDown);
 tbl.addEventListener("pointermove", onTableMove);
 tbl.addEventListener("pointerup", onTableUp);
 tbl.addEventListener("pointercancel", onTableUp);
+const railSvg = $("rail");
+railSvg.addEventListener("pointerdown", e => { e.preventDefault(); railSvg.setPointerCapture(e.pointerId); railDrag = e.pointerId; const v = railFromEvent(e); if (v != null) setRail(v); });
+railSvg.addEventListener("pointermove", e => { if (railDrag !== e.pointerId) return; const v = railFromEvent(e); if (v != null) setRail(v); });
+railSvg.addEventListener("pointerup", railEnd); railSvg.addEventListener("pointercancel", railEnd);
+railSvg.addEventListener("keydown", e => {
+  const d = { ArrowLeft: -.1, ArrowRight: .1, ArrowDown: -1, ArrowUp: 1 }[e.key]; if (d == null) return;
+  e.preventDefault(); setRail(Math.round(Math.max(-RAIL_LIM, Math.min(RAIL_LIM, (S.rail || 0) + d)) * 10) / 10); saveWork();
+});
 const zoom = $("zoom");
 zoom.addEventListener("pointerdown", e => { e.preventDefault(); zoom.setPointerCapture(e.pointerId); zDrag = e.pointerId; const p = zoomPoint(e); if (p) setEntry(p); });
 zoom.addEventListener("pointermove", e => { if (zDrag !== e.pointerId) return; const p = zoomPoint(e); if (p) setEntry(p); });
@@ -1597,7 +1962,7 @@ applyAppearance();
 if (!pockets()[S.pocket]) S.pocket = "FR";
 function placeColumns() {
   const a = document.querySelector(".colA"), b = document.querySelector(".colB");
-  const top = [document.querySelector(".drill"), $("freeRow"), $("drillInfo")];
+  const top = [$("modeSeg"), document.querySelector(".drill"), $("freeRow"), $("drillInfo")];
   const under = [document.querySelector(".hintrow"), $("tools")];
   if (land) { b.prepend(...top, ...under); }
   else { a.prepend(...top); a.append(...under); }
