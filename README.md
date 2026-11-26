@@ -11,6 +11,9 @@ For each shot you mark, on a to-scale 9 ft table:
 
 - pick a starter drill (stop shot, stun-run, draw, tangent line, follow, lag) or save your own ball setup as a drill; drills with no object ball work for position-only practice
 
+- practice sessions (a new one starts after 2 hours without a shot, or on demand) and a session-by-session comparison in Stats
+- target zones around the cue ball target (3 in or 6 in circle, half-diamond or diamond box) with an in-zone success rate
+
 It works in portrait and landscape (the table turns sideways with controls beside it). Pockets default to the Rasson Accura's 4.25 in corners and 4.75 in sides.
 
 The app works out the cut angle, cue ball miss distance from target, pocket entry offset and aim error, shows stats by spin, and exports every shot as CSV.
@@ -25,6 +28,7 @@ Once GitHub Pages is on, the app lives at **https://maddweeb.github.io/PP/**. Op
 - Zones: column letter from the left, row number from the head rail (`A1` is the head-left corner). `8x4` cells are one diamond; `16x8` are half a diamond.
 - `cut_angle_deg`: + is a cut to the right.
 - `pocket_offset_in`: + means the object ball entered right of the pocket centre, seen from where it started. `aim_error_deg` is that offset as an angle from the object ball.
+- `session_id` groups shots into practice sessions. `target_zone` is `point`, `c3`, `c6`, `half` or `dia`; `cb_in_zone` is 1 or 0 (blank for a point target).
 - `cb_error_in`: straight-line distance between the cue ball target and where it stopped (`dx`, `dy` give the direction).
 
 ## Develop
