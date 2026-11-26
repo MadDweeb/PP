@@ -28,6 +28,7 @@
   --good: #4cb97f; --warn: #d8a344; --bad: #e46b61; color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { background: var(--bg); color: var(--ink); }
 body {
   font-family: var(--f-body); font-size: 15px; line-height: 1.45; margin: 0;
@@ -97,26 +98,54 @@ body.land .body { grid-template-columns: auto minmax(300px, 1fr); }
 .body { display: flex; flex-direction: column; gap: 12px; }
 </style>
 
+<style>
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.seg button { border: 0; background: none; border-radius: 7px; padding: 7px 4px; font-weight: 600; font-size: 14px; color: var(--muted); }
+.seg button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.balls { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; min-height: 26px; }
+.bn { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: var(--f-mono); font-size: 11px; font-weight: 600; color: #111; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+.bn i { font-style: normal; background: #fff; border-radius: 50%; width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; }
+.res .wide { grid-column: span 2; }
+.prog { font-size: 13px; color: var(--muted); }
+</style>
+
 <div class="app">
   <header><h1>Pool Physics Sim</h1><span class="tag">Prototype</span></header>
+  <nav class="seg" role="tablist" aria-label="Mode">
+    <button role="tab" id="mShot" data-mode="shot">Shot</button>
+    <button role="tab" id="mBreak" data-mode="break">Break</button>
+  </nav>
   <div class="body">
     <div class="main">
-      <div class="row">
+      <div class="row" id="shotRow">
         <select id="preset" aria-label="Starting layout"></select>
         <button class="btn" id="obToggle" aria-pressed="true">Object ball</button>
       </div>
-      <div class="tablewrap"><svg id="tbl" role="img" aria-label="Pool table. Drag the balls, tap a pocket to aim at it."></svg></div>
-      <div class="hint" id="hint">Drag the cue ball, object ball or target ring. Tap a pocket to aim at it.</div>
+      <div class="row" id="breakRow" hidden>
+        <select id="rackSel" aria-label="Rack">
+          <option value="0">9-ball, perfect rack</option>
+          <option value="1">9-ball, tight rack (gaps up to 0.5 mm)</option>
+          <option value="2">9-ball, loose rack (gaps up to 2 mm)</option>
+        </select>
+      </div>
+      <div class="tablewrap"><svg id="tbl" role="img" aria-label="Pool table"></svg></div>
+      <div class="hint" id="hint"></div>
       <div class="row">
         <button class="btn" id="paths" aria-pressed="true">Show paths</button>
+        <button class="btn" id="run50" hidden>Run 50</button>
         <button class="btn primary big" id="shoot">Shoot</button>
       </div>
     </div>
     <div class="side">
       <div class="panel" aria-live="polite">
-        <h2>Predicted result</h2>
+        <h2 id="resTitle">Predicted result</h2>
         <div class="res" id="res"></div>
-        <div class="legend"><span><i style="color:var(--cbpath)"></i>Cue ball</span><span><i style="color:var(--obpath)"></i>Object ball</span><span>● ring = where it stops</span></div>
+        <div class="legend" id="legend"><span><i style="color:var(--cbpath)"></i>Cue ball</span><span><i style="color:var(--obpath)"></i>Object ball</span><span>● ring = where it stops</span></div>
+      </div>
+      <div class="panel" id="sumPanel" aria-live="polite" hidden>
+        <h2 id="sumTitle">50 breaks</h2>
+        <div class="res" id="sum"></div>
+        <p class="note">Each break gets a fresh rack and the small wobble a real stroke has (aim ±0.15°, speed ±2 %). Dots on the table show where the cue ball finished; red ones are scratches.</p>
       </div>
       <div class="group"><span class="label">Tip contact: drag the blue point</span>
         <div class="spinrow">
@@ -128,7 +157,7 @@ body.land .body { grid-template-columns: auto minmax(300px, 1fr); }
         <div class="sb"><div class="sbtrack"><span>Soft</span><span>Medium</span><span>Firm</span><span>Power</span></div><input type="range" id="speed" min="0" max="100" step="1" value="35"></div>
         <div class="read" id="speedRead"></div>
       </div>
-      <div class="group"><label class="label" for="aimErr">Aim error (thicker ← → thinner)</label>
+      <div class="group"><label class="label" for="aimErr" id="aimLabel">Aim error (thicker ← → thinner)</label>
         <input type="range" class="plain" id="aimErr" min="-30" max="30" step="1" value="0">
         <div class="read" id="aimRead"></div>
       </div>
@@ -138,7 +167,7 @@ body.land .body { grid-template-columns: auto minmax(300px, 1fr); }
         <div class="knobs" id="knobs"></div>
         <button class="btn" id="resetKnobs">Reset to defaults</button>
       </details>
-      <p class="note">Top-down model: slide and roll on the cloth, draw/follow/side spin, cut and spin throw, cushions with side spin, real pocket mouths. It does not model swerve, massé, jump shots or jaw facings.</p>
+      <p class="note">Top-down model: slide and roll on the cloth, draw/follow/side spin, cut and spin throw, cushions with side spin, real pocket mouths. It does not model swerve, massé, jump shots, a cue ball that leaves the cloth on the break, or jaw facings.</p>
     </div>
   </div>
 </div>
@@ -151,6 +180,7 @@ const PP = window.PoolPhysics, R = PP.R;
 const $ = id => document.getElementById(id);
 const W = 50, L = 100, RAIL = 4.5, wc = 4.25, ws = 4.75;
 const fmt = (v, d = 1) => v == null || isNaN(v) ? "–" : v.toFixed(d);
+const pct = v => Math.round(v * 100) + "%";
 const ls = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -173,12 +203,17 @@ const KNOBS = [
   ["mu_c", "Cushion grip", 0, .4, .01, 2, "How much side spin changes the angle off a rail."],
   ["mu_sp", "Side spin fade", .005, .06, .001, 3, "How quickly side spin dies on the cloth."],
   ["e_b", "Ball bounce", .85, .99, .01, 2, "Ball-on-ball restitution."],
-  ["vmax", "Top speed at 100 %", 180, 400, 5, 0, "In inches per second (300 ≈ 7.6 m/s)."],
+  ["vmax", "Top speed at 100 %", 180, 400, 5, 0, "Shot mode, in inches per second (300 ≈ 7.6 m/s)."],
+  ["vbreak", "Top break speed at 100 %", 300, 520, 5, 0, "Break mode, in inches per second (420 ≈ 24 mph)."],
   ["squirt", "Squirt at half-tip side", 0, 4, .1, 1, "Degrees the cue ball pushes off line with side. Low-deflection shafts ≈ 1."]
 ];
 const params = Object.assign({}, PP.DEFAULTS, ls.get("psim.params", {}));
-const st = Object.assign({ preset: 0, cb: null, ob: null, target: null, pocket: "FR", tip: { x: 0, y: 0 }, speed: 35, aimErr: 0, showOb: true, paths: true }, ls.get("psim.state", {}));
+const BRK0 = { cb: { x: 25, y: 22 }, tip: { x: 0, y: -.1 }, speed: 92, aimErr: 0, rack: 1, seed: 1 };
+const st = Object.assign({ mode: "shot", preset: 0, cb: null, ob: null, target: null, pocket: "FR", tip: { x: 0, y: 0 }, speed: 35, aimErr: 0, showOb: true, paths: true }, ls.get("psim.state", {}));
+st.brk = Object.assign({}, BRK0, st.brk || {});
 if (!st.cb) loadPreset(0, false);
+const brkMode = () => st.mode === "break";
+const C = () => brkMode() ? st.brk : st;          // the settings the shared controls change
 
 function loadPreset(i, render = true) {
   const p = PRESETS[i]; st.preset = i;
@@ -188,36 +223,70 @@ function loadPreset(i, render = true) {
 }
 const save = () => { ls.set("psim.state", st); ls.set("psim.params", params); };
 
-/* ---------- geometry for aim ---------- */
+/* ---------- shot mode: aim ---------- */
 const geo = PP.geometry(params);
 function aimInfo() {
-  // returns aim angle (table coords), ghost ball, cut angle
   if (st.showOb) {
     const m = geo.pockets[st.pocket].c;
     const ux = m.x - st.ob.x, uy = m.y - st.ob.y, l = Math.hypot(ux, uy);
     const ghost = { x: st.ob.x - ux / l * 2 * R, y: st.ob.y - uy / l * 2 * R };
     const base = Math.atan2(ghost.y - st.cb.y, ghost.x - st.cb.x);
-    const ob = Math.atan2(uy, ux);
-    let cut = (ob - base) * 180 / Math.PI; cut = ((cut + 540) % 360) - 180;
+    let cut = (Math.atan2(uy, ux) - base) * 180 / Math.PI; cut = ((cut + 540) % 360) - 180;
     // aim error: positive = thinner, i.e. rotate the aim away from the object ball centre
     const toOb = Math.atan2(st.ob.y - st.cb.y, st.ob.x - st.cb.x);
-    let sideSign = Math.sign(((base - toOb + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) || 1;
-    const aim = base + sideSign * st.aimErr / 10 * Math.PI / 180;
-    return { aim, ghost, cut, pocketC: m };
+    const sideSign = Math.sign(((base - toOb + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) || 1;
+    return { aim: base + sideSign * st.aimErr / 10 * Math.PI / 180, ghost, cut, pocketC: m };
   }
-  const aim = Math.atan2(st.target.y - st.cb.y, st.target.x - st.cb.x) + st.aimErr / 10 * Math.PI / 180;
-  return { aim, ghost: null, cut: null };
+  return { aim: Math.atan2(st.target.y - st.cb.y, st.target.x - st.cb.x) + st.aimErr / 10 * Math.PI / 180, ghost: null, cut: null };
 }
-
-/* ---------- simulation ---------- */
 let result = null;
-function runSim() {
+function runShot() {
   const a = aimInfo();
   const balls = [{ id: "cb", ...st.cb }]; if (st.showOb) balls.push({ id: "ob", ...st.ob });
   result = PP.simulate({ balls, cue: 0, aim: a.aim, tip: st.tip, speed: st.speed / 100 }, params);
   result.aim = a;
-  return result;
 }
+
+/* ---------- break mode: rack and break ---------- */
+const GAPS = [0.002, 0.02, 0.08];                // largest gap between racked balls, inches
+function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+/* 9-ball diamond: 1 on the foot spot at the apex, 9 in the middle, the rest in random order */
+function rack9(seed, gap) {
+  const rnd = rng(seed), d = 2 * R + gap, rows = [1, 2, 3, 2, 1], out = [];
+  const rest = [2, 3, 4, 5, 6, 7, 8];
+  for (let i = rest.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [rest[i], rest[j]] = [rest[j], rest[i]]; }
+  rows.forEach((n, r) => {
+    for (let i = 0; i < n; i++) {
+      const num = r === 0 ? 1 : r === 2 && i === 1 ? 9 : rest.pop();
+      const jx = (rnd() - .5) * gap * .7, jy = (rnd() - .5) * gap * .7;
+      out.push({ id: "b" + num, n: num, x: W / 2 + (i - (n - 1) / 2) * d + jx, y: L * .75 + r * d * Math.sqrt(3) / 2 + jy });
+    }
+  });
+  return out;
+}
+function breakAim(b, cb) {
+  const head = { x: W / 2, y: L * .75 }, dist = Math.hypot(head.x - cb.x, head.y - cb.y);
+  const off = b.aimErr / 2 / 25.4;               // slider is half-millimetres; + = cue ball passes right of the 1-ball centre
+  return Math.atan2(head.y - cb.y, head.x - cb.x) - Math.asin(Math.max(-1, Math.min(1, off / dist)));
+}
+const bparams = () => Object.assign({}, params, { vmax: params.vbreak });
+function simBreak(b, seed, jitter) {
+  const j = jitter ? () => Math.random() * 2 - 1 : () => 0;
+  const rack = rack9(seed, GAPS[b.rack]);
+  const aim = breakAim(b, b.cb) + j() * .15 * Math.PI / 180;
+  const speed = Math.max(0, Math.min(1, b.speed / 100 * (1 + j() * .02)));
+  const tip = { x: b.tip.x + j() * .02, y: b.tip.y + j() * .02 };
+  const r = PP.simulate({ balls: [{ id: "cb", ...b.cb }, ...rack], cue: 0, aim, tip, speed, tMax: 30, seed }, bparams());
+  r.balls.forEach((x, i) => { x.n = i === 0 ? 0 : rack[i - 1].n; });
+  return r;
+}
+function breakStats(r) {
+  const cb = r.balls[0], obs = r.balls.slice(1);
+  const made = obs.filter(b => b.potted && b.potted !== "off");
+  const railed = obs.filter(b => b.potted || b.events.some(e => e.type === "cushion")).length;
+  return { made, nine: made.some(b => b.n === 9), scratch: !!cb.potted, legal: railed >= 4 || made.length > 0, railed, cb };
+}
+let brkResult = null, summary = null, runToken = 0;
 
 /* ---------- drawing ---------- */
 const tbl = $("tbl");
@@ -229,11 +298,10 @@ function staticTable() {
   g += `<line x1="0" y1="${L * .75}" x2="${W}" y2="${L * .75}" stroke="#fff" stroke-opacity=".28" stroke-dasharray="1.5 1.5" stroke-width=".25"/>`;
   g += `<circle cx="${W / 2}" cy="${L * .25}" r=".35" fill="#fff" fill-opacity=".55"/><circle cx="${W / 2}" cy="${L * .75}" r=".35" fill="#fff" fill-opacity=".55"/>`;
   for (const k in geo.pockets) {
-    const m = geo.pockets[k], c = sv(m.c), side = k[0] === "S";
-    const out = { x: m.c.x + m.n.x * (side ? 1.6 : 1.2), y: m.c.y + m.n.y * (side ? 1.6 : 1.2) }, o = sv(out);
+    const m = geo.pockets[k], side = k[0] === "S", r = (side ? ws : wc) / 2;
+    const o = sv({ x: m.c.x + m.n.x * (side ? 1.6 : 1.2), y: m.c.y + m.n.y * (side ? 1.6 : 1.2) });
     const p1 = sv(m.p1), p2 = sv(m.p2);
-    g += `<path d="M${p1.x} ${p1.y} L${p2.x} ${p2.y} L${o.x + (p2.x - c.x) * .9} ${o.y + (p2.y - c.y) * .9} A${(side ? ws : wc) / 2} ${(side ? ws : wc) / 2} 0 0 ${k === "SL" || k === "HR" || k === "FL" ? 1 : 0} ${o.x + (p1.x - c.x) * .9} ${o.y + (p1.y - c.y) * .9} Z" fill="var(--pocket)" data-pocket="${k}"/>`;
-    g += `<circle cx="${o.x}" cy="${o.y}" r="${(side ? ws : wc) / 2}" fill="var(--pocket)" data-pocket="${k}"/>`;
+    g += `<path d="M${p1.x} ${p1.y} L${p2.x} ${p2.y} L${o.x} ${o.y} Z" fill="var(--pocket)"/><circle cx="${o.x}" cy="${o.y}" r="${r}" fill="var(--pocket)"/>`;
   }
   const off = RAIL * .55 + .6; let d = "";
   for (let k = 1; k < 8; k++) { if (k === 4) continue; const y = L / 8 * k; d += `<circle cx="${-off}" cy="${y}" r=".42"/><circle cx="${W + off}" cy="${y}" r=".42"/>`; }
@@ -243,13 +311,22 @@ function staticTable() {
 const STATIC = staticTable();
 const pathD = pts => pts.map((p, i) => { const q = sv(p); return (i ? "L" : "M") + q.x.toFixed(2) + " " + q.y.toFixed(2); }).join("");
 function ball(p, fill, extra = "") { const q = sv(p); return `<circle cx="${q.x}" cy="${q.y}" r="${R}" fill="${fill}" stroke="#000" stroke-opacity=".35" stroke-width=".12" ${extra}/>`; }
-function draw(anim) {
+const BCOL = { 1: "#f2c300", 2: "#1f4fbf", 3: "#d0302a", 4: "#6a2c91", 5: "#ef7d1a", 6: "#1d8a4a", 7: "#7a1f1f", 8: "#151515", 9: "#f2c300" };
+function nball(p, n) {
+  if (!n) return ball(p, "#f7f5ee");
+  const q = sv(p);
+  let g = n === 9
+    ? `<circle cx="${q.x}" cy="${q.y}" r="${R}" fill="#f7f5ee" stroke="#000" stroke-opacity=".35" stroke-width=".12"/><rect x="${q.x - R * .98}" y="${q.y - R * .55}" width="${R * 1.96}" height="${R * 1.1}" fill="${BCOL[9]}"/>`
+    : `<circle cx="${q.x}" cy="${q.y}" r="${R}" fill="${BCOL[n]}" stroke="#000" stroke-opacity=".35" stroke-width=".12"/>`;
+  return g + `<circle cx="${q.x}" cy="${q.y}" r=".5" fill="#fff"/><text x="${q.x}" y="${q.y + .02}" font-size=".66" font-family="var(--f-mono)" font-weight="600" text-anchor="middle" dominant-baseline="central" fill="#111">${n}</text>`;
+}
+const bcol = n => n ? (n === 9 ? "#f2c300" : BCOL[n]) : "var(--cbpath)";
+
+function drawShot(anim) {
   let g = STATIC;
   const r = result, a = r.aim;
-  // target ring
   const tq = sv(st.target);
   g += `<circle cx="${tq.x}" cy="${tq.y}" r="3" fill="var(--target)" fill-opacity=".18" stroke="var(--target)" stroke-width=".25" stroke-dasharray=".8 .6"/><circle cx="${tq.x}" cy="${tq.y}" r=".35" fill="var(--target)"/>`;
-  // aim line and ghost
   if (a.ghost) {
     const gq = sv(a.ghost), cq = sv(st.cb), pc = sv(a.pocketC), oq = sv(st.ob);
     g += `<line x1="${cq.x}" y1="${cq.y}" x2="${gq.x}" y2="${gq.y}" stroke="#fff" stroke-opacity=".35" stroke-width=".18"/>`;
@@ -269,17 +346,46 @@ function draw(anim) {
     if (ob && anim.pos.ob) g += ball(anim.pos.ob, "#f2c300");
     if (anim.pos.cb) g += ball(anim.pos.cb, "#f7f5ee");
   } else {
-    if (st.showOb) g += ball(st.ob, "#f2c300", 'data-drag="ob"');
-    g += ball(st.cb, "#f7f5ee", 'data-drag="cb"');
+    if (st.showOb) g += ball(st.ob, "#f2c300");
+    g += ball(st.cb, "#f7f5ee");
   }
-  // selected pocket marker
   if (st.showOb) { const m = geo.pockets[st.pocket], q = sv({ x: m.c.x + m.n.x * 1.4, y: m.c.y + m.n.y * 1.4 }); g += `<circle cx="${q.x}" cy="${q.y}" r="1.7" fill="none" stroke="var(--obpath)" stroke-width=".3"/>`; }
   tbl.innerHTML = g;
 }
+function drawBreak(anim) {
+  const b = st.brk; let g = STATIC;
+  // the kitchen: cue ball goes behind the head string
+  g += `<rect x="0" y="${L * .75}" width="${W}" height="${L * .25}" fill="#fff" fill-opacity=".04"/>`;
+  if (summary && !anim && !brkResult) {
+    for (const e of summary.ends) { const q = sv(e); g += `<circle cx="${q.x}" cy="${q.y}" r=".65" fill="${e.scratch ? "var(--bad)" : "#fff"}" fill-opacity=".8"/>`; }
+  }
+  if (anim || brkResult) {
+    const r = brkResult;
+    if (st.paths) for (const x of r.balls.slice().reverse()) {
+      const pts = anim ? x.path.slice(0, anim.i[x.id] + 1) : x.path;
+      g += `<path d="${pathD(pts)}" fill="none" stroke="${bcol(x.n)}" stroke-width="${x.n ? .22 : .32}" stroke-opacity="${x.n ? .55 : .9}" ${anim ? "" : 'stroke-dasharray="1 .6"'} stroke-linejoin="round"/>`;
+    }
+    for (const x of r.balls.slice(1).concat(r.balls[0])) {
+      const p = anim ? anim.pos[x.id] : (x.potted ? null : x);
+      if (p) g += nball(p, x.n);
+    }
+  } else {
+    const rack = rack9(b.seed, GAPS[b.rack]);
+    const head = rack[0], cq = sv(b.cb), a = breakAim(b, b.cb), far = { x: b.cb.x + Math.cos(a) * 200, y: b.cb.y + Math.sin(a) * 200 };
+    const fq = sv({ x: b.cb.x + Math.cos(a) * (Math.hypot(head.x - b.cb.x, head.y - b.cb.y) - 2 * R), y: b.cb.y + Math.sin(a) * (Math.hypot(head.x - b.cb.x, head.y - b.cb.y) - 2 * R) });
+    g += `<line x1="${cq.x}" y1="${cq.y}" x2="${fq.x}" y2="${fq.y}" stroke="#fff" stroke-opacity=".4" stroke-width=".18"/>`;
+    for (const x of rack) g += nball(x, x.n);
+    g += nball(b.cb, 0);
+  }
+  tbl.innerHTML = g;
+}
+const draw = anim => brkMode() ? drawBreak(anim) : drawShot(anim);
 
-/* ---------- readout ---------- */
+/* ---------- readouts ---------- */
 const PN = { HL: "head left", HR: "head right", SL: "side left", SR: "side right", FL: "foot left", FR: "foot right" };
-function readout() {
+const chips = list => list.length ? `<span class="balls">${list.map(b => `<span class="bn" style="background:${b.n === 9 ? "linear-gradient(#f7f5ee 22%, #f2c300 22% 78%, #f7f5ee 78%)" : BCOL[b.n]}"><i>${b.n}</i></span>`).join("")}</span>` : "None";
+const cell = ([k, v, c, wide]) => `<div class="${wide ? "wide" : ""}"><span class="k">${k}</span><span class="v ${c || ""}">${v}</span></div>`;
+function readShot() {
   const r = result, [cb, ob] = r.balls, items = [];
   if (ob) {
     const ok = ob.potted === st.pocket;
@@ -291,26 +397,54 @@ function readout() {
       const loc = Math.atan2(hit.y - cbh.y, hit.x - cbh.x), dir = Math.atan2(hit.vy, hit.vx);
       throwDeg = ((dir - loc) * 180 / Math.PI + 540) % 360 - 180;
     }
-    items.push(["Cut angle", r.aim.cut == null ? "–" : Math.abs(r.aim.cut) >= 89 ? "Impossible" : fmt(Math.abs(r.aim.cut), 1) + "°", r.aim.cut != null && Math.abs(r.aim.cut) >= 89 ? "bad" : ""]);
-    items.push(["Throw", throwDeg == null ? "No contact" : fmt(Math.abs(throwDeg), 1) + "°", ""]);
+    const imp = r.aim.cut != null && Math.abs(r.aim.cut) >= 89;
+    items.push(["Cut angle", r.aim.cut == null ? "–" : imp ? "Impossible" : fmt(Math.abs(r.aim.cut), 1) + "°", imp ? "bad" : ""]);
+    items.push(["Throw", throwDeg == null ? "No contact" : fmt(Math.abs(throwDeg), 1) + "°"]);
   }
   const d = cb.potted ? null : Math.hypot(cb.x - st.target.x, cb.y - st.target.y);
   items.push(["Cue ball", cb.potted ? "Scratch" : fmt(d, 1) + " in from target", cb.potted ? "bad" : d <= 3 ? "good" : d <= 6 ? "warn" : ""]);
   const hitE = cb.events.find(e => e.type === "hit");
-  if (hitE) {
-    const rolled = cb.events.find(e => e.type === "roll" && e.t < hitE.t);
-    items.push(["At contact", rolled ? "Rolling" : "Still sliding", ""]);
-  }
-  items.push(["Cushions (cue ball)", String(cb.events.filter(e => e.type === "cushion").length), ""]);
-  items.push(["Time to rest", fmt(r.t, 1) + " s", ""]);
-  $("res").innerHTML = items.map(([k, v, c]) => `<div><span class="k">${k}</span><span class="v ${c}">${v}</span></div>`).join("");
+  if (hitE) items.push(["At contact", cb.events.find(e => e.type === "roll" && e.t < hitE.t) ? "Rolling" : "Still sliding"]);
+  items.push(["Cushions (cue ball)", String(cb.events.filter(e => e.type === "cushion").length)]);
+  items.push(["Time to rest", fmt(r.t, 1) + " s"]);
+  $("res").innerHTML = items.map(cell).join("");
 }
+function readBreak() {
+  if (!brkResult) { $("res").innerHTML = `<p class="note wide">Set the cue ball, tip, speed and where you hit the 1-ball, then tap Break.</p>`; return; }
+  const s = breakStats(brkResult), cb = s.cb;
+  const items = [
+    ["Balls made", chips(s.made), s.made.length ? "good" : "", true],
+    ["9-ball", s.nine ? "On the break" : "On the table", s.nine ? "good" : ""],
+    ["Cue ball", s.scratch ? "Scratch" : fmt(Math.hypot(cb.x - W / 2, cb.y - L / 2), 0) + " in from centre", s.scratch ? "bad" : ""],
+    ["Legal break", s.legal ? "Yes" : "No", s.legal ? "good" : "bad"],
+    ["Balls to a rail", String(s.railed)],
+    ["Time to rest", fmt(brkResult.t, 1) + " s"]
+  ];
+  $("res").innerHTML = items.map(cell).join("");
+}
+function readSummary() {
+  $("sumPanel").hidden = !summary || !brkMode();
+  if (!summary) return;
+  const s = summary, n = s.n;
+  const top = Object.entries(s.pockets).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${PN[k]} ${pct(v / Math.max(1, s.madeTotal))}`).join(", ");
+  $("sumTitle").textContent = s.done < n ? `Running breaks… ${s.done} of ${n}` : `${n} breaks`;
+  $("sum").innerHTML = [
+    ["Balls made per break", fmt(s.madeTotal / Math.max(1, s.done), 2)],
+    ["Made at least one", pct(s.some / Math.max(1, s.done)), "good"],
+    ["9 on the break", pct(s.nine / Math.max(1, s.done))],
+    ["Scratches", pct(s.scratch / Math.max(1, s.done)), s.scratch ? "bad" : ""],
+    ["Legal breaks", pct(s.legal / Math.max(1, s.done))],
+    ["Cue ball from centre (median)", fmt(median(s.dists), 0) + " in"],
+    ["Pockets that take the most", top || "–", "", true]
+  ].map(cell).join("");
+}
+const median = a => { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
 
 /* ---------- controls ---------- */
 const VS = [[.4, "Follow"], [.12, "Stun-follow"], [-.12, "Stun"], [-.4, "Stun-draw"], [-9, "Draw"]];
 function spinName(t) { const v = VS.find(([y]) => t.y > y)[1]; const s = t.x >= .12 ? " + right" : t.x <= -.12 ? " + left" : ""; return v + s; }
 function drawCue() {
-  const t = st.tip;
+  const t = C().tip;
   $("cueball").innerHTML = `<circle r="1" fill="#f7f5ee" stroke="#9aa3ab" stroke-width=".03"/><circle r=".5" fill="none" stroke="#b8382f" stroke-opacity=".45" stroke-width=".02" stroke-dasharray=".05 .05"/>
     <line x1="-1" y1="0" x2="1" y2="0" stroke="#9aa3ab" stroke-width=".015"/><line x1="0" y1="-1" x2="0" y2="1" stroke="#9aa3ab" stroke-width=".015"/>
     <circle cx="${t.x}" cy="${-t.y}" r=".14" fill="#1d66c4" stroke="#fff" stroke-width=".03"/>`;
@@ -318,30 +452,52 @@ function drawCue() {
   const mm = v => Math.round(Math.abs(v) * R * 25.4);
   $("spinOff").innerHTML = `<b>${mm(t.y)} mm</b> ${t.y >= 0 ? "above" : "below"}, <b>${mm(t.x)} mm</b> ${t.x >= 0 ? "right" : "left"}` + (Math.hypot(t.x, t.y) > .5 ? `<br><span style="color:var(--bad)">Past the miscue limit</span>` : "");
 }
+const HINT = { shot: "Drag the cue ball, object ball or target ring. Tap a pocket to aim at it.", break: "Drag the cue ball anywhere behind the head string." };
 function syncControls() {
-  $("speed").value = st.speed; $("aimErr").value = st.aimErr;
+  const c = C(), bm = brkMode();
+  $("speed").value = c.speed; $("aimErr").value = c.aimErr;
   $("obToggle").setAttribute("aria-pressed", st.showOb); $("paths").setAttribute("aria-pressed", st.paths);
-  $("preset").value = st.preset;
+  $("preset").value = st.preset; $("rackSel").value = st.brk.rack;
+  $("mShot").setAttribute("aria-selected", !bm); $("mBreak").setAttribute("aria-selected", bm);
+  $("shotRow").hidden = bm; $("breakRow").hidden = !bm; $("run50").hidden = !bm; $("legend").hidden = bm;
+  $("resTitle").textContent = bm ? "This break" : "Predicted result";
+  $("aimLabel").textContent = bm ? "Hit on the 1-ball (left ← → right of centre)" : "Aim error (thicker ← → thinner)";
+  $("shoot").textContent = bm ? "Break" : "Shoot";
+  $("hint").textContent = HINT[st.mode];
   drawCue();
 }
 function readControls() {
-  const v = PP.speedOf(st.speed / 100, params);
-  const word = st.speed < 25 ? "soft" : st.speed < 50 ? "medium" : st.speed < 75 ? "firm" : "power";
-  $("speedRead").innerHTML = `<b>${st.speed}%</b> ${word} · cue ball leaves at <b>${(v * .0254).toFixed(1)} m/s</b>`;
-  $("aimRead").innerHTML = st.aimErr === 0 ? "Aimed exactly at the ghost ball" : `<b>${fmt(Math.abs(st.aimErr) / 10, 1)}°</b> ${st.aimErr > 0 ? "thinner" : "thicker"} than the ghost ball`;
+  const c = C(), bm = brkMode();
+  const v = PP.speedOf(c.speed / 100, bm ? bparams() : params);
+  const word = c.speed < 25 ? "soft" : c.speed < 50 ? "medium" : c.speed < 75 ? "firm" : "power";
+  $("speedRead").innerHTML = `<b>${c.speed}%</b> ${word} · cue ball leaves at <b>${(v * .0254).toFixed(1)} m/s</b>` + (bm ? ` (${Math.round(v * .0568)} mph)` : "");
+  $("aimRead").innerHTML = bm
+    ? (c.aimErr === 0 ? "Full on the 1-ball" : `<b>${fmt(Math.abs(c.aimErr) / 2, 1)} mm</b> ${c.aimErr > 0 ? "right" : "left"} of centre`)
+    : (c.aimErr === 0 ? "Aimed exactly at the ghost ball" : `<b>${fmt(Math.abs(c.aimErr) / 10, 1)}°</b> ${c.aimErr > 0 ? "thinner" : "thicker"} than the ghost ball`);
 }
 let pend = false;
-function update() {
+/* any change: shot mode re-predicts live; break mode clears the last break (a break takes too long to re-run on every drag) */
+function update(keepBreak) {
   if (pend) return; pend = true;
-  requestAnimationFrame(() => { pend = false; stopAnim(); runSim(); draw(); readout(); readControls(); save(); });
+  requestAnimationFrame(() => {
+    pend = false; stopAnim();
+    if (brkMode()) { if (!keepBreak) { brkResult = null; } readBreak(); readSummary(); }
+    else { runShot(); readShot(); }
+    draw(); readControls(); save();
+  });
 }
+function changed() { if (brkMode()) { summary = null; runToken++; $("run50").textContent = "Run 50"; } update(); }
+function setMode(m) { if (st.mode === m) return; stopAnim(); st.mode = m; syncControls(); update(true); }
+$("mShot").addEventListener("click", () => setMode("shot"));
+$("mBreak").addEventListener("click", () => setMode("break"));
 $("preset").innerHTML = PRESETS.map((p, i) => `<option value="${i}">${p.name}</option>`).join("");
 $("preset").addEventListener("change", e => loadPreset(+e.target.value));
-$("speed").addEventListener("input", e => { st.speed = +e.target.value; update(); });
-$("aimErr").addEventListener("input", e => { st.aimErr = +e.target.value; update(); });
+$("rackSel").addEventListener("change", e => { st.brk.rack = +e.target.value; changed(); });
+$("speed").addEventListener("input", e => { C().speed = +e.target.value; changed(); });
+$("aimErr").addEventListener("input", e => { C().aimErr = +e.target.value; changed(); });
 $("obToggle").addEventListener("click", () => { st.showOb = !st.showOb; syncControls(); update(); });
-$("paths").addEventListener("click", () => { st.paths = !st.paths; syncControls(); update(); });
-$("tipCentre").addEventListener("click", () => { st.tip = { x: 0, y: 0 }; drawCue(); update(); });
+$("paths").addEventListener("click", () => { st.paths = !st.paths; syncControls(); update(true); });
+$("tipCentre").addEventListener("click", () => { C().tip = { x: 0, y: 0 }; drawCue(); changed(); });
 
 /* tip picker: drag anywhere on the ball */
 const cue = $("cueball");
@@ -349,13 +505,13 @@ function setTip(e) {
   const r = cue.getBoundingClientRect(), s = 2.6 / r.width;
   let x = (e.clientX - r.left) * s - 1.3, y = -((e.clientY - r.top) * s - 1.3);
   const l = Math.hypot(x, y); if (l > .7) { x *= .7 / l; y *= .7 / l; }
-  st.tip = { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 }; drawCue(); update();
+  C().tip = { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 }; drawCue(); changed();
 }
 cue.addEventListener("pointerdown", e => { cue.setPointerCapture(e.pointerId); setTip(e); });
 cue.addEventListener("pointermove", e => { if (cue.hasPointerCapture(e.pointerId)) setTip(e); });
 cue.addEventListener("keydown", e => {
   const k = { ArrowUp: [0, .05], ArrowDown: [0, -.05], ArrowLeft: [-.05, 0], ArrowRight: [.05, 0] }[e.key]; if (!k) return;
-  e.preventDefault(); st.tip = { x: Math.max(-.7, Math.min(.7, st.tip.x + k[0])), y: Math.max(-.7, Math.min(.7, st.tip.y + k[1])) }; drawCue(); update();
+  e.preventDefault(); const t = C().tip; C().tip = { x: Math.max(-.7, Math.min(.7, t.x + k[0])), y: Math.max(-.7, Math.min(.7, t.y + k[1])) }; drawCue(); changed();
 });
 
 /* table: drag balls / target, tap pockets */
@@ -365,9 +521,20 @@ function tablePt(e) {
   const q = p.matrixTransform(tbl.getScreenCTM().inverse()); return { x: q.x, y: L - q.y };
 }
 const clampB = p => ({ x: Math.min(W - R, Math.max(R, p.x)), y: Math.min(L - R, Math.max(R, p.y)) });
+const clampK = p => ({ x: Math.min(W - R, Math.max(R, p.x)), y: Math.min(L * .25, Math.max(R, p.y)) });   // behind the head string
 tbl.addEventListener("pointerdown", e => {
   stopAnim();
   const p = tablePt(e);
+  if (brkMode()) {
+    const b = st.brk;
+    if (Math.hypot(b.cb.x - p.x, b.cb.y - p.y) < 5 || (brkResult == null && p.y <= L * .25)) {
+      drag = { k: "bcb", dx: Math.hypot(b.cb.x - p.x, b.cb.y - p.y) < 5 ? b.cb.x - p.x : 0, dy: Math.hypot(b.cb.x - p.x, b.cb.y - p.y) < 5 ? b.cb.y - p.y : 0 };
+      tbl.setPointerCapture(e.pointerId); $("hint").textContent = "Release to place.";
+      if (brkResult) { brkResult = null; }
+      b.cb = clampK({ x: p.x + drag.dx, y: p.y + drag.dy }); changed();
+    }
+    return;
+  }
   const cands = [["cb", st.cb, 4], ...(st.showOb ? [["ob", st.ob, 4]] : []), ["target", st.target, 4.5]]
     .map(([k, b, r]) => [k, Math.hypot(b.x - p.x, b.y - p.y), r]).filter(c => c[1] < c[2]).sort((a, b) => a[1] - b[1]);
   if (cands.length) { drag = { k: cands[0][0], dx: st[cands[0][0]].x - p.x, dy: st[cands[0][0]].y - p.y }; tbl.setPointerCapture(e.pointerId); $("hint").textContent = "Release to place."; return; }
@@ -378,44 +545,71 @@ tbl.addEventListener("pointerdown", e => {
 tbl.addEventListener("pointermove", e => {
   if (!drag) return;
   const p = tablePt(e); let q = { x: p.x + drag.dx, y: p.y + drag.dy };
+  if (drag.k === "bcb") { const c = clampK(q); st.brk.cb = { x: Math.round(c.x * 100) / 100, y: Math.round(c.y * 100) / 100 }; changed(); return; }
   q = drag.k === "target" ? { x: Math.min(W, Math.max(0, q.x)), y: Math.min(L, Math.max(0, q.y)) } : clampB(q);
-  // keep the two balls from overlapping
   const other = drag.k === "cb" ? (st.showOb ? st.ob : null) : drag.k === "ob" ? st.cb : null;
   if (other) { const dx = q.x - other.x, dy = q.y - other.y, d = Math.hypot(dx, dy); if (d < 2 * R + .05) { const k = (2 * R + .05) / (d || 1); q = clampB({ x: other.x + dx * k, y: other.y + dy * k }); } }
   st[drag.k] = { x: Math.round(q.x * 100) / 100, y: Math.round(q.y * 100) / 100 }; update();
 });
-const endDrag = () => { if (drag) { drag = null; $("hint").textContent = "Drag the cue ball, object ball or target ring. Tap a pocket to aim at it."; } };
+const endDrag = () => { if (drag) { drag = null; $("hint").textContent = HINT[st.mode]; } };
 tbl.addEventListener("pointerup", endDrag); tbl.addEventListener("pointercancel", endDrag);
 
-/* shoot: play the simulated shot back in real time */
+/* play a result back in real time */
 let animId = 0;
-function stopAnim() { if (animId) { cancelAnimationFrame(animId); animId = 0; $("shoot").textContent = "Shoot"; } }
-$("shoot").addEventListener("click", () => {
-  if (animId) { stopAnim(); draw(); return; }
-  const r = result, t0 = performance.now(), reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function stopAnim() { if (animId) { cancelAnimationFrame(animId); animId = 0; $("shoot").textContent = brkMode() ? "Break" : "Shoot"; } }
+function play(r) {
+  const t0 = performance.now(), reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   $("shoot").textContent = "Stop";
   const step = now => {
-    const t = reduce ? r.t : (now - t0) / 1000;
-    const anim = { i: {}, pos: {} };
+    const t = reduce ? r.t : (now - t0) / 1000, anim = { i: {}, pos: {} };
     for (const b of r.balls) {
       let i = b.path.findIndex(p => p.t > t); if (i < 0) i = b.path.length; i = Math.max(0, i - 1);
-      anim.i[b.id] = i; const p = b.path[i];
-      const gone = b.potted && i >= b.path.length - 1;
-      anim.pos[b.id] = gone ? null : p;
+      anim.i[b.id] = i; anim.pos[b.id] = b.potted && i >= b.path.length - 1 ? null : b.path[i];
     }
     draw(anim);
-    if (t < r.t) animId = requestAnimationFrame(step); else { animId = 0; $("shoot").textContent = "Shoot again"; setTimeout(() => { if (!animId) { $("shoot").textContent = "Shoot"; draw(); } }, 1200); }
+    if (t < r.t) animId = requestAnimationFrame(step);
+    else { animId = 0; $("shoot").textContent = brkMode() ? "Break again" : "Shoot again"; draw(); setTimeout(() => { if (!animId) $("shoot").textContent = brkMode() ? "Break" : "Shoot"; }, 1500); }
   };
   animId = requestAnimationFrame(step);
+}
+$("shoot").addEventListener("click", () => {
+  if (animId) { stopAnim(); draw(); return; }
+  if (brkMode()) {
+    const b = st.brk;
+    if (brkResult) b.seed = (Math.random() * 2 ** 31) >>> 0;     // a fresh rack for each new break
+    brkResult = simBreak(b, b.seed, false);
+    readBreak(); save(); play(brkResult);
+  } else play(result);
+});
+
+/* run 50 breaks in small batches so the page stays responsive */
+$("run50").addEventListener("click", () => {
+  if (summary && summary.done < summary.n) { runToken++; summary = null; $("run50").textContent = "Run 50"; update(true); return; }
+  stopAnim(); brkResult = null;
+  const tok = ++runToken, b = JSON.parse(JSON.stringify(st.brk));
+  summary = { n: 50, done: 0, madeTotal: 0, some: 0, nine: 0, scratch: 0, legal: 0, pockets: {}, ends: [], dists: [] };
+  $("run50").textContent = "Cancel";
+  const one = () => {
+    if (tok !== runToken) return;
+    const r = simBreak(b, (Math.random() * 2 ** 31) >>> 0, true), s = breakStats(r), S = summary;
+    S.done++; S.madeTotal += s.made.length; if (s.made.length) S.some++; if (s.nine) S.nine++; if (s.scratch) S.scratch++; if (s.legal) S.legal++;
+    for (const m of s.made) S.pockets[m.potted] = (S.pockets[m.potted] || 0) + 1;
+    const last = s.cb.path[s.cb.path.length - 1];
+    S.ends.push({ x: s.scratch ? last.x : s.cb.x, y: s.scratch ? last.y : s.cb.y, scratch: s.scratch });
+    if (!s.scratch) S.dists.push(Math.hypot(s.cb.x - W / 2, s.cb.y - L / 2));
+    readSummary(); readBreak(); draw();
+    if (S.done < S.n) setTimeout(one, 0); else $("run50").textContent = "Run 50";
+  };
+  readBreak(); readSummary(); draw(); setTimeout(one, 30);
 });
 
 /* tuning knobs */
 function renderKnobs() {
   $("knobs").innerHTML = KNOBS.map(([k, name, lo, hi, step, d, help]) =>
     `<label class="knob" for="k-${k}"><span>${name}</span><b id="kv-${k}">${(+params[k]).toFixed(d)}</b><input type="range" class="plain" id="k-${k}" min="${lo}" max="${hi}" step="${step}" value="${params[k]}"><small>${help}</small></label>`).join("");
-  for (const [k, , , , , d] of KNOBS) $("k-" + k).addEventListener("input", e => { params[k] = +e.target.value; $("kv-" + k).textContent = params[k].toFixed(d); update(); });
+  for (const [k, , , , , d] of KNOBS) $("k-" + k).addEventListener("input", e => { params[k] = +e.target.value; $("kv-" + k).textContent = params[k].toFixed(d); changed(); });
 }
-$("resetKnobs").addEventListener("click", () => { Object.assign(params, PP.DEFAULTS); renderKnobs(); update(); });
+$("resetKnobs").addEventListener("click", () => { Object.assign(params, PP.DEFAULTS); renderKnobs(); changed(); });
 renderKnobs();
 
 /* orientation */

@@ -35,7 +35,8 @@ const DEFAULTS = {
   vmax: 300,                   // cue ball speed at 100 %, in/s (about 7.6 m/s)
   vmin: 15,                    // cue ball speed at 0 %, in/s
   curve: 1.6,                  // speed bar shape: soft/medium/firm/power mid-points come out near 1, 2, 3.7, 6.3 m/s
-  squirt: 1.5                  // cue ball deflection in degrees at half a radius of side (0 = off)
+  squirt: 1.5,                 // cue ball deflection in degrees at half a radius of side (0 = off)
+  vbreak: 420                  // cue ball speed at 100 % in break mode, in/s (about 24 mph)
 };
 
 /* small vector helpers (3D arrays for spin, {x,y} for positions) */
@@ -225,16 +226,24 @@ function simulate(spec, params) {
   const balls = spec.balls.map(b => makeBall(b.id, b));
   strike(balls[spec.cue || 0], spec.aim, spec.tip || { x: 0, y: 0 }, spec.speed, P);
   const dt = spec.dt || 4e-4, sample = spec.sample || 1 / 120, tMax = spec.tMax || 30;
+  let seed = (spec.seed == null ? 12345 : spec.seed) >>> 0;
+  const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let x = seed; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
   let t = 0, nextS = sample;
   while (t < tMax) {
     let moving = false;
     for (const b of balls) { b._t = t; clothStep(b, dt, P); }
+    // find touching pairs, then resolve them in random order so that a ball touching two others
+    // at once (a racked ball) doesn't always favour the same side
+    const hits = [];
     for (let i = 0; i < balls.length; i++) for (let j = i + 1; j < balls.length; j++) {
       const A = balls[i], B = balls[j];
       if (A.potted || B.potted) continue;
       if (A.state === "still" && B.state === "still") continue;
-      ballBall(A, B, P, t);
+      const dx = B.x - A.x, dy = B.y - A.y;
+      if (dx * dx + dy * dy < 4 * R * R) hits.push([A, B]);
     }
+    for (let k = hits.length - 1; k > 0; k--) { const m = Math.floor(rnd() * (k + 1)); [hits[k], hits[m]] = [hits[m], hits[k]]; }
+    for (const [A, B] of hits) ballBall(A, B, P, t);
     for (const b of balls) railStep(b, geo, P, t);
     for (const b of balls) if (b.state !== "still") moving = true;
     t += dt;
