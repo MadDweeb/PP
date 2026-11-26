@@ -130,6 +130,38 @@ body.land #strip { max-width: 620px; margin: 0 auto; }
 textarea, .field input, .field select { width: 100%; padding: 9px 11px; border: 1px solid var(--line); background: var(--panel); border-radius: 9px; }
 textarea { resize: vertical; min-height: 42px; }
 
+/* Spin: drag the tip contact point on a cue ball */
+.spinrow { display: flex; gap: 14px; align-items: center; }
+#cueball { width: 148px; height: 148px; flex: 0 0 148px; touch-action: none; user-select: none; -webkit-user-select: none; display: block; cursor: crosshair; border-radius: 50%; }
+.spininfo { display: flex; flex-direction: column; gap: 4px; min-width: 0; align-items: flex-start; }
+.spininfo .nm { font-family: var(--f-display); font-weight: 700; font-size: 22px; letter-spacing: .02em; line-height: 1.05; }
+.spininfo .off { font-size: 13px; color: var(--muted); }
+.spininfo .off b { color: var(--ink); font-family: var(--f-mono); font-weight: 600; }
+.spininfo .warn { font-size: 12px; color: var(--bad); }
+/* Speed: a colour-coded 0-100% bar with the feel words faded behind it */
+.speedbar { position: relative; height: 46px; }
+.sbtrack { position: absolute; inset: 0; border-radius: 10px; overflow: hidden; background: linear-gradient(90deg, #3e9c5f 0%, #b9bd45 38%, #e39a3a 66%, #d2453b 100%); display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; }
+.sbtrack span { text-align: center; font-family: var(--f-display); font-weight: 700; font-size: 17px; letter-spacing: .08em; text-transform: uppercase; color: #fff; opacity: .32; height: 100%; display: flex; align-items: center; justify-content: center; border-left: 1px solid rgba(255,255,255,.28); }
+.sbtrack span:first-child { border-left: 0; }
+.sbtrack span.on { opacity: .8; }
+.sbdim { position: absolute; top: 0; bottom: 0; right: 0; background: rgba(10,12,14,.42); border-radius: 0 10px 10px 0; pointer-events: none; }
+#speed { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; touch-action: pan-y; }
+#speed::-webkit-slider-runnable-track { height: 46px; background: transparent; }
+#speed::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 54px; margin-top: -4px; border-radius: 6px; background: #ffffff; border: 2px solid #15181b; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+#speed::-moz-range-track { height: 46px; background: transparent; }
+#speed::-moz-range-thumb { width: 12px; height: 52px; border-radius: 6px; background: #ffffff; border: 2px solid #15181b; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.speedread { font-size: 14px; color: var(--muted); }
+.speedread b { font-family: var(--f-mono); color: var(--ink); font-size: 16px; }
+/* Settings: colours */
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.sw { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line); padding: 0; position: relative; }
+.sw[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.colorrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.colorrow input[type="color"] { width: 46px; height: 38px; padding: 2px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); }
+.colorrow input[type="text"] { width: 110px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); font-family: var(--f-mono); }
+.colorblock { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.colorblock + .colorblock { border-top: 1px solid var(--line); padding-top: 10px; }
+
 /* Pocket zoom sheet */
 .sheet { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; }
 .sheet .card { width: 100%; max-width: 560px; background: var(--panel); border-radius: 16px 16px 0 0; padding: 14px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 10px; max-height: 100%; overflow: auto; }
@@ -206,7 +238,7 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
       <button role="tab" id="tab-log" aria-selected="true" data-view="log">Log</button>
       <button role="tab" id="tab-stats" aria-selected="false" data-view="stats">Stats</button>
       <button role="tab" id="tab-shots" aria-selected="false" data-view="shots">Shots</button>
-      <button role="tab" id="tab-table" aria-selected="false" data-view="table">Table</button>
+      <button role="tab" id="tab-settings" aria-selected="false" data-view="settings">Settings</button>
     </nav>
   </header>
 
@@ -235,9 +267,16 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
       <button class="btn primary" id="openZoom">Mark pocket entry</button>
     </div>
     <div class="group"><span class="label">Pocket result</span><div class="chips" id="outcomeChips"></div></div>
-    <div class="group"><span class="label">Vertical spin</span><div class="chips" id="vspinChips"></div></div>
-    <div class="group"><span class="label">Side spin</span><div class="chips" id="sideChips"></div></div>
-    <div class="group"><span class="label">Speed</span><div class="chips" id="speedChips"></div></div>
+    <div class="group"><span class="label">Spin: drag to where the tip hit the cue ball</span>
+      <div class="spinrow">
+        <svg id="cueball" viewBox="-1.3 -1.3 2.6 2.6" tabindex="0" role="slider" aria-label="Tip contact point on the cue ball. Arrow keys move it."></svg>
+        <div class="spininfo"><span class="nm" id="spinName"></span><span class="off" id="spinOff"></span><span class="warn" id="spinWarn"></span><button class="btn small" id="tipCentre">Centre</button></div>
+      </div>
+    </div>
+    <div class="group"><label class="label" for="speed">Speed</label>
+      <div class="speedbar"><div class="sbtrack" id="sbTrack"><span>Soft</span><span>Medium</span><span>Firm</span><span>Power</span></div><div class="sbdim" id="sbDim"></div><input type="range" id="speed" min="0" max="100" step="1" aria-label="Speed, percent of your power"></div>
+      <div class="speedread" id="speedRead"></div>
+    </div>
     <div class="group"><label class="label" for="notes">Note for this shot</label><textarea id="notes" rows="1" placeholder="Optional"></textarea></div>
     <div class="sessionline"><span id="sessionText"></span><button class="btn small" id="newSession">New session</button></div>
     <div class="savebar">
@@ -253,8 +292,8 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
   <!-- SHOTS -->
   <section id="view-shots" class="app" hidden></section>
 
-  <!-- TABLE SETTINGS -->
-  <section id="view-table" class="app" hidden></section>
+  <!-- SETTINGS -->
+  <section id="view-settings" class="app" hidden></section>
 </div>
 
 <div class="sheet" id="sheet" hidden>
@@ -278,9 +317,18 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
 /* ---------- constants ---------- */
 const R_BALL = 1.125;          // 2 1/4 in ball
 const RAIL = 4.5;              // drawn rail width, inches
-const VSPIN = [["draw","Draw"],["stun","Stun"],["stunrun","Stun-run"],["centre","Centre ball"],["follow","Follow"]];
-const SIDE = [["L","Left"],["C","Centre"],["R","Right"]];
+/* Vertical spin comes from where the tip hit the cue ball (tip.y, in ball radii, + is above centre). */
+const VSPIN = [["draw","Draw"],["stundraw","Stun-draw"],["stun","Stun"],["stunrun","Stun-follow"],["follow","Follow"]];
+const VLAB = VSPIN.concat([["centre","Centre ball"]]);   // "Centre ball" only on shots logged before the cue ball picker
+const SIDE = [["L","Left"],["C","No side"],["R","Right"]];
 const SPEED = [[1,"Soft"],[2,"Medium"],[3,"Firm"],[4,"Power"]];
+const TIP_STUN = .12, TIP_FULL = .4, TIP_SIDE = .12, TIP_MISCUE = .5, TIP_MAX = .7;
+function vspinOf(t) { const y = t.y; return y >= TIP_FULL ? "follow" : y >= TIP_STUN ? "stunrun" : y > -TIP_STUN ? "stun" : y > -TIP_FULL ? "stundraw" : "draw"; }
+function sideOf(t) { return t.x >= TIP_SIDE ? "R" : t.x <= -TIP_SIDE ? "L" : "C"; }
+function speedOf(p) { return p < 25 ? 1 : p < 50 ? 2 : p < 75 ? 3 : 4; }
+/* For shots and drills saved before the picker: a typical tip point and speed for each old label */
+function tipFromLabels(v, sd) { return { x: sd === "L" ? -.3 : sd === "R" ? .3 : 0, y: ({ draw: -.55, stundraw: -.25, stun: 0, centre: 0, stunrun: .25, follow: .55 })[v] || 0 }; }
+function pctFromSpeed(n) { return ({ 1: 15, 2: 40, 3: 63, 4: 88 })[n] || 40; }
 const OUTCOME = [["made","Made","good"],["rattled","Rattled out","warn"],["missed","Missed","bad"]];
 const POCKET_NAMES = { HL:"Head left", HR:"Head right", SL:"Side left", SR:"Side right", FL:"Foot left", FR:"Foot right" };
 const TOOLS = [
@@ -301,11 +349,14 @@ const ls = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
 };
-const settings = Object.assign({ W: 50, L: 100, wc: 4.25, ws: 4.75, grid: "8x4", labels: false }, ls.get(LS.settings, {}));
+const COLOR_DEFAULTS = { cloth: "#8a9399", cushion: "#737c82", rail: "#2b2723" };
+const settings = Object.assign({ W: 50, L: 100, wc: 4.25, ws: 4.75, grid: "8x4", labels: false, theme: "system", units: "imperial" }, COLOR_DEFAULTS, ls.get(LS.settings, {}));
 const S = Object.assign({
   drill: "", drillId: "", tz: "point", sessionId: "", sessionStart: "", lastShotTs: 0, vspin: "stun", side: "C", speed: 2, pocket: "FR", tool: "result",
   cb: { x: 20, y: 52 }, ob: { x: 40, y: 82 }, target: { x: 30, y: 70 }, result: null, entry: null, outcome: null, notes: ""
 }, ls.get(LS.work, {}));
+if (!S.tip) S.tip = tipFromLabels(S.vspin, S.side);
+if (S.speedPct == null) S.speedPct = pctFromSpeed(S.speed);
 let shots = ls.get(LS.shots, []);
 if (!Array.isArray(shots)) shots = [];
 let myDrills = ls.get(LS.drills, []);
@@ -316,7 +367,7 @@ const GHOST_STR = { x: 36.99, y: 73.99 };                          // cue ball c
 const STARTER = [
   { id: "s-stop", name: "Stop shot, straight in", desc: "Straight in to the foot-right corner. Stop the cue ball dead where it hits the object ball.",
     cb: DIAG(.5), ob: DIAG(.75), target: GHOST_STR, tz: "c3", pocket: "FR", vspin: "stun", side: "C", speed: 2 },
-  { id: "s-stunrun", name: "Stun-run 1 ft, straight in", desc: "Same straight shot. Let the cue ball roll on one foot past contact.",
+  { id: "s-stunrun", name: "Stun-follow 1 ft, straight in", desc: "Same straight shot. Hit a little above centre so the cue ball rolls on one foot past contact.",
     cb: DIAG(.5), ob: DIAG(.75), target: { x: 42.36, y: 84.72 }, tz: "c6", pocket: "FR", vspin: "stunrun", side: "C", speed: 2 },
   { id: "s-draw2", name: "Draw back 2 ft, straight in", desc: "Same straight shot. Draw the cue ball back two feet along the line.",
     cb: DIAG(.4), ob: DIAG(.75), target: { x: 26.26, y: 52.52 }, tz: "c6", pocket: "FR", vspin: "draw", side: "C", speed: 2 },
@@ -404,6 +455,33 @@ const toSvg = p => ({ x: p.x, y: settings.L - p.y });
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 let toastT;
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2200); }
+
+/* ---------- units: everything is stored in inches; metric only changes what is shown ---------- */
+const isMetric = () => settings.units === "metric";
+const uName = () => isMetric() ? "cm" : "in";
+const toU = v => v == null ? null : isMetric() ? v * 2.54 : v;
+const fromU = v => isMetric() ? v / 2.54 : v;
+const ud = d => isMetric() && d >= 2 ? 1 : d;
+const fl = (v, d = 1) => fmt(toU(v), ud(d));                       // number in the display unit
+const fls = (v, d = 1) => v == null || isNaN(v) ? "–" : fl(v, d) + " " + uName();
+const sgn = (v, d = 2) => v == null ? "–" : (v >= 0 ? "+" : "") + fls(v, d);
+const zoneName = k => k === "c3" ? (isMetric() ? "7.6 cm circle" : "3 in circle") : k === "c6" ? (isMetric() ? "15 cm circle" : "6 in circle") : label(ZONES, k);
+/* tip offset on the ball: mm in metric, inches in imperial */
+const tipLen = r => isMetric() ? Math.round(r * R_BALL * 25.4) + " mm" : fmt(r * R_BALL, 2) + " in";
+const speedText = s => (s.speedPct != null ? s.speedPct + "% " : "") + label(SPEED, s.speed).toLowerCase();
+
+/* ---------- appearance ---------- */
+const INITIAL_THEME = document.documentElement.getAttribute("data-theme");
+function applyAppearance() {
+  const r = document.documentElement;
+  if (settings.theme === "light" || settings.theme === "dark") r.setAttribute("data-theme", settings.theme);
+  else if (INITIAL_THEME) r.setAttribute("data-theme", INITIAL_THEME); else r.removeAttribute("data-theme");
+  for (const k of ["cloth", "cushion", "rail"]) r.style.setProperty("--" + k, settings[k] || COLOR_DEFAULTS[k]);
+}
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.max(0, Math.min(255, Math.round(v * f))));
+  return "#" + c.map(v => v.toString(16).padStart(2, "0")).join("");
+}
 
 /* ---------- table geometry ---------- */
 function pockets() {
@@ -653,13 +731,14 @@ function renderZoom() {
   let g = "";
   // aim line through the pocket centre and a ruler across it
   g += line(add(pk.c, mul(d, -6)), add(pk.c, mul(d, 2)), "#ffffff", "4 3", .7);
-  for (let k = -12; k <= 12; k++) {
-    const v = k / 4; const base = add(pk.c, mul(right, v)); const big = k % 4 === 0;
+  const m = isMetric(), step = m ? .5 / 2.54 : .25, n = m ? 14 : 12;     // ticks: 0.5 cm or 1/4 in; labels every 2 cm or 1 in
+  for (let k = -n; k <= n; k++) {
+    const v = k * step; const base = add(pk.c, mul(right, v)); const big = k % 4 === 0; const lv = m ? k / 2 : k / 4;
     const a = add(base, mul(d, big ? -.55 : -.3)), b = add(base, mul(d, big ? .55 : .3));
     g += line(a, b, "#ffffff", "", big ? .9 : .5);
     if (big && k !== 0) {
       const tp = toSvg(add(base, mul(d, -1.1)));
-      g += `<text x="${tp.x}" y="${tp.y}" transform="rotate(${-th} ${tp.x} ${tp.y})" font-size=".55" fill="#ffffff" fill-opacity=".85" text-anchor="middle" dominant-baseline="central" font-family="var(--f-mono)">${v > 0 ? "+" : ""}${v}</text>`;
+      g += `<text x="${tp.x}" y="${tp.y}" transform="rotate(${-th} ${tp.x} ${tp.y})" font-size="${m ? .45 : .55}" fill="#ffffff" fill-opacity=".85" text-anchor="middle" dominant-baseline="central" font-family="var(--f-mono)">${lv > 0 ? "+" : ""}${lv}</text>`;
     }
   }
   if (S.entry) {
@@ -669,8 +748,8 @@ function renderZoom() {
   $("zDyn").innerHTML = g;
   const off = pocketOffset(S.entry, pk, S.ob); const ae = aimErrorDeg(off, pk, S.ob);
   $("zRead").innerHTML = S.entry
-    ? `Entry <b>${off >= 0 ? "+" : ""}${fmt(off, 2)} in</b> ${Math.abs(off) < .05 ? "(dead centre)" : off > 0 ? "right of centre" : "left of centre"} · aim error <b>${fmt(ae, 2)}°</b>`
-    : `${esc(POCKET_NAMES[S.pocket])} pocket, ${fmt(len(sub(pk.c, S.ob)), 0)} in from the object ball. Tap where the ball went in.`;
+    ? `Entry <b>${sgn(off, 2)}</b> ${Math.abs(off) < .05 ? "(dead centre)" : off > 0 ? "right of centre" : "left of centre"} · aim error <b>${fmt(ae, 2)}°</b>`
+    : `${esc(POCKET_NAMES[S.pocket])} pocket, ${fls(len(sub(pk.c, S.ob)), 0)} from the object ball. Tap where the ball went in.`;
   $("zOutcome").innerHTML = OUTCOME.map(([k, lbl, cls]) => `<button class="chip ${cls}" aria-pressed="${S.outcome === k}" data-k="${k}">${lbl}</button>`).join("");
 }
 function closeZoom() { $("sheet").hidden = true; zoomOpen = false; renderTable(); }
@@ -694,7 +773,7 @@ function renderTools() {
   const rm = $("removeItem"); const can = (S.tool === "ob" || S.tool === "target") && S[S.tool];
   rm.hidden = !can; if (can) rm.textContent = S.tool === "ob" ? "Remove object ball" : "Remove target";
   const zc = $("zoneChips"); zc.hidden = !(S.tool === "target" && S.target);
-  zc.innerHTML = ZONES.map(([k, l]) => `<button class="chip sm" aria-pressed="${(S.tz || "point") === k}" data-tz="${k}">${l}</button>`).join("");
+  zc.innerHTML = ZONES.map(([k]) => `<button class="chip sm" aria-pressed="${(S.tz || "point") === k}" data-tz="${k}">${zoneName(k)}</button>`).join("");
 }
 function chips(el, list, cur, key, extraCls) {
   $(el).innerHTML = list.map(([k, lbl, cls]) => `<button class="chip ${cls || ""}" aria-pressed="${String(cur) === String(k)}" data-key="${key}" data-k="${k}">${lbl}</button>`).join("");
@@ -714,7 +793,9 @@ function loadDrill(d) {
   S.drillId = d.id; S.drill = d.name;
   S.cb = d.cb ? Object.assign({}, d.cb) : null; S.ob = d.ob ? Object.assign({}, d.ob) : null; S.target = d.target ? Object.assign({}, d.target) : null;
   S.tz = d.tz || "point";
-  if (d.pocket) S.pocket = d.pocket; if (d.vspin) S.vspin = d.vspin; if (d.side) S.side = d.side; if (d.speed) S.speed = d.speed;
+  if (d.pocket) S.pocket = d.pocket;
+  S.tip = d.tip ? Object.assign({}, d.tip) : tipFromLabels(d.vspin, d.side); S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip);
+  S.speedPct = d.speedPct != null ? d.speedPct : pctFromSpeed(d.speed); S.speed = speedOf(S.speedPct);
   S.result = null; S.entry = null; S.outcome = null; S.tool = "result";
   saveWork(); renderLog();
 }
@@ -726,7 +807,7 @@ function showDrillForm() {
 async function saveDrill() {
   const name = ($("newDrillName").value || "").trim();
   if (!name) { toast("Give the drill a name"); return; }
-  const d = { id: "u-" + uid(), name, desc: "", cb: S.cb, ob: S.ob, target: S.target, tz: S.tz || "point", pocket: S.pocket, vspin: S.vspin, side: S.side, speed: S.speed };
+  const d = { id: "u-" + uid(), name, desc: "", cb: S.cb, ob: S.ob, target: S.target, tz: S.tz || "point", pocket: S.pocket, vspin: S.vspin, side: S.side, speed: S.speed, tip: S.tip, speedPct: S.speedPct };
   await store.addDrill(clean(d)); S.drillId = d.id; S.drill = name; saveWork(); renderLog(); toast(`Saved drill "${name}"`);
 }
 function currentSessionActive() { return S.sessionId && Date.now() - (S.lastShotTs || 0) <= SESSION_GAP_MS; }
@@ -750,13 +831,56 @@ function renderLog() {
   $("openZoom").hidden = !S.ob;
   $("outcomeChips").parentElement.hidden = !S.ob;
   if (!S.ob) $("pocketWhat").innerHTML = `<b>Position only</b><br><span style="font-size:12px;color:var(--muted)">No object ball on the table. Pick Object ball and tap to add one.</span>`;
-  else $("pocketWhat").innerHTML = `<b>${esc(POCKET_NAMES[S.pocket])}</b><br><span class="num" style="font-size:12px;color:var(--muted)">${cut == null ? "" : "cut " + fmt(Math.abs(cut), 0) + "°" + (Math.abs(cut) < .5 ? "" : cut > 0 ? " right" : " left") + " · "}${S.entry ? "entry " + (off >= 0 ? "+" : "") + fmt(off, 2) + " in" : "entry not marked"}</span>`;
+  else $("pocketWhat").innerHTML = `<b>${esc(POCKET_NAMES[S.pocket])}</b><br><span class="num" style="font-size:12px;color:var(--muted)">${cut == null ? "" : "cut " + fmt(Math.abs(cut), 0) + "°" + (Math.abs(cut) < .5 ? "" : cut > 0 ? " right" : " left") + " · "}${S.entry ? "entry " + sgn(off, 2) : "entry not marked"}</span>`;
   chips("outcomeChips", OUTCOME, S.outcome, "outcome");
-  chips("vspinChips", VSPIN, S.vspin, "vspin");
-  chips("sideChips", SIDE, S.side, "side");
-  chips("speedChips", SPEED, S.speed, "speed");
+  renderSpin(); renderSpeed();
   $("save").disabled = !S.result;
   $("undo").disabled = !drillShots(S.drill).length;
+}
+
+/* ---------- spin: cue ball picker ---------- */
+const CB_STATIC = `<defs><radialGradient id="cbShade" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#ffffff"/><stop offset=".65" stop-color="#eeece4"/><stop offset="1" stop-color="#c9c6bc"/></radialGradient></defs>
+  <circle r="1" fill="url(#cbShade)" stroke="#8d8a82" stroke-width=".02"/>
+  <g stroke="#3b4148" stroke-opacity=".22" stroke-width=".012" fill="none">
+    <line x1="-1" y1="${-TIP_STUN}" x2="1" y2="${-TIP_STUN}" stroke-dasharray=".04 .04"/><line x1="-1" y1="${TIP_STUN}" x2="1" y2="${TIP_STUN}" stroke-dasharray=".04 .04"/>
+    <line x1="-1" y1="${-TIP_FULL}" x2="1" y2="${-TIP_FULL}"/><line x1="-1" y1="${TIP_FULL}" x2="1" y2="${TIP_FULL}"/>
+    <line x1="${-TIP_SIDE}" y1="-1" x2="${-TIP_SIDE}" y2="1" stroke-dasharray=".04 .04"/><line x1="${TIP_SIDE}" y1="-1" x2="${TIP_SIDE}" y2="1" stroke-dasharray=".04 .04"/>
+  </g>
+  <circle r="${TIP_MISCUE}" fill="none" stroke="#c23b2e" stroke-opacity=".45" stroke-width=".016" stroke-dasharray=".05 .04"/>
+  <path d="M-.07 0h.14M0 -.07v.14" stroke="#3b4148" stroke-opacity=".6" stroke-width=".018"/>
+  <g font-family="var(--f-body)" font-size=".13" font-weight="600" fill="#3b4148" fill-opacity=".5" text-anchor="middle" dominant-baseline="central">
+    <text y="-.78">FOLLOW</text><text y=".78">DRAW</text><text x="-.8" y="0">L</text><text x=".8" y="0">R</text>
+  </g>`;
+let tipDrag = null;
+function renderSpin() {
+  const t = S.tip, svg = $("cueball");
+  if (!svg.firstChild) svg.innerHTML = CB_STATIC + `<g id="cbDyn"></g>`;
+  const r = Math.hypot(t.x, t.y);
+  $("cbDyn").innerHTML = (r > .02 ? `<line x1="0" y1="0" x2="${t.x}" y2="${-t.y}" stroke="var(--accent)" stroke-width=".02" stroke-opacity=".8"/>` : "") +
+    `<circle cx="${t.x}" cy="${-t.y}" r=".23" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width=".03"/><circle cx="${t.x}" cy="${-t.y}" r=".045" fill="var(--accent)"/>`;
+  $("spinName").textContent = label(VSPIN, S.vspin) + " · " + (S.side === "C" ? "no side" : label(SIDE, S.side).toLowerCase());
+  const up = t.y, rt = t.x;
+  $("spinOff").innerHTML = r < .005 ? "Dead centre" : `<b>${tipLen(r)}</b> from centre<br>${Math.abs(up) >= .005 ? tipLen(Math.abs(up)) + (up > 0 ? " up" : " down") : ""}${Math.abs(up) >= .005 && Math.abs(rt) >= .005 ? ", " : ""}${Math.abs(rt) >= .005 ? tipLen(Math.abs(rt)) + (rt > 0 ? " right" : " left") : ""}`;
+  $("spinWarn").textContent = r > TIP_MISCUE ? "Past the miscue limit (red ring)" : "";
+  svg.setAttribute("aria-valuetext", $("spinName").textContent + ", " + tipLen(r) + " from centre");
+}
+function setTip(x, y) {
+  const snap = v => Math.abs(v) < .03 ? 0 : v;
+  x = snap(x); y = snap(y); const r = Math.hypot(x, y);
+  if (r > TIP_MAX) { x *= TIP_MAX / r; y *= TIP_MAX / r; }
+  S.tip = { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
+  S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); renderSpin();
+}
+function cuePoint(e) {
+  const svg = $("cueball"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const m = svg.getScreenCTM(); if (!m) return null; const q = pt.matrixTransform(m.inverse()); return { x: q.x, y: -q.y };
+}
+function renderSpeed() {
+  const p = S.speedPct, sp = speedOf(p);
+  $("speed").value = p; $("sbDim").style.left = p + "%";
+  [...$("sbTrack").children].forEach((el, i) => el.classList.toggle("on", i === sp - 1));
+  $("speedRead").innerHTML = `<b>${p}%</b> · feels ${label(SPEED, sp).toLowerCase()}`;
+  $("speed").setAttribute("aria-valuetext", p + "%, " + label(SPEED, sp));
 }
 
 /* ---------- shot record ---------- */
@@ -771,7 +895,7 @@ function buildShot() {
     drill: S.drill || "", drillId: S.drillId || "", shotNo: drillShots(S.drill).length + 1,
     session: S.sessionId, tz: S.target ? (S.tz || "point") : null,
     inZone: (() => { const z = zoneShape(S.target, S.tz); return z ? (inZone(S.result, z) ? 1 : 0) : null; })(),
-    vspin: S.vspin, side: S.side, speed: S.speed, pocket: S.pocket,
+    vspin: S.vspin, side: S.side, speed: S.speed, speedPct: S.speedPct, tip: { x: S.tip.x, y: S.tip.y }, pocket: S.pocket,
     cb: S.cb ? { x: r2(S.cb.x), y: r2(S.cb.y) } : null,
     ob: S.ob ? { x: r2(S.ob.x), y: r2(S.ob.y) } : null,
     target: S.target ? { x: r2(S.target.x), y: r2(S.target.y) } : null,
@@ -796,7 +920,7 @@ async function saveShot() {
   S.result = null; S.entry = null; S.outcome = null; S.notes = ""; S.tool = "result";
   saveWork(); renderAll();
   if (!land) { try { $("tablewrap").scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); } catch (e) {} }
-  toast(`Shot ${s.shotNo} saved` + (s.inZone === 1 ? ", in the zone" : s.inZone === 0 ? ", outside the zone" : s.cbErr != null ? `, ${fmt(s.cbErr, 1)} in from target` : ""));
+  toast(`Shot ${s.shotNo} saved` + (s.inZone === 1 ? ", in the zone" : s.inZone === 0 ? ", outside the zone" : s.cbErr != null ? `, ${fls(s.cbErr, 1)} from target` : ""));
 }
 async function undoLast() {
   const list = drillShots(S.drill); if (!list.length) return;
@@ -804,14 +928,16 @@ async function undoLast() {
   await store.remove(last.id);
   S.result = last.result; S.entry = last.entry; S.outcome = last.outcome; S.notes = last.notes || "";
   if (last.cb) S.cb = last.cb; S.ob = last.ob || null; S.target = last.target; if (last.pocket) S.pocket = last.pocket;
-  S.vspin = last.vspin; S.side = last.side; S.speed = last.speed;
+  S.tip = last.tip || tipFromLabels(last.vspin, last.side); S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip);
+  S.speedPct = last.speedPct != null ? last.speedPct : pctFromSpeed(last.speed); S.speed = speedOf(S.speedPct);
   saveWork(); renderAll(); toast(`Shot ${last.shotNo} removed. Its markers are back on the table.`);
 }
 
 /* ---------- CSV ---------- */
 const CSV_COLS = [
   ["shot_id", s => s.id], ["timestamp_utc", s => s.ts], ["local_time", s => s.local], ["session_id", s => sessionOf(s)], ["drill", s => s.drill], ["drill_id", s => s.drillId || ""], ["shot_no", s => s.shotNo],
-  ["vertical_spin", s => s.vspin], ["side_spin", s => s.side], ["speed_1to4", s => s.speed], ["target_pocket", s => s.pocket],
+  ["vertical_spin", s => s.vspin], ["side_spin", s => s.side], ["tip_x_radii", s => s.tip && s.tip.x], ["tip_y_radii", s => s.tip && s.tip.y],
+  ["tip_offset_in", s => s.tip ? r2(Math.hypot(s.tip.x, s.tip.y) * R_BALL) : null], ["speed_pct", s => s.speedPct], ["speed_1to4", s => s.speed], ["target_pocket", s => s.pocket],
   ["cb_start_x_in", s => s.cb && s.cb.x], ["cb_start_y_in", s => s.cb && s.cb.y],
   ["ob_start_x_in", s => s.ob && s.ob.x], ["ob_start_y_in", s => s.ob && s.ob.y],
   ["cut_angle_deg", s => s.cut], ["ob_to_pocket_in", s => s.obDist],
@@ -872,19 +998,20 @@ function renderStats() {
   if (F.session !== "__all" && !sess.some(x => x.id === F.session)) F.session = "__all";
   const list = filtered(); const t = summarize(list);
   const bySess = sess.map(x => [x, summarize(filtered(true).filter(s => sessionOf(s) === x.id))]).filter(r => r[1].n);
-  const vs = VSPIN.map(([k, lbl]) => [k, lbl, summarize(list.filter(s => s.vspin === k))]).filter(r => r[2].n);
+  const vs = VLAB.map(([k, lbl]) => [k, lbl, summarize(list.filter(s => s.vspin === k))]).filter(r => r[2].n);
+  const vchips = VSPIN.concat(shots.some(s => s.vspin === "centre") ? [["centre", "Centre ball"]] : []);
   v.innerHTML = `
   <div class="filters">
     <select id="fDrill" aria-label="Drill"><option value="__all">All drills (${shots.length} shots)</option>${drills.map(d => `<option value="${esc(d)}" ${F.drill === d ? "selected" : ""}>${esc(d || "Unnamed drill")} (${drillShots(d).length})</option>`).join("")}</select>
     <select id="fSession" aria-label="Session"><option value="__all">All sessions (${sess.length})</option>${sess.map(x => `<option value="${esc(x.id)}" ${F.session === x.id ? "selected" : ""}>${esc(sessionLabel(x.start))} (${x.n})</option>`).join("")}</select>
-    <div class="chips" id="fVspin">${[["all", "All spins"]].concat(VSPIN).map(([k, l]) => `<button class="chip" aria-pressed="${F.vspin === k}" data-f="${k}">${l}</button>`).join("")}</div>
+    <div class="chips" id="fVspin">${[["all", "All spins"]].concat(vchips).map(([k, l]) => `<button class="chip" aria-pressed="${F.vspin === k}" data-f="${k}">${l}</button>`).join("")}</div>
   </div>
   <div class="tiles">
     <div class="tile"><span class="v">${t.n}</span><span class="k">shots${F.session === "__all" ? "" : " this session"}</span></div>
     <div class="tile"><span class="v">${t.pot == null ? "–" : Math.round(t.pot * 100)}<small>%</small></span><span class="k">potted (${t.potN} with a result)</span></div>
     <div class="tile"><span class="v">${pct(t.zone).replace("%", "")}${t.zone == null ? "" : "<small>%</small>"}</span><span class="k">cue ball in target zone (${t.zoneN})</span></div>
-    <div class="tile"><span class="v">${fmt(t.err, 1)}<small> in</small></span><span class="k">avg cue ball miss from target (${t.errN})</span></div>
-    <div class="tile"><span class="v">${t.bias == null ? "–" : (t.bias >= 0 ? "+" : "") + fmt(t.bias, 2)}<small> in</small></span><span class="k">pocket bias, spread ±${fmt(t.spread, 2)} in</span></div>
+    <div class="tile"><span class="v">${fl(t.err, 1)}<small> ${uName()}</small></span><span class="k">avg cue ball miss from target (${t.errN})</span></div>
+    <div class="tile"><span class="v">${t.bias == null ? "–" : (t.bias >= 0 ? "+" : "") + fl(t.bias, 2)}<small> ${uName()}</small></span><span class="k">pocket bias, spread ±${fls(t.spread, 2)}</span></div>
   </div>
   <div class="panel">
     <h3>Session by session</h3>
@@ -892,16 +1019,16 @@ function renderStats() {
     <div class="scroll"><table class="t"><thead><tr><th>Session</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th></tr></thead><tbody>
     ${bySess.map(([x, s], i) => { const prev = bySess[i + 1] ? bySess[i + 1][1] : null;
       const arrow = (a, b, lowerBetter) => a == null || b == null || Math.abs(a - b) < 1e-9 ? "" : ((lowerBetter ? a < b : a > b) ? ' <span style="color:var(--good)">▲</span>' : ' <span style="color:var(--bad)">▼</span>');
-      return `<tr${x.id === F.session ? ' style="background:var(--accent-soft)"' : ""}><td>${esc(sessionLabel(x.start))}</td><td>${s.n}</td><td>${pct(s.pot)}${prev ? arrow(s.pot, prev.pot) : ""}</td><td>${pct(s.zone)}${prev ? arrow(s.zone, prev.zone) : ""}</td><td>${fmt(s.err, 1)}${prev ? arrow(s.err, prev.err, true) : ""}</td></tr>`; }).join("")}
+      return `<tr${x.id === F.session ? ' style="background:var(--accent-soft)"' : ""}><td>${esc(sessionLabel(x.start))}</td><td>${s.n}</td><td>${pct(s.pot)}${prev ? arrow(s.pot, prev.pot) : ""}</td><td>${pct(s.zone)}${prev ? arrow(s.zone, prev.zone) : ""}</td><td>${fl(s.err, 1)}${prev ? arrow(s.err, prev.err, true) : ""}</td></tr>`; }).join("")}
     </tbody></table></div>
     <p class="note">▲ is better than the session before, ▼ is worse. A new session starts automatically after 2 hours without a shot, or when you tap New session on the Log tab.</p>
   </div>
   <div class="panel">
     <h3>By vertical spin</h3>
     <div class="scroll"><table class="t"><thead><tr><th>Spin</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th><th>Bias</th><th>Spread</th></tr></thead><tbody>
-    ${vs.map(([k, l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.pot)}</td><td>${pct(s.zone)}</td><td>${fmt(s.err, 1)}</td><td>${s.bias == null ? "–" : (s.bias >= 0 ? "+" : "") + fmt(s.bias, 2)}</td><td>${fmt(s.spread, 2)}</td></tr>`).join("")}
+    ${vs.map(([k, l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.pot)}</td><td>${pct(s.zone)}</td><td>${fl(s.err, 1)}</td><td>${s.bias == null ? "–" : (s.bias >= 0 ? "+" : "") + fl(s.bias, 2)}</td><td>${fl(s.spread, 2)}</td></tr>`).join("")}
     </tbody></table></div>
-    <p class="note">CB miss is the distance in inches between your target and where the cue ball stopped. Bias is the average pocket entry offset (+ means right of centre, seen from the object ball); spread is its standard deviation.</p>
+    <p class="note">CB miss is the distance in ${isMetric() ? "centimetres" : "inches"} between your target and where the cue ball stopped. Bias is the average pocket entry offset (+ means right of centre, seen from the object ball); spread is its standard deviation.</p>
   </div>
   <div class="panel">
     <h3>Where the cue ball stopped</h3>
@@ -920,11 +1047,11 @@ function renderStats() {
 }
 let selShot = null;
 function shotLine(s) {
-  return `${s.drill || "Unnamed drill"} #${s.shotNo} · ${label(VSPIN, s.vspin)}, ${label(SIDE, s.side).toLowerCase()}, ${label(SPEED, s.speed).toLowerCase()}` +
+  return `${s.drill || "Unnamed drill"} #${s.shotNo} · ${label(VLAB, s.vspin)}, ${label(SIDE, s.side).toLowerCase()}, ${speedText(s)}` +
     (s.inZone === 1 ? " · in zone" : s.inZone === 0 ? " · outside zone" : "") +
-    (s.cbErr != null ? ` · ${fmt(s.cbErr, 1)} in from target` : "") +
+    (s.cbErr != null ? ` · ${fls(s.cbErr, 1)} from target` : "") +
     (s.outcome ? ` · ${label(OUTCOME, s.outcome).toLowerCase()}` : "") +
-    (s.pocketOff != null ? ` (${s.pocketOff >= 0 ? "+" : ""}${fmt(s.pocketOff, 2)} in)` : "") + (s.notes ? ` · "${s.notes}"` : "");
+    (s.pocketOff != null ? ` (${sgn(s.pocketOff, 2)})` : "") + (s.notes ? ` · "${s.notes}"` : "");
 }
 function drawScatter(list) {
   const svg = $("scatter"); svg.style.aspectRatio = aspect(); let g = `<g>${staticTable()}</g>`;
@@ -932,7 +1059,7 @@ function drawScatter(list) {
   if (selShot && !all.some(s => s.id === selShot)) selShot = null;
   const one = selShot ? all.find(s => s.id === selShot) : null;
   // picker: one row per shot, oldest first so the numbers read in order
-  $("picker").innerHTML = all.map(s => `<button data-pick="${esc(s.id)}" aria-pressed="${s.id === selShot}"><b>#${s.shotNo}</b><span>${esc(label(VSPIN, s.vspin))}${s.cbErr != null ? " " + fmt(s.cbErr, 1) + "in" : ""}${s.inZone === 1 ? " ✓" : s.inZone === 0 ? " ✗" : ""}</span></button>`).join("");
+  $("picker").innerHTML = all.map(s => `<button data-pick="${esc(s.id)}" aria-pressed="${s.id === selShot}"><b>#${s.shotNo}</b><span>${esc(label(VLAB, s.vspin))}${s.cbErr != null ? " " + fl(s.cbErr, 1) + uName() : ""}${s.inZone === 1 ? " ✓" : s.inZone === 0 ? " ✗" : ""}</span></button>`).join("");
   $("scTip").textContent = one ? shotLine(one) : `${all.length} shots shown. Tap a ball or a shot in the list to see it on its own.`;
   $("shotAll").hidden = !one;
   if (one) {
@@ -962,11 +1089,12 @@ function drawScatter(list) {
 }
 function drawStrip(list) {
   const svg = $("strip"); const pts = list.filter(s => s.pocketOff != null);
-  const Wd = 340, H = 120, pad = 22, lim = 3;
-  const x = v => pad + (Math.max(-lim, Math.min(lim, v)) + lim) / (2 * lim) * (Wd - 2 * pad);
+  const Wd = 340, H = 120, pad = 22, m = isMetric(), lim = m ? 7 : 3;     // axis in the display unit
+  const x = v => pad + (Math.max(-lim, Math.min(lim, toU(v))) + lim) / (2 * lim) * (Wd - 2 * pad);
   const half = settings.wc / 2;
   let g = `<rect x="${x(-half)}" y="14" width="${x(half) - x(-half)}" height="${H - 40}" rx="4" fill="var(--accent-soft)"/>`;
-  for (let k = -lim; k <= lim; k++) g += `<line x1="${x(k)}" x2="${x(k)}" y1="14" y2="${H - 26}" stroke="var(--line)" stroke-width="1"/><text x="${x(k)}" y="${H - 10}" font-size="11" text-anchor="middle" fill="var(--muted)" font-family="var(--f-mono)">${k > 0 ? "+" + k : k}</text>`;
+  for (let k = -lim; k <= lim; k++) { const xi = x(fromU(k)); g += `<line x1="${xi}" x2="${xi}" y1="14" y2="${H - 26}" stroke="var(--line)" stroke-width="1"/>` + (m && k % 2 ? "" : `<text x="${xi}" y="${H - 10}" font-size="11" text-anchor="middle" fill="var(--muted)" font-family="var(--f-mono)">${k > 0 ? "+" + k : k}</text>`); }
+  g += `<text x="${Wd - 4}" y="11" font-size="10" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
   g += `<line x1="${x(0)}" x2="${x(0)}" y1="10" y2="${H - 26}" stroke="var(--ink)" stroke-width="1.5"/>`;
   // stack dots into bins so they don't overlap
   const bins = {}; const bw = .2;
@@ -986,7 +1114,7 @@ function drawStrip(list) {
   svg.onclick = e => {
     const h = e.target.closest(".hit"); if (!h) return; const s = pts[+h.dataset.i];
     if (s.result) { selShot = s.id; renderStats(); return; }
-    $("stTip").textContent = `${s.drill || "Unnamed drill"} #${s.shotNo} · ${(s.pocketOff >= 0 ? "+" : "") + fmt(s.pocketOff, 2)} in, ${fmt(s.aimErr, 2)}° · ${label(OUTCOME, s.outcome) || "no result"}`;
+    $("stTip").textContent = `${s.drill || "Unnamed drill"} #${s.shotNo} · ${sgn(s.pocketOff, 2)}, ${fmt(s.aimErr, 2)}° · ${label(OUTCOME, s.outcome) || "no result"}`;
   };
 }
 const label = (list, k) => { const r = list.find(x => String(x[0]) === String(k)); return r ? r[1] : ""; };
@@ -1004,22 +1132,54 @@ function renderShots() {
     return `<div class="shot"><span class="n">${s.shotNo}</span>
       <span class="l1">${esc(s.drill || "Unnamed drill")}${s.example ? ' <span class="pill">example</span>' : ""}</span>
       <button class="btn danger del" data-del="${esc(s.id)}">${pendingDel === s.id ? "Confirm" : "Delete"}</button>
-      <span class="l2">${esc(s.local || "")} · ${label(VSPIN, s.vspin)}, ${label(SIDE, s.side).toLowerCase()}, ${label(SPEED, s.speed).toLowerCase()} · ${POCKET_NAMES[s.pocket] || ""} ${oc ? `<span class="pill ${oc[2]}">${oc[1]}</span>` : ""}${s.cbErr != null ? ` · <span class="num">${fmt(s.cbErr, 1)} in</span>` : ""}</span></div>`;
+      <span class="l2">${esc(s.local || "")} · ${label(VLAB, s.vspin)}, ${label(SIDE, s.side).toLowerCase()}, ${speedText(s)} · ${POCKET_NAMES[s.pocket] || ""} ${oc ? `<span class="pill ${oc[2]}">${oc[1]}</span>` : ""}${s.cbErr != null ? ` · <span class="num">${fls(s.cbErr, 1)}</span>` : ""}</span></div>`;
   }).join("") + `</div>`;
 }
 
-/* ---------- table settings ---------- */
+/* ---------- settings ---------- */
+const CLOTH_PRESETS = [["#8a9399", "Grey (yours)"], ["#2f6fa6", "Tournament blue"], ["#2a86c9", "Electric blue"], ["#2e7d4f", "Green"], ["#1d5a39", "English green"],
+  ["#7a2633", "Burgundy"], ["#b23a3a", "Red"], ["#5b3c88", "Purple"], ["#b08d5f", "Camel"], ["#2a2c2e", "Black"]];
+const WOOD_PRESETS = [["#2b2723", "Dark (yours)"], ["#161514", "Black"], ["#3b2a20", "Dark walnut"], ["#5a2a1e", "Mahogany"], ["#7a3b26", "Cherry"],
+  ["#9a7148", "Oak"], ["#c59d6b", "Maple"], ["#9aa0a6", "Silver"], ["#e6e3dc", "White"]];
+const RAIL_SHADE = .835;   // cushions are covered in the same cloth, a little darker in the light
+const COLOR_ROWS = [["cloth", "Table cloth", CLOTH_PRESETS], ["cushion", "Rails (cushions)", CLOTH_PRESETS.map(([h, n]) => [shade(h, RAIL_SHADE), n])], ["rail", "Wood (outer rails)", WOOD_PRESETS]];
+function colorBlock([key, title, presets]) {
+  const cur = (settings[key] || COLOR_DEFAULTS[key]).toLowerCase();
+  return `<div class="colorblock"><span class="label">${title}</span>
+    <div class="swatches">${presets.map(([h, n]) => `<button class="sw" style="background:${h}" title="${esc(n)}" aria-label="${esc(n)}" aria-pressed="${cur === h}" data-sw="${key}" data-hex="${h}"></button>`).join("")}</div>
+    <div class="colorrow"><input type="color" id="pick-${key}" value="${cur}" aria-label="${title}: colour wheel"><input type="text" id="hex-${key}" value="${cur}" maxlength="7" spellcheck="false" autocomplete="off" aria-label="${title}: hex code"></div></div>`;
+}
+function setColor(key, hex, fromCloth) {
+  hex = hex.toLowerCase(); settings[key] = hex;
+  if (key === "cloth" && fromCloth) settings.cushion = shade(hex, RAIL_SHADE);
+  saveSettings(); applyAppearance();
+}
 function renderSettings() {
-  $("view-table").innerHTML = `
+  const m = isMetric(), u = uName(), sv = v => +fmt(toU(v), m ? 1 : 2);
+  $("view-settings").innerHTML = `
+  <div class="panel">
+    <h3>Display</h3>
+    <span class="label">Theme</span>
+    <div class="chips">${[["system", "Match phone"], ["light", "Light"], ["dark", "Dark"]].map(([k, l]) => `<button class="chip" aria-pressed="${settings.theme === k}" data-theme-set="${k}">${l}</button>`).join("")}</div>
+    <span class="label">Units</span>
+    <div class="chips">${[["imperial", "Imperial (in)"], ["metric", "Metric (cm)"]].map(([k, l]) => `<button class="chip" aria-pressed="${settings.units === k}" data-units="${k}">${l}</button>`).join("")}</div>
+    <p class="note">Units change what the app shows. The CSV always uses inches so your analysis columns stay the same.</p>
+  </div>
+  <div class="panel">
+    <h3>Table colours</h3>
+    ${COLOR_ROWS.map(colorBlock).join("")}
+    <p class="note">Picking a cloth swatch also sets the rails to a slightly darker shade of it, the way covered cushions look. Change the rails on their own after that if yours differ.</p>
+    <div class="row"><button class="btn small" id="resetColors">Back to my grey table</button></div>
+  </div>
   <div class="panel">
     <h3>Table size</h3>
     <div class="fields">
-      <label class="field">Playing length (in)<input id="sL" type="number" inputmode="decimal" step="0.5" value="${settings.L}"></label>
-      <label class="field">Playing width (in)<input id="sW" type="number" inputmode="decimal" step="0.5" value="${settings.W}"></label>
-      <label class="field">Corner pocket mouth (in)<input id="sWc" type="number" inputmode="decimal" step="0.05" value="${settings.wc}"></label>
-      <label class="field">Side pocket mouth (in)<input id="sWs" type="number" inputmode="decimal" step="0.05" value="${settings.ws}"></label>
+      <label class="field">Playing length (${u})<input id="sL" type="number" inputmode="decimal" step="${m ? 1 : .5}" value="${sv(settings.L)}"></label>
+      <label class="field">Playing width (${u})<input id="sW" type="number" inputmode="decimal" step="${m ? 1 : .5}" value="${sv(settings.W)}"></label>
+      <label class="field">Corner pocket mouth (${u})<input id="sWc" type="number" inputmode="decimal" step="${m ? .1 : .05}" value="${sv(settings.wc)}"></label>
+      <label class="field">Side pocket mouth (${u})<input id="sWs" type="number" inputmode="decimal" step="${m ? .1 : .05}" value="${sv(settings.ws)}"></label>
     </div>
-    <p class="note">Set for your Rasson Accura: 100 × 50 in cushion to cushion, 4.25 in corner and 4.75 in side pocket mouths, measured jaw tip to jaw tip.</p>
+    <p class="note">Set for your Rasson Accura: ${m ? "254 × 127 cm" : "100 × 50 in"} cushion to cushion, ${m ? "10.8 cm" : "4.25 in"} corner and ${m ? "12.1 cm" : "4.75 in"} side pocket mouths, measured jaw tip to jaw tip.</p>
   </div>
   <div class="panel">
     <h3>Zones</h3>
@@ -1029,7 +1189,7 @@ function renderSettings() {
   </div>
   <div class="panel">
     <h3>My drills</h3>
-    ${myDrills.length ? `<div class="shotlist">${myDrills.map(d => `<div class="shot"><span class="n"></span><span class="l1">${esc(d.name)}</span><button class="btn danger del" data-deldrill="${esc(d.id)}">${pendingDel === d.id ? "Confirm" : "Delete"}</button><span class="l2">${d.ob ? esc(POCKET_NAMES[d.pocket] || "") + " pocket" : "Position only"} · ${label(VSPIN, d.vspin)}</span></div>`).join("")}</div>` : `<p class="note">None yet. On the Log tab, set up the balls in Free practice and tap Save as drill.</p>`}
+    ${myDrills.length ? `<div class="shotlist">${myDrills.map(d => `<div class="shot"><span class="n"></span><span class="l1">${esc(d.name)}</span><button class="btn danger del" data-deldrill="${esc(d.id)}">${pendingDel === d.id ? "Confirm" : "Delete"}</button><span class="l2">${d.ob ? esc(POCKET_NAMES[d.pocket] || "") + " pocket" : "Position only"} · ${label(VLAB, d.tip ? vspinOf(d.tip) : d.vspin)}</span></div>`).join("")}</div>` : `<p class="note">None yet. On the Log tab, set up the balls in Free practice and tap Save as drill.</p>`}
   </div>
   <div class="panel">
     <h3>Your data</h3>
@@ -1038,11 +1198,11 @@ function renderSettings() {
   </div>
   <div class="panel">
     <h3>Coordinates in the CSV</h3>
-    <p class="note">x is inches from the left long cushion, y is inches from the head cushion, both measured to the ball's centre, with the table seen from the head end. The cut angle is + for a cut to the right. Pocket offset is + when the object ball entered right of the pocket centre, looking from where the object ball started.</p>
+    <p class="note">x is inches from the left long cushion, y is inches from the head cushion, both measured to the ball's centre, with the table seen from the head end. The cut angle is + for a cut to the right. Pocket offset is + when the object ball entered right of the pocket centre, looking from where the object ball started. Tip x and y are where the cue tip hit, in cue ball radii from centre (+ is right and up), and speed_pct is the 0 to 100% bar.</p>
   </div>`;
 }
 function applySettings() {
-  const num = (id, d, lo, hi) => { const v = parseFloat($(id).value); return isNaN(v) ? d : Math.min(hi, Math.max(lo, v)); };
+  const num = (id, d, lo, hi) => { const v = parseFloat($(id).value); return isNaN(v) ? d : Math.min(hi, Math.max(lo, fromU(v))); };
   settings.L = num("sL", 100, 40, 140); settings.W = num("sW", 50, 20, 70); settings.wc = num("sWc", 4.25, 3.5, 6); settings.ws = num("sWs", 4.75, 4, 6.5);
   saveSettings(); buildTable(); renderLog();
 }
@@ -1066,7 +1226,7 @@ function exampleShots() {
     const err = sub(result, d.target); const t = new Date(base + (k++) * 90e3); const z = zoneShape(d.target, d.tz);
     out.push({
       id: uid() + k, ts: t.toISOString(), session: sesId, tz: d.tz, inZone: inZone(result, z) ? 1 : 0, local: t.toISOString().slice(0, 16).replace("T", " "), drill: d.name, shotNo: i + 1,
-      vspin: d.vspin, side: "C", speed: 2, pocket: "FR", cb: d.cb, ob: d.ob, target: d.target,
+      vspin: d.vspin, side: "C", speed: 2, speedPct: 38 + Math.round(gauss() * 4), tip: tipFromLabels(d.vspin, "C"), pocket: "FR", cb: d.cb, ob: d.ob, target: d.target,
       result: { x: r2(result.x), y: r2(result.y) }, entry: { x: r2(entry.x), y: r2(entry.y) }, outcome,
       cut: r2(cutAngle(d.cb, d.ob, pk)), obDist: r2(len(sub(pk.c, d.ob))), cbErr: r2(len(err)), cbDx: r2(err.x), cbDy: r2(err.y),
       pocketOff: r2(offv), aimErr: r2(aimErrorDeg(offv, pk, d.ob)), notes: "", example: true,
@@ -1082,7 +1242,7 @@ let view = "log";
 function setView(v) {
   view = v;
   for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", b.dataset.view === v);
-  for (const k of ["log", "stats", "shots", "table"]) $("view-" + k).hidden = k !== v;
+  for (const k of ["log", "stats", "shots", "settings"]) $("view-" + k).hidden = k !== v;
   try { history.replaceState(null, "", v === "log" ? location.pathname + location.search : "#" + v); } catch (e) {}
   renderAll();
   window.scrollTo(0, 0);
@@ -1091,7 +1251,7 @@ function renderAll() {
   if (view === "log") renderLog();
   if (view === "stats") renderStats();
   if (view === "shots") renderShots();
-  if (view === "table") renderSettings();
+  if (view === "settings") renderSettings();
 }
 async function addExamples() {
   const ex = exampleShots();
@@ -1118,6 +1278,11 @@ document.addEventListener("click", async e => {
     renderStats(); return;
   }
   if (t.dataset.tz) { S.tz = t.dataset.tz; saveWork(); renderTools(); renderTable(); return; }
+  if (t.dataset.themeSet) { settings.theme = t.dataset.themeSet; saveSettings(); applyAppearance(); renderSettings(); return; }
+  if (t.dataset.units) { settings.units = t.dataset.units; saveSettings(); renderSettings(); return; }
+  if (t.dataset.sw) { setColor(t.dataset.sw, t.dataset.hex, true); renderSettings(); return; }
+  if (t.id === "resetColors") { Object.assign(settings, COLOR_DEFAULTS); saveSettings(); applyAppearance(); renderSettings(); return; }
+  if (t.id === "tipCentre") { setTip(0, 0); saveWork(); return; }
   if (t.dataset.g) { settings.grid = t.dataset.g; saveSettings(); buildTable(); renderSettings(); return; }
   if (t.dataset.action === "examples" || t.id === "loadEx") return addExamples();
   if (t.dataset.del) {
@@ -1168,6 +1333,27 @@ document.addEventListener("change", e => {
   if (e.target.id === "fDrill") { F.drill = e.target.value; renderStats(); }
   if (e.target.id === "fSession") { F.session = e.target.value; renderStats(); }
   if (["sL", "sW", "sWc", "sWs"].includes(e.target.id)) applySettings();
+  const id = e.target.id || "";
+  if (id.startsWith("pick-")) { setColor(id.slice(5), e.target.value, false); renderSettings(); }
+  if (id.startsWith("hex-")) {
+    let v = e.target.value.trim(); if (/^[0-9a-f]{6}$/i.test(v)) v = "#" + v;
+    if (/^#[0-9a-f]{6}$/i.test(v)) { setColor(id.slice(4), v, false); renderSettings(); } else { toast("Use a hex code like #8a9399"); renderSettings(); }
+  }
+});
+/* live preview while dragging in the colour wheel */
+document.addEventListener("input", e => {
+  const id = e.target.id || "";
+  if (id.startsWith("pick-")) { const k = id.slice(5); document.documentElement.style.setProperty("--" + k, e.target.value); const h = $("hex-" + k); if (h) h.value = e.target.value; }
+});
+$("speed").addEventListener("input", e => { S.speedPct = +e.target.value; S.speed = speedOf(S.speedPct); renderSpeed(); saveWork(); });
+const cueSvg = $("cueball");
+cueSvg.addEventListener("pointerdown", e => { e.preventDefault(); cueSvg.setPointerCapture(e.pointerId); tipDrag = e.pointerId; const p = cuePoint(e); if (p) setTip(p.x, p.y); });
+cueSvg.addEventListener("pointermove", e => { if (tipDrag !== e.pointerId) return; const p = cuePoint(e); if (p) setTip(p.x, p.y); });
+const tipEnd = e => { if (tipDrag === e.pointerId) { tipDrag = null; saveWork(); } };
+cueSvg.addEventListener("pointerup", tipEnd); cueSvg.addEventListener("pointercancel", tipEnd);
+cueSvg.addEventListener("keydown", e => {
+  const d = { ArrowUp: [0, .05], ArrowDown: [0, -.05], ArrowLeft: [-.05, 0], ArrowRight: [.05, 0] }[e.key]; if (!d) return;
+  e.preventDefault(); setTip(S.tip.x + d[0], S.tip.y + d[1]); saveWork();
 });
 $("drill").addEventListener("input", e => { S.drill = e.target.value; saveWork(); $("shotNo").textContent = "Shot " + (drillShots(S.drill).length + 1); $("undo").disabled = !drillShots(S.drill).length; });
 $("notes").addEventListener("input", e => { S.notes = e.target.value; saveWork(); });
@@ -1183,6 +1369,7 @@ const zEnd = e => { if (zDrag === e.pointerId) { zDrag = null; if (S.entry && !S
 zoom.addEventListener("pointerup", zEnd); zoom.addEventListener("pointercancel", zEnd);
 
 /* ---------- boot ---------- */
+applyAppearance();
 if (!pockets()[S.pocket]) S.pocket = "FR";
 function placeColumns() {
   const a = document.querySelector(".colA"), b = document.querySelector(".colB");
@@ -1200,7 +1387,7 @@ land = !!(LAND_MQ && LAND_MQ.matches); document.body.classList.toggle("land", la
 if (LAND_MQ) { if (LAND_MQ.addEventListener) LAND_MQ.addEventListener("change", applyOrientation); else if (LAND_MQ.addListener) LAND_MQ.addListener(applyOrientation); }
 buildTable();
 const startView = (location.hash || "").slice(1);
-setView(["stats", "shots", "table"].includes(startView) ? startView : "log");
+setView(startView === "table" ? "settings" : ["stats", "shots", "settings"].includes(startView) ? startView : "log");
 if (window.claude && typeof window.claude.use === "function") dlP = window.claude.use("downloads").catch(() => null);
 store.init();
 })();
