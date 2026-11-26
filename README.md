@@ -7,7 +7,7 @@ For each shot you mark, on a to-scale 9 ft table:
 - where the cue ball and object ball started, and which pocket you aimed at
 - where you wanted the cue ball to finish (optional target) and where it actually stopped
 - where the object ball crossed the pocket mouth, in a zoomed pocket view turned to your line of aim
-- vertical spin (draw / stun / stun-run / follow), side spin, speed, and whether the ball was made, rattled or missed
+- vertical spin (draw / stun / stun-run / centre ball / follow), side spin, speed, and whether the ball was made, rattled or missed
 
 - pick a starter drill (stop shot, stun-run, draw, tangent line, follow, lag) or save your own ball setup as a drill; drills with no object ball work for position-only practice
 
