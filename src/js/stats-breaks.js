@@ -17,9 +17,10 @@ const spotBand = s => !s.cb ? null : (x => x < 12.5 ? 0 : x < 25 ? 1 : x < 37.5 
 const SPOTS = [[0, "Left of box"], [1, "Box, left half"], [2, "Box, right half"], [3, "Right of box"]];
 function brkRows(list, f, cats) { return cats.map(([k, l]) => [l, brkSummary(list.filter(s => f(s) === k))]).filter(r => r[1].n); }
 function brkTable(title, sub, rows) {
-  return `<div class="panel"><h3>${title}</h3>${sub ? `<div class="sub">${sub}</div>` : ""}<div class="scroll"><table class="t"><thead><tr><th></th><th>Breaks</th><th>1-ball</th><th>Misses long</th><th>Avg miss</th><th>Scratch</th><th>CB centre</th></tr></thead><tbody>
+  const key = "b-" + title.toLowerCase().replace(/[^a-z]+/g, "-");
+  return `<details class="panel fold" data-fold="${key}"${foldOpen[key] ? " open" : ""}><summary><h2>${title}</h2></summary><div class="foldbody">${sub ? `<div class="sub">${sub}</div>` : ""}<div class="scroll" tabindex="0" role="region" aria-label="Table, scrolls sideways"><table class="t"><thead><tr><th></th><th>Breaks</th><th>1-ball</th><th>Misses long</th><th>Avg miss</th><th>Scratch</th><th>CB centre</th></tr></thead><tbody>
     ${rows.map(([l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.made)}</td><td>${pct(s.long)}</td><td>${s.missAvg == null ? "–" : railTxt(s.missAvg)}</td><td>${pct(s.scratch)}</td><td>${pct(s.ctl)}</td></tr>`).join("") || `<tr><td colspan="7">No breaks for this filter.</td></tr>`}
-  </tbody></table></div></div>`;
+  </tbody></table></div></div></details>`;
 }
 function renderBreakStats(v, seg) {
   const all = shots.filter(isBrk);
@@ -45,19 +46,19 @@ function renderBreakStats(v, seg) {
     <div class="tile"><span class="v">${t.ctl == null ? "–" : Math.round(t.ctl * 100)}<small>%</small></span><span class="k">cue ball in the centre section (${t.secN})</span></div>
   </div>
   <div class="panel">
-    <h3>Where the cue ball ended up</h3>
+    <h2>Where the cue ball ended up</h2>
     <div class="sub">Sections split at the 3rd and 5th diamonds. Lower is the head end, upper the foot end.</div>
     ${secBar(t)}
   </div>
   <div class="panel">
-    <h3>1-ball at the side rail</h3>
+    <h2>1-ball at the side rail</h2>
     <div class="sub">Each break where you marked the 1-ball. Short is the foot side of the pocket, long the head side. The dark band is the pocket mouth.</div>
     <svg id="brkStrip" role="img" aria-label="Where the 1-ball reached the side rail"></svg>
     <div class="legend"><span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="var(--good)"/></svg>Made</span><span><svg width="14" height="14"><circle cx="7" cy="7" r="4.5" fill="none" stroke="var(--warn)" stroke-width="2"/></svg>Rattled out</span><span><svg width="14" height="14"><path d="M3 3l8 8M11 3l-8 8" stroke="var(--bad)" stroke-width="2.2"/></svg>Missed</span></div>
     <div class="tip" id="brkStripTip"></div>
   </div>
   <div class="panel">
-    <h3>Where the cue ball finished</h3>
+    <h2>Where the cue ball finished</h2>
     <div class="sub">Breaks where you tapped the exact spot. Dashed lines mark the sections; hollow balls are where you broke from. Tap a ball for that break.</div>
     <div class="chartbox"><svg id="brkScatter" viewBox="${viewBox()}" role="img" aria-label="Cue ball finishing positions after the break"></svg></div>
     <div class="tip" id="brkScTip"></div>
@@ -88,7 +89,7 @@ function drawBrkStrip(list) {
   const step = isMetric() ? 5 / 2.54 : 3;
   for (let k = -Math.floor(lim / step); k <= Math.floor(lim / step); k++) { const xi = x(k * step); g += `<line x1="${xi}" x2="${xi}" y1="14" y2="${H - 32}" stroke="var(--line)"/><text x="${xi}" y="${H - 18}" font-size="11" text-anchor="middle" fill="var(--muted)" font-family="var(--f-mono)">${k === 0 ? 0 : (k > 0 ? "+" : "−") + Math.round(toU(Math.abs(k * step)))}</text>`; }
   g += `<line x1="${x(0)}" x2="${x(0)}" y1="10" y2="${H - 32}" stroke="var(--ink)" stroke-width="1.5"/>`;
-  g += `<text x="${pad}" y="${H - 3}" font-size="11" fill="var(--muted)">◀ Short</text><text x="${Wd - pad}" y="${H - 3}" font-size="11" text-anchor="end" fill="var(--muted)">Long ▶</text><text x="${Wd - 4}" y="11" font-size="10" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
+  g += `<text x="${pad}" y="${H - 3}" font-size="11" fill="var(--muted)">◀ Short</text><text x="${Wd - pad}" y="${H - 3}" font-size="11" text-anchor="end" fill="var(--muted)">Long ▶</text><text x="${Wd - 4}" y="11" font-size="12" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
   const bins = {}, bw = .5;
   pts.forEach((s, i) => {
     const b = Math.round(s.rail / bw); bins[b] = (bins[b] || 0) + 1; const k = bins[b] - 1;

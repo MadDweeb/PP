@@ -51,3 +51,12 @@ test("markup in numbers, points, colours or sizes never gets through", () => {
   assert.equal("mu_s" in b.tune, false);
   assert.equal(b.shots[0].notes, "fine");          // text the app escapes stays text
 });
+
+test("the at-the-table switches come back from a backup as true or false", () => {
+  const app = loadCore(), g = good(app);
+  g.settings.wakeLock = 0; g.settings.haptics = "yes"; g.settings.junk = "<b>";
+  const b = app.parseBackup(JSON.stringify(g));
+  assert.equal(b.settings.wakeLock, false);
+  assert.equal(b.settings.haptics, true);
+  assert.equal("junk" in b.settings, false);
+});

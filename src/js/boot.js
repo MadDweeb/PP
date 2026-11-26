@@ -4,7 +4,7 @@ applyAppearance();
 if (!pockets()[S.pocket]) S.pocket = "FR";
 function placeColumns() {
   const a = document.querySelector(".colA"), b = document.querySelector(".colB");
-  const top = [$("modeSeg"), document.querySelector(".drill"), $("freeRow"), $("drillInfo")];
+  const top = [$("modeSeg"), document.querySelector(".drill"), $("drillInfo")];
   if (land) b.prepend(...top); else a.prepend(...top);
 }
 function applyOrientation() {

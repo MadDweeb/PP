@@ -15,7 +15,13 @@ const clampBall = p => ({ x: Math.min(settings.W - R_BALL, Math.max(R_BALL, p.x)
 const toSvg = p => ({ x: p.x, y: settings.L - p.y });
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 let toastT;
-function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2200); }
+/* Toasts show just under the header, away from the buttons at the bottom of the screen and in the sheets. Tap one to close it. */
+function toast(msg) {
+  const t = $("toast"), top = document.querySelector(".top");
+  t.textContent = msg;
+  if (top) t.style.setProperty("--toastTop", Math.max(8, top.getBoundingClientRect().bottom + 8) + "px");
+  t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600);
+}
 
 /* ---------- units: everything is stored in inches; metric only changes what is shown ---------- */
 const isMetric = () => settings.units === "metric";

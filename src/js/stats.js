@@ -34,6 +34,8 @@ function breakdownRows(list) {
 function filtered(ignoreSession) { return shots.filter(s => !isBrk(s) && (F.drill === "__all" || (s.drill || "") === F.drill) && (F.vspin === "all" || s.vspin === F.vspin) && (ignoreSession || F.session === "__all" || sessionOf(s) === F.session)); }
 const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
 let statsMode = "shot";
+/* Detailed panels on the Stats tab start folded; this remembers which ones you opened while the app is open. */
+const foldOpen = {};
 function renderStats() {
   const v = $("view-stats");
   const hasBrk = shots.some(isBrk), hasShot = shots.some(s => !isBrk(s));
@@ -65,9 +67,15 @@ function renderStats() {
     <div class="tile"><span class="v">${t.bias == null ? "–" : (t.bias >= 0 ? "+" : "") + fl(t.bias, 2)}<small> ${uName()}</small></span><span class="k">pocket bias, spread ±${fls(t.spread, 2)}</span></div>
   </div>
   <div class="panel">
-    <h3>Session by session</h3>
+    <h2>Progress over sessions</h2>
+    <div class="sub">Oldest session on the left. Tap a dot for its numbers.</div>
+    <div class="prog" id="prog"></div>
+    <div class="tip" id="progTip"></div>
+  </div>
+  <div class="panel">
+    <h2>Session by session</h2>
     <div class="sub">Newest first, for the drill and spin picked above. Arrows compare with the session before.</div>
-    <div class="scroll"><table class="t"><thead><tr><th>Session</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th></tr></thead><tbody>
+    <div class="scroll" tabindex="0" role="region" aria-label="Table, scrolls sideways"><table class="t"><thead><tr><th>Session</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th></tr></thead><tbody>
     ${bySess.map(([x, s], i) => { const prev = bySess[i + 1] ? bySess[i + 1][1] : null;
       const arrow = (a, b, lowerBetter) => a == null || b == null || Math.abs(a - b) < 1e-9 ? "" : ((lowerBetter ? a < b : a > b) ? ' <span style="color:var(--good)">▲</span>' : ' <span style="color:var(--bad)">▼</span>');
       return `<tr${x.id === F.session ? ' style="background:var(--accent-soft)"' : ""}><td>${esc(sessionLabel(x.start))}</td><td>${s.n}</td><td>${pct(s.pot)}${prev ? arrow(s.pot, prev.pot) : ""}</td><td>${pct(s.zone)}${prev ? arrow(s.zone, prev.zone) : ""}</td><td>${fl(s.err, 1)}${prev ? arrow(s.err, prev.err, true) : ""}</td></tr>`; }).join("")}
@@ -75,44 +83,44 @@ function renderStats() {
     <p class="note">▲ is better than the session before, ▼ is worse. A new session starts automatically after 2 hours without a shot, or when you tap New session on the Log tab.</p>
   </div>
   <div class="panel">
-    <h3>Progress over sessions</h3>
-    <div class="sub">Oldest session on the left. Tap a dot for its numbers.</div>
-    <div class="prog" id="prog"></div>
-    <div class="tip" id="progTip"></div>
-  </div>
-  <div class="panel">
-    <h3>By vertical spin</h3>
-    <div class="scroll"><table class="t"><thead><tr><th>Spin</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th><th>Long/short</th><th>Bias</th><th>Spread</th></tr></thead><tbody>
-    ${vs.map(([k, l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.pot)}</td><td>${pct(s.zone)}</td><td>${fl(s.err, 1)}</td><td>${lsTxt(s.long)}</td><td>${s.bias == null ? "–" : (s.bias >= 0 ? "+" : "") + fl(s.bias, 2)}</td><td>${fl(s.spread, 2)}</td></tr>`).join("")}
-    </tbody></table></div>
-    <p class="note">Long/short and left/right are measured along the line the cue ball travelled to its target. CB miss is the distance in ${isMetric() ? "centimetres" : "inches"} between your target and where the cue ball stopped. Bias is the average pocket entry offset (+ means right of centre, seen from the object ball); spread is its standard deviation.</p>
-  </div>
-  <div class="panel">
-    <h3>Breakdown</h3>
-    <div class="chips" id="bkChips">${Object.entries(BREAKS).map(([k, [l]]) => `<button class="chip sm" aria-pressed="${BK === k}" data-bk="${k}">${l}</button>`).join("")}</div>
-    <div class="scroll"><table class="t"><thead><tr><th>${BREAKS[BK][0]}</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th><th>Long/short</th><th>Left/right</th></tr></thead><tbody>
-    ${breakdownRows(list).map(([l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.pot)}</td><td>${pct(s.zone)}</td><td>${fl(s.err, 1)}</td><td>${lsTxt(s.long)}</td><td>${sdTxt(s.side)}</td></tr>`).join("") || `<tr><td colspan="7">No shots for this filter.</td></tr>`}
-    </tbody></table></div>
-  </div>
-  <div class="panel">
-    <h3>Cue ball miss pattern</h3>
+    <h2>Cue ball miss pattern</h2>
     <div class="sub">Every shot with a target, turned so the cue ball travels up the chart. The cross is the target; the dashed ring holds about two thirds of your shots.</div>
     <svg id="miss" role="img" aria-label="Cue ball misses relative to the target"></svg>
     <div class="tip" id="missTip"></div>
   </div>
   <div class="panel">
-    <h3>Where the cue ball stopped</h3>
+    <h2>Where the cue ball stopped</h2>
     <div class="legend"><span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="#fbfaf4" stroke="#111" stroke-width="1.5"/></svg>Cue ball result</span><span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="2 2"/></svg>Target and zone</span></div>
     <div class="scwrap"><div class="chartbox"><svg id="scatter" viewBox="${viewBox()}" role="img" aria-label="Cue ball finishing positions on the table"></svg></div><div class="picker" id="picker" aria-label="Shots"></div></div>
     <div class="shotbar"><button class="btn small" id="shotPrev" aria-label="Previous shot">‹ Prev</button><button class="btn small" id="shotNext" aria-label="Next shot">Next ›</button><button class="btn small" id="shotAll">Show all</button><div class="tip" id="scTip"></div></div>
   </div>
-  <div class="panel">
-    <h3>Pocket entry offset</h3>
+  <details class="panel fold" data-fold="spin"${foldOpen.spin ? " open" : ""}>
+    <summary><h2>By vertical spin</h2></summary>
+    <div class="foldbody">
+    <div class="scroll" tabindex="0" role="region" aria-label="Table, scrolls sideways"><table class="t"><thead><tr><th>Spin</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th><th>Long/short</th><th>Bias</th><th>Spread</th></tr></thead><tbody>
+    ${vs.map(([k, l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.pot)}</td><td>${pct(s.zone)}</td><td>${fl(s.err, 1)}</td><td>${lsTxt(s.long)}</td><td>${s.bias == null ? "–" : (s.bias >= 0 ? "+" : "") + fl(s.bias, 2)}</td><td>${fl(s.spread, 2)}</td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="note">Long/short and left/right are measured along the line the cue ball travelled to its target. CB miss is the distance in ${isMetric() ? "centimetres" : "inches"} between your target and where the cue ball stopped. Bias is the average pocket entry offset (+ means right of centre, seen from the object ball); spread is its standard deviation.</p>
+    </div>
+  </details>
+  <details class="panel fold" data-fold="breakdown"${foldOpen.breakdown ? " open" : ""}>
+    <summary><h2>Breakdown</h2></summary>
+    <div class="foldbody">
+    <div class="chips" id="bkChips">${Object.entries(BREAKS).map(([k, [l]]) => `<button class="chip sm" aria-pressed="${BK === k}" data-bk="${k}">${l}</button>`).join("")}</div>
+    <div class="scroll" tabindex="0" role="region" aria-label="Table, scrolls sideways"><table class="t"><thead><tr><th>${BREAKS[BK][0]}</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th><th>Long/short</th><th>Left/right</th></tr></thead><tbody>
+    ${breakdownRows(list).map(([l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.pot)}</td><td>${pct(s.zone)}</td><td>${fl(s.err, 1)}</td><td>${lsTxt(s.long)}</td><td>${sdTxt(s.side)}</td></tr>`).join("") || `<tr><td colspan="7">No shots for this filter.</td></tr>`}
+    </tbody></table></div>
+    </div>
+  </details>
+  <details class="panel fold" data-fold="entry"${foldOpen.entry ? " open" : ""}>
+    <summary><h2>Pocket entry offset</h2></summary>
+    <div class="foldbody">
     <div class="sub">Each dot is one shot, measured across the pocket from the object ball's view. The band is the pocket mouth.</div>
     <svg id="strip" role="img" aria-label="Pocket entry offsets"></svg>
     <div class="legend"><span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="var(--good)"/></svg>Made</span><span><svg width="14" height="14"><circle cx="7" cy="7" r="4.5" fill="none" stroke="var(--warn)" stroke-width="2"/></svg>Rattled out</span><span><svg width="14" height="14"><path d="M3 3l8 8M11 3l-8 8" stroke="var(--bad)" stroke-width="2.2"/></svg>Missed</span></div>
     <div class="tip" id="stTip"></div>
-  </div>`;
+    </div>
+  </details>`;
   drawScatter(list); drawStrip(list); drawMiss(list); drawProgress(bySess.slice().reverse());
 }
 const nice = v => { const c = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 80, 100]; return c.find(x => x >= v) || Math.ceil(v / 50) * 50; };
@@ -124,9 +132,9 @@ function drawMiss(list) {
   const k = (c - pad) / lim, X = v => c + toU(v) * k, Y = v => c - toU(v) * k;
   let g = "";
   const step = nice(lim / 3);
-  for (let r = step; r <= lim + 1e-9; r += step) g += `<circle cx="${c}" cy="${c}" r="${r * k}" fill="none" stroke="var(--line)"/><text x="${c + 3}" y="${c - r * k - 3}" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">${r}</text>`;
+  for (let r = step; r <= lim + 1e-9; r += step) g += `<circle cx="${c}" cy="${c}" r="${r * k}" fill="none" stroke="var(--line)"/><text x="${c + 3}" y="${c - r * k - 3}" font-size="12" fill="var(--muted)" font-family="var(--f-mono)">${r}</text>`;
   g += `<line x1="${pad / 2}" x2="${S2 - pad / 2}" y1="${c}" y2="${c}" stroke="var(--line)"/><line y1="${pad / 2}" y2="${S2 - pad / 2}" x1="${c}" x2="${c}" stroke="var(--line)"/>`;
-  g += `<text x="${c}" y="11" font-size="11" text-anchor="middle" fill="var(--muted)">Long ↑</text><text x="${c}" y="${S2 - 3}" font-size="11" text-anchor="middle" fill="var(--muted)">Short ↓</text><text x="3" y="${c - 5}" font-size="11" fill="var(--muted)">Left</text><text x="${S2 - 3}" y="${c - 5}" font-size="11" text-anchor="end" fill="var(--muted)">Right</text><text x="${S2 - 3}" y="11" font-size="10" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
+  g += `<text x="${c}" y="11" font-size="11" text-anchor="middle" fill="var(--muted)">Long ↑</text><text x="${c}" y="${S2 - 3}" font-size="11" text-anchor="middle" fill="var(--muted)">Short ↓</text><text x="3" y="${c - 5}" font-size="11" fill="var(--muted)">Left</text><text x="${S2 - 3}" y="${c - 5}" font-size="11" text-anchor="end" fill="var(--muted)">Right</text><text x="${S2 - 3}" y="11" font-size="12" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
   pts.forEach(([s, v], i) => {
     const col = s.inZone === 1 ? "var(--good)" : s.inZone === 0 ? "var(--bad)" : "var(--ink)";
     g += `<circle cx="${X(v.side)}" cy="${Y(v.long)}" r="4" fill="${col}" fill-opacity=".75" stroke="var(--panel)" stroke-width="1.5"/>`;
@@ -154,7 +162,7 @@ function drawProgress(rows) {
   box.innerHTML = M.map(([key, name, f, top, unit]) => {
     const vals = rows.map(r => f(r[1][key])); const n = rows.length;
     const X = i => l + (n === 1 ? 0 : i * (Wd - l - r) / (n - 1)), Y = v => t + (1 - v / top) * (H - t - b);
-    let g = [0, top / 2, top].map(v => `<line x1="${l}" x2="${Wd - r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${l - 5}" y="${Y(v) + 3.5}" font-size="10" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${Math.round(v)}${unit.trim() === "%" ? "%" : ""}</text>`).join("");
+    let g = [0, top / 2, top].map(v => `<line x1="${l}" x2="${Wd - r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${l - 5}" y="${Y(v) + 3.5}" font-size="12" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${Math.round(v)}${unit.trim() === "%" ? "%" : ""}</text>`).join("");
     let d = "", pen = false;
     vals.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? "L" : "M") + X(i).toFixed(1) + " " + Y(Math.min(v, top)).toFixed(1); pen = true; });
     g += `<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
@@ -216,7 +224,7 @@ function drawStrip(list) {
   const half = settings.wc / 2;
   let g = `<rect x="${x(-half)}" y="14" width="${x(half) - x(-half)}" height="${H - 40}" rx="4" fill="var(--accent-soft)"/>`;
   for (let k = -lim; k <= lim; k++) { const xi = x(fromU(k)); g += `<line x1="${xi}" x2="${xi}" y1="14" y2="${H - 26}" stroke="var(--line)" stroke-width="1"/>` + (m && k % 2 ? "" : `<text x="${xi}" y="${H - 10}" font-size="11" text-anchor="middle" fill="var(--muted)" font-family="var(--f-mono)">${k > 0 ? "+" + k : k}</text>`); }
-  g += `<text x="${Wd - 4}" y="11" font-size="10" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
+  g += `<text x="${Wd - 4}" y="11" font-size="12" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
   g += `<line x1="${x(0)}" x2="${x(0)}" y1="10" y2="${H - 26}" stroke="var(--ink)" stroke-width="1.5"/>`;
   // stack dots into bins so they don't overlap
   const bins = {}; const bw = .2;

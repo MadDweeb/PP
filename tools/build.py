@@ -21,7 +21,7 @@ JS_ORDER = [
     "constants.js", "state.js", "util.js", "appearance.js", "geometry.js",
     "table.js", "log.js", "records.js", "csv.js", "export.js", "feedback.js",
     "backup.js", "stats.js", "stats-breaks.js", "shots-list.js", "settings-view.js",
-    "examples.js", "cutbreak.js", "simulator.js", "views.js", "events.js", "boot.js",
+    "examples.js", "cutbreak.js", "simulator.js", "views.js", "device.js", "events.js", "boot.js",
 ]
 # Files with no side effects when loaded, so the tests can load them without a page.
 CORE = ["constants.js", "util.js", "geometry.js", "csv.js", "backup.js", "stats.js", "stats-breaks.js"]
