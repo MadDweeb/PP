@@ -266,7 +266,7 @@ const store = {
       if (!db || !user) return;
       const id = await user.id();
       if (!id) return;
-      this.col = db.collection("data/users/" + id + "/shots");
+      this.col = db.collection("data/users/" + id + "/log/shots");
       this.mode = "cloud";
       $("storeNote").textContent = "Syncing to your account";
       let first = true;
