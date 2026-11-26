@@ -514,22 +514,27 @@ function staticTable() {
 }
 /* A pocket: the jaws angle in from the cushion noses, then a deep oval back.
    Drawn in table inches; the cut reaches about one ball width behind the mouth. */
+/* Cloth between the mouth line and a curve that follows the front of the hole (the user's red-line sketch). */
+function clothFill(pk, out, side) {
+  /* The curve meets each jaw edge where the hole does, and sits half that deep in the middle. */
+  const h = pk.w / 2, rh = pk.w / 2 + .15, ve = (side ? 2.3 : 2.4) - Math.sqrt(rh * rh - h * h), vc = ve / 2;
+  const cv = (h * h + ve * ve - vc * vc) / (2 * (ve - vc)), r = cv - vc;
+  const t = mul(sub(pk.p2, pk.p1), 1 / len(sub(pk.p2, pk.p1)));
+  const at = (u, v) => toSvg(add(pk.c, add(mul(t, u), mul(out, v))));
+  const pts = [at(-h, 0)];
+  for (let i = 0; i <= 24; i++) { const u = -h + 2 * h * i / 24; pts.push(at(u, cv - Math.sqrt(r * r - u * u))); }
+  pts.push(at(h, 0));
+  return pts.map(p => `${p.x.toFixed(3)},${p.y.toFixed(3)}`).join(" ");
+}
+/* Pocket as drawn in the first version: a dark channel behind the mouth and a round hole. */
 function pocketSvg(pk, side) {
-  const o = mul(pk.n, -1), a = unit(sub(pk.p2, pk.p1)), h = pk.w / 2;
-  const jaw = side ? .35 : .6;                  // facings run back from the noses to here
-  const throat = side ? h * .96 : h * .84;      // half-width where the facings end
-  const front = side ? .2 : .35;                // the hole's front edge sags toward the table by this much
-  const back = side ? 1.7 : 2.1;                // depth of the oval behind the throat
-  const P2 = (u, v) => { const q = toSvg(add(pk.c, add(mul(a, u), mul(o, v)))); return `${r2(q.x)},${r2(q.y)}`; };
-  // angled jaw facings, cloth grey, from the nose line back to the throat
-  const facing = `M${P2(-h, 0)} L${P2(h, 0)} L${P2(throat, jaw)} L${P2(-throat, jaw)} Z`;
-  // the hole: a shallow curved front edge just behind the mouth, then an oval back
-  const k = .5523;
-  const hole = `M${P2(-throat, jaw)} Q${P2(0, jaw - front * 2)} ${P2(throat, jaw)} C${P2(throat, jaw + back * k)} ${P2(throat * k, jaw + back)} ${P2(0, jaw + back)} C${P2(-throat * k, jaw + back)} ${P2(-throat, jaw + back * k)} ${P2(-throat, jaw)} Z`;
-  const m1 = toSvg(pk.p1), m2 = toSvg(pk.p2);
-  return `<path d="${facing}" fill="var(--cushion)"/>` +
-    `<path d="${hole}" fill="var(--pocket)"/>` +
-    `<line x1="${m1.x}" y1="${m1.y}" x2="${m2.x}" y2="${m2.y}" stroke="#ffffff" stroke-opacity=".3" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  const out = mul(pk.n, -1);
+  const a = toSvg(pk.p1), b = toSvg(pk.p2), a2 = toSvg(add(pk.p1, mul(out, 3))), b2 = toSvg(add(pk.p2, mul(out, 3)));
+  const hc = toSvg(add(pk.c, mul(out, side ? 2.3 : 2.4)));
+  return `<polygon points="${a.x},${a.y} ${b.x},${b.y} ${b2.x},${b2.y} ${a2.x},${a2.y}" fill="var(--pocket)"/>` +
+    `<circle cx="${hc.x}" cy="${hc.y}" r="${pk.w / 2 + .15}" fill="var(--pocket)"/>` +
+    `<polygon points="${clothFill(pk, out, side)}" fill="var(--cloth)"/>` +
+    `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#ffffff" stroke-opacity=".3" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
 }
 function ballSvg(p, kind, active) {
   const q = toSvg(p); let s = "";
