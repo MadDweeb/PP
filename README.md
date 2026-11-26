@@ -20,7 +20,7 @@ For each shot you mark, on a to-scale 9 ft table:
 
 **Backup** (Settings tab): Save backup file writes one JSON file with every shot and break, your drills, settings (table, colours, units, section order, speed bar side) and the physics tuning. Restore it from a file or by pasting it: Add keeps what is on the device and adds the records it doesn't have (matched by id); Replace deletes what is there first. Both apply the backup's settings and tuning. The CSV export is still the format for spreadsheets; it can't be read back without losing detail, so it is not a backup.
 
-**Feedback**: Send feedback (Settings, and a link at the bottom of the Log tab) opens the club Google Form with the tab you were on, the app version (`APP_VERSION` in `src/app.html`) and your phone and browser already filled in. The form was made with `create-feedback-form.gs` (a Google Apps Script) and its answers go to a Google Sheet owned by the repo owner.
+**Feedback**: Send feedback (Settings, and a link at the bottom of the Log tab) opens the club Google Form with the tab you were on, the app version (`APP_VERSION` in `src/js/feedback.js`) and your phone and browser already filled in. The form was made with `create-feedback-form.gs` (a Google Apps Script) and its answers go to a Google Sheet owned by the repo owner.
 
 Speed is a vertical bar beside the table on all three tabs (drag up for harder). The log sections (table markers, tip, hit, pocket entry and so on) have headings and can be reordered with Rearrange sections at the bottom of the Log tab, which also puts the speed bar on the left or right of the table. Each tab keeps its own order and speed bar side, saved on the device. Stats has its own Cut breaks page: 1-ball make rate, long/short miss pattern, scratch rate, where the cue ball ended up by section and on the table, and tables by break spot, speed and session.
 
@@ -44,4 +44,22 @@ Once GitHub Pages is on, the app lives at **https://maddweeb.github.io/PP/**. Op
 
 ## Develop
 
-The whole app is one file, `src/app.html`. `python3 tools/build.py` wraps it with the manifest, icons and service worker into `dist/`. Pushing to `main` deploys `dist/` to GitHub Pages through `.github/workflows/pages.yml`.
+`python3 tools/build.py` builds the app into `dist/`: `dist/index.html` is the installable app with its manifest, icons and offline service worker, and `dist/app.html` is the same app as one page fragment (the Claude preview). Pushing to `main` runs the tests, builds and deploys `dist/` to GitHub Pages (`.github/workflows/pages.yml`).
+
+`node --test tests/*.test.js` runs the tests (Node 20 or newer, no installs needed). They run on every pull request too (`.github/workflows/tests.yml`).
+
+### Code layout
+
+The app is a web app: HTML for the structure, CSS for the look, JavaScript for the behaviour. The source is split by job, and the build joins it back into one page.
+
+- `src/head.html`: page title and fonts
+- `src/styles.css`: all styles
+- `src/markup.html`: the page structure (tabs, Log sections, sheets)
+- `src/physics.js`: the ball physics engine, a standalone module the tests load directly
+- `src/js/`: the app, one file per job. The build joins them in the order listed in `JS_ORDER` in `tools/build.py`, inside one function, so they share names as if they were one file. A file can use another file's functions anywhere, but a top-level value (`const`, `let`) only from a file above it.
+  - Core files with no side effects, so the tests load them without a page: `constants.js`, `util.js` (helpers and units), `geometry.js` (pockets, zones, cut angle, pocket offset), `csv.js`, `backup.js`, `stats.js`, `stats-breaks.js`
+  - App state and storage: `state.js`
+  - Screens and drawing: `appearance.js`, `table.js`, `log.js`, `records.js`, `export.js`, `feedback.js`, `shots-list.js`, `settings-view.js`, `examples.js`, `cutbreak.js`, `simulator.js`, `views.js`
+  - Wiring and start-up: `events.js`, `boot.js`
+- `src/sw.js`, `src/manifest.webmanifest`, `src/icon-*.png`: the installable app shell
+- `tests/`: unit tests for geometry, units, CSV, backup checks, stats and physics, plus checks that the split builds
