@@ -354,8 +354,9 @@ function drawShot(anim) {
 }
 function drawBreak(anim) {
   const b = st.brk; let g = STATIC;
-  // the kitchen: cue ball goes behind the head string
+  // the kitchen (behind the head string), and the break box: head string to head rail, between the outer head-rail diamonds
   g += `<rect x="0" y="${L * .75}" width="${W}" height="${L * .25}" fill="#fff" fill-opacity=".04"/>`;
+  g += `<rect x="${W / 4}" y="${L * .75}" width="${W / 2}" height="${L * .25}" fill="#fff" fill-opacity=".05" stroke="#fff" stroke-opacity=".7" stroke-width=".22"/>`;
   if (summary && !anim && !brkResult) {
     for (const e of summary.ends) { const q = sv(e); g += `<circle cx="${q.x}" cy="${q.y}" r=".65" fill="${e.scratch ? "var(--bad)" : "#fff"}" fill-opacity=".8"/>`; }
   }
@@ -452,7 +453,7 @@ function drawCue() {
   const mm = v => Math.round(Math.abs(v) * R * 25.4);
   $("spinOff").innerHTML = `<b>${mm(t.y)} mm</b> ${t.y >= 0 ? "above" : "below"}, <b>${mm(t.x)} mm</b> ${t.x >= 0 ? "right" : "left"}` + (Math.hypot(t.x, t.y) > .5 ? `<br><span style="color:var(--bad)">Past the miscue limit</span>` : "");
 }
-const HINT = { shot: "Drag the cue ball, object ball or target ring. Tap a pocket to aim at it.", break: "Drag the cue ball anywhere behind the head string." };
+const HINT = { shot: "Drag the cue ball, object ball or target ring. Tap a pocket to aim at it.", break: "Drag the cue ball behind the head string. The white box is the break box." };
 function syncControls() {
   const c = C(), bm = brkMode();
   $("speed").value = c.speed; $("aimErr").value = c.aimErr;
