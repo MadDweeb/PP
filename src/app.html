@@ -191,6 +191,12 @@ textarea { resize: vertical; min-height: 42px; }
 section.app { margin: 0; width: 100%; max-width: none; }
 select { max-width: 100%; }
 .filters select { width: 100%; max-width: 100%; min-width: 0; text-overflow: ellipsis; padding: 8px 10px; border: 1px solid var(--line); background: var(--panel); border-radius: 9px; }
+.prog { display: grid; gap: 10px; }
+body.land .prog { grid-template-columns: repeat(3, 1fr); }
+.pm svg { width: 100%; height: auto; display: block; }
+.pmh { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--muted); }
+.pmh b { font-family: var(--f-mono); color: var(--ink); font-size: 15px; }
+#miss { width: 100%; max-width: 360px; height: auto; align-self: center; display: block; }
 .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .tile:first-child { grid-column: span 2; }
 .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
@@ -1065,7 +1071,28 @@ function summarize(list) {
   const errs = list.map(s => s.cbErr).filter(v => v != null);
   const offs = list.map(s => s.pocketOff).filter(v => v != null);
   const zs = list.filter(s => s.inZone === 0 || s.inZone === 1);
-  return { zone: zs.length ? zs.filter(s => s.inZone === 1).length / zs.length : null, zoneN: zs.length, n: list.length, pot: withOut.length ? made / withOut.length : null, potN: withOut.length, err: mean(errs), errN: errs.length, bias: mean(offs), spread: sd(offs), offN: offs.length };
+  const lr = list.map(missLR).filter(Boolean);
+  return { long: mean(lr.map(v => v.long)), side: mean(lr.map(v => v.side)), lrN: lr.length, zone: zs.length ? zs.filter(s => s.inZone === 1).length / zs.length : null, zoneN: zs.length, n: list.length, pot: withOut.length ? made / withOut.length : null, potN: withOut.length, err: mean(errs), errN: errs.length, bias: mean(offs), spread: sd(offs), offN: offs.length };
+}
+/* Cue ball miss in the shot's own frame: long (+) / short (-) along the line the cue ball
+   travelled toward its target, right (+) / left (-) across it. The cue ball leaves from the
+   object ball when there is one, otherwise from its start. */
+function missLR(s) {
+  if (s.cbDx == null || !s.target) return null;
+  const from = s.ob || s.cb; if (!from) return null;
+  const d = sub(s.target, from); const l = len(d); if (l < 3) return null;
+  const u = { x: d.x / l, y: d.y / l }, e = { x: s.cbDx, y: s.cbDy };
+  return { long: dot(e, u), side: u.y * e.x - u.x * e.y };
+}
+const cutBand = s => s.cut == null ? null : (a => a < 10 ? 0 : a < 25 ? 1 : a < 40 ? 2 : 3)(Math.abs(s.cut));
+const CUTS = [[0, "0–10°"], [1, "10–25°"], [2, "25–40°"], [3, "40°+"]];
+const BREAKS = { speed: ["Speed", s => s.speed, SPEED], side: ["Side spin", s => s.side, SIDE], cut: ["Cut angle", cutBand, CUTS] };
+let BK = "speed", progSel = null;
+const lsTxt = v => v == null ? "–" : Math.abs(v) < .05 ? "on line" : fl(Math.abs(v), 1) + " " + (v > 0 ? "long" : "short");
+const sdTxt = v => v == null ? "–" : Math.abs(v) < .05 ? "on line" : fl(Math.abs(v), 1) + " " + (v > 0 ? "right" : "left");
+function breakdownRows(list) {
+  const [, f, cats] = BREAKS[BK];
+  return cats.map(([k, l]) => [l, summarize(list.filter(s => f(s) === k))]).filter(r => r[1].n);
 }
 function filtered(ignoreSession) { return shots.filter(s => (F.drill === "__all" || (s.drill || "") === F.drill) && (F.vspin === "all" || s.vspin === F.vspin) && (ignoreSession || F.session === "__all" || sessionOf(s) === F.session)); }
 const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
@@ -1104,11 +1131,30 @@ function renderStats() {
     <p class="note">▲ is better than the session before, ▼ is worse. A new session starts automatically after 2 hours without a shot, or when you tap New session on the Log tab.</p>
   </div>
   <div class="panel">
+    <h3>Progress over sessions</h3>
+    <div class="sub">Oldest session on the left. Tap a dot for its numbers.</div>
+    <div class="prog" id="prog"></div>
+    <div class="tip" id="progTip"></div>
+  </div>
+  <div class="panel">
     <h3>By vertical spin</h3>
-    <div class="scroll"><table class="t"><thead><tr><th>Spin</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th><th>Bias</th><th>Spread</th></tr></thead><tbody>
-    ${vs.map(([k, l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.pot)}</td><td>${pct(s.zone)}</td><td>${fl(s.err, 1)}</td><td>${s.bias == null ? "–" : (s.bias >= 0 ? "+" : "") + fl(s.bias, 2)}</td><td>${fl(s.spread, 2)}</td></tr>`).join("")}
+    <div class="scroll"><table class="t"><thead><tr><th>Spin</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th><th>Long/short</th><th>Bias</th><th>Spread</th></tr></thead><tbody>
+    ${vs.map(([k, l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.pot)}</td><td>${pct(s.zone)}</td><td>${fl(s.err, 1)}</td><td>${lsTxt(s.long)}</td><td>${s.bias == null ? "–" : (s.bias >= 0 ? "+" : "") + fl(s.bias, 2)}</td><td>${fl(s.spread, 2)}</td></tr>`).join("")}
     </tbody></table></div>
-    <p class="note">CB miss is the distance in ${isMetric() ? "centimetres" : "inches"} between your target and where the cue ball stopped. Bias is the average pocket entry offset (+ means right of centre, seen from the object ball); spread is its standard deviation.</p>
+    <p class="note">Long/short and left/right are measured along the line the cue ball travelled to its target. CB miss is the distance in ${isMetric() ? "centimetres" : "inches"} between your target and where the cue ball stopped. Bias is the average pocket entry offset (+ means right of centre, seen from the object ball); spread is its standard deviation.</p>
+  </div>
+  <div class="panel">
+    <h3>Breakdown</h3>
+    <div class="chips" id="bkChips">${Object.entries(BREAKS).map(([k, [l]]) => `<button class="chip sm" aria-pressed="${BK === k}" data-bk="${k}">${l}</button>`).join("")}</div>
+    <div class="scroll"><table class="t"><thead><tr><th>${BREAKS[BK][0]}</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th><th>Long/short</th><th>Left/right</th></tr></thead><tbody>
+    ${breakdownRows(list).map(([l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.pot)}</td><td>${pct(s.zone)}</td><td>${fl(s.err, 1)}</td><td>${lsTxt(s.long)}</td><td>${sdTxt(s.side)}</td></tr>`).join("") || `<tr><td colspan="7">No shots for this filter.</td></tr>`}
+    </tbody></table></div>
+  </div>
+  <div class="panel">
+    <h3>Cue ball miss pattern</h3>
+    <div class="sub">Every shot with a target, turned so the cue ball travels up the chart. The cross is the target; the dashed ring holds about two thirds of your shots.</div>
+    <svg id="miss" role="img" aria-label="Cue ball misses relative to the target"></svg>
+    <div class="tip" id="missTip"></div>
   </div>
   <div class="panel">
     <h3>Where the cue ball stopped</h3>
@@ -1123,7 +1169,59 @@ function renderStats() {
     <div class="legend"><span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="var(--good)"/></svg>Made</span><span><svg width="14" height="14"><circle cx="7" cy="7" r="4.5" fill="none" stroke="var(--warn)" stroke-width="2"/></svg>Rattled out</span><span><svg width="14" height="14"><path d="M3 3l8 8M11 3l-8 8" stroke="var(--bad)" stroke-width="2.2"/></svg>Missed</span></div>
     <div class="tip" id="stTip"></div>
   </div>`;
-  drawScatter(list); drawStrip(list);
+  drawScatter(list); drawStrip(list); drawMiss(list); drawProgress(bySess.slice().reverse());
+}
+const nice = v => { const c = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 80, 100]; return c.find(x => x >= v) || Math.ceil(v / 50) * 50; };
+function drawMiss(list) {
+  const svg = $("miss"), pts = list.map(s => [s, missLR(s)]).filter(r => r[1]);
+  const S2 = 300, c = S2 / 2, pad = 26;
+  if (!pts.length) { svg.setAttribute("viewBox", `0 0 ${S2} 40`); svg.innerHTML = ""; $("missTip").textContent = "No shots with a target yet. Place a target on the Log tab."; return; }
+  const lim = nice(Math.max(...pts.map(([, v]) => Math.max(Math.abs(toU(v.long)), Math.abs(toU(v.side))))) * 1.05);
+  const k = (c - pad) / lim, X = v => c + toU(v) * k, Y = v => c - toU(v) * k;
+  let g = "";
+  const step = nice(lim / 3);
+  for (let r = step; r <= lim + 1e-9; r += step) g += `<circle cx="${c}" cy="${c}" r="${r * k}" fill="none" stroke="var(--line)"/><text x="${c + 3}" y="${c - r * k - 3}" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">${r}</text>`;
+  g += `<line x1="${pad / 2}" x2="${S2 - pad / 2}" y1="${c}" y2="${c}" stroke="var(--line)"/><line y1="${pad / 2}" y2="${S2 - pad / 2}" x1="${c}" x2="${c}" stroke="var(--line)"/>`;
+  g += `<text x="${c}" y="11" font-size="11" text-anchor="middle" fill="var(--muted)">Long ↑</text><text x="${c}" y="${S2 - 3}" font-size="11" text-anchor="middle" fill="var(--muted)">Short ↓</text><text x="3" y="${c - 5}" font-size="11" fill="var(--muted)">Left</text><text x="${S2 - 3}" y="${c - 5}" font-size="11" text-anchor="end" fill="var(--muted)">Right</text><text x="${S2 - 3}" y="11" font-size="10" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${uName()}</text>`;
+  pts.forEach(([s, v], i) => {
+    const col = s.inZone === 1 ? "var(--good)" : s.inZone === 0 ? "var(--bad)" : "var(--ink)";
+    g += `<circle cx="${X(v.side)}" cy="${Y(v.long)}" r="4" fill="${col}" fill-opacity=".75" stroke="var(--panel)" stroke-width="1.5"/>`;
+    g += `<circle class="hit" data-i="${i}" cx="${X(v.side)}" cy="${Y(v.long)}" r="9" fill="transparent"/>`;
+  });
+  const mL = mean(pts.map(r => r[1].long)), mS = mean(pts.map(r => r[1].side));
+  if (pts.length >= 3) {
+    const sL = sd(pts.map(r => r[1].long)), sS = sd(pts.map(r => r[1].side));
+    g += `<ellipse cx="${X(mS)}" cy="${Y(mL)}" rx="${Math.max(2, toU(sS) * k)}" ry="${Math.max(2, toU(sL) * k)}" fill="var(--accent-soft)" fill-opacity=".5" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4"/>`;
+  }
+  g += `<path d="M${c - 7} ${c}h14M${c} ${c - 7}v14" stroke="var(--ink)" stroke-width="2.5"/>`;
+  g += `<line x1="${c}" y1="${c}" x2="${X(mS)}" y2="${Y(mL)}" stroke="var(--accent)" stroke-width="2"/><circle cx="${X(mS)}" cy="${Y(mL)}" r="6" fill="var(--accent)" stroke="var(--panel)" stroke-width="2"/>`;
+  svg.setAttribute("viewBox", `0 0 ${S2} ${S2}`); svg.innerHTML = g;
+  const sum = `Average of ${pts.length}: ${lsTxt(mL)}, ${sdTxt(mS)} (big dot). Green finished in the zone, red outside. Tap a dot for that shot.`;
+  $("missTip").textContent = sum;
+  svg.onclick = e => { const h = e.target.closest(".hit"); if (!h) { $("missTip").textContent = sum; return; } const [s, v] = pts[+h.dataset.i];
+    $("missTip").textContent = `${s.drill || "Unnamed drill"} #${s.shotNo} · ${lsTxt(v.long)}, ${sdTxt(v.side)} · ${label(VLAB, s.vspin)}, ${s.speedPct != null ? s.speedPct + "%" : label(SPEED, s.speed)}`; };
+}
+function drawProgress(rows) {
+  const box = $("prog");
+  if (rows.length < 2) { box.innerHTML = ""; $("progTip").textContent = `Progress lines appear once you have two sessions for this filter (you have ${rows.length}).`; return; }
+  const maxErr = Math.max(...rows.map(r => toU(r[1].err) || 0));
+  const M = [["pot", "Pot rate", v => v == null ? null : v * 100, 100, "%"], ["zone", "Cue ball in zone", v => v == null ? null : v * 100, 100, "%"], ["err", "Avg cue ball miss", v => toU(v), nice(maxErr || 1), " " + uName()]];
+  const Wd = 320, H = 92, l = 34, r = 10, t = 10, b = 16;
+  box.innerHTML = M.map(([key, name, f, top, unit]) => {
+    const vals = rows.map(r => f(r[1][key])); const n = rows.length;
+    const X = i => l + (n === 1 ? 0 : i * (Wd - l - r) / (n - 1)), Y = v => t + (1 - v / top) * (H - t - b);
+    let g = [0, top / 2, top].map(v => `<line x1="${l}" x2="${Wd - r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${l - 5}" y="${Y(v) + 3.5}" font-size="10" text-anchor="end" fill="var(--muted)" font-family="var(--f-mono)">${Math.round(v)}${unit.trim() === "%" ? "%" : ""}</text>`).join("");
+    let d = "", pen = false;
+    vals.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? "L" : "M") + X(i).toFixed(1) + " " + Y(Math.min(v, top)).toFixed(1); pen = true; });
+    g += `<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    vals.forEach((v, i) => { if (v == null) return; const on = progSel === i;
+      g += `<circle cx="${X(i)}" cy="${Y(Math.min(v, top))}" r="${on ? 5.5 : 4}" fill="var(--accent)" stroke="var(--panel)" stroke-width="2"/><rect class="hit" data-i="${i}" x="${X(i) - 12}" y="0" width="24" height="${H}" fill="transparent"/>`; });
+    const last = vals.filter(v => v != null).pop();
+    return `<div class="pm"><div class="pmh"><span>${name}</span><b>${last == null ? "–" : (unit === "%" ? Math.round(last) : fmt(last, 1)) + unit}</b></div><svg viewBox="0 0 ${Wd} ${H}" role="img" aria-label="${name} by session">${g}</svg></div>`;
+  }).join("");
+  const tip = i => { const [x, s] = rows[i]; return `${sessionLabel(x.start)} · ${s.n} shots · pot ${pct(s.pot)} · in zone ${pct(s.zone)} · miss ${fls(s.err, 1)}`; };
+  $("progTip").textContent = progSel != null && rows[progSel] ? tip(progSel) : "The big number is your latest session.";
+  box.onclick = e => { const h = e.target.closest(".hit"); if (!h) return; progSel = +h.dataset.i; drawProgress(rows); };
 }
 let selShot = null;
 function shotLine(s) {
@@ -1348,6 +1446,7 @@ document.addEventListener("click", async e => {
     const key = t.dataset.key; let val = t.dataset.k; if (key === "speed") val = +val;
     S[key] = (key === "outcome" && S.outcome === val) ? null : val; saveWork(); renderLog(); return;
   }
+  if (t.dataset.bk) { BK = t.dataset.bk; renderStats(); return; }
   if (t.dataset.f) { F.vspin = t.dataset.f; renderStats(); return; }
   if (t.dataset.pick) { selShot = selShot === t.dataset.pick ? null : t.dataset.pick; renderStats(); return; }
   if (t.id === "shotAll") { selShot = null; renderStats(); return; }
