@@ -132,7 +132,13 @@ textarea { resize: vertical; min-height: 42px; }
 
 /* Spin: drag the tip contact point on a cue ball */
 .spinrow { display: flex; gap: 14px; align-items: center; }
-#cueball { width: 148px; height: 148px; flex: 0 0 148px; touch-action: none; user-select: none; -webkit-user-select: none; display: block; cursor: crosshair; border-radius: 50%; }
+#cueball { width: 148px; height: 148px; flex: 0 0 148px; touch-action: none; user-select: none; -webkit-user-select: none; display: block; cursor: zoom-in; border-radius: 50%; }
+#cueBig { width: min(86vw, 50vh, 360px); height: min(86vw, 50vh, 360px); margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; display: block; cursor: crosshair; border-radius: 50%; }
+.spinbig { display: flex; flex-direction: column; gap: 2px; align-items: center; text-align: center; }
+.spinbig .nm { font-family: var(--f-display); font-weight: 700; font-size: 24px; letter-spacing: .02em; }
+.spinbig .off { font-size: 14px; color: var(--muted); }
+.spinbig .off b { color: var(--ink); font-family: var(--f-mono); }
+.spinbig .warn { font-size: 13px; color: var(--bad); min-height: 1.3em; }
 .spininfo { display: flex; flex-direction: column; gap: 4px; min-width: 0; align-items: flex-start; }
 .spininfo .nm { font-family: var(--f-display); font-weight: 700; font-size: 22px; letter-spacing: .02em; line-height: 1.05; }
 .spininfo .off { font-size: 13px; color: var(--muted); }
@@ -267,9 +273,9 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
       <button class="btn primary" id="openZoom">Mark pocket entry</button>
     </div>
     <div class="group"><span class="label">Pocket result</span><div class="chips" id="outcomeChips"></div></div>
-    <div class="group"><span class="label">Spin: drag to where the tip hit the cue ball</span>
+    <div class="group"><span class="label">Spin: drag the blue point, or tap the ball to enlarge it</span>
       <div class="spinrow">
-        <svg id="cueball" viewBox="-1.3 -1.3 2.6 2.6" tabindex="0" role="slider" aria-label="Tip contact point on the cue ball. Arrow keys move it."></svg>
+        <svg id="cueball" viewBox="-1.3 -1.3 2.6 2.6" tabindex="0" role="slider" aria-label="Tip contact point on the cue ball. Tap to enlarge, or use arrow keys."></svg>
         <div class="spininfo"><span class="nm" id="spinName"></span><span class="off" id="spinOff"></span><span class="warn" id="spinWarn"></span><button class="btn small" id="tipCentre">Centre</button></div>
       </div>
     </div>
@@ -306,6 +312,18 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
     <div class="savebar">
       <button class="btn" id="zClear">Clear</button>
       <button class="btn primary big" id="zDone">Done</button>
+    </div>
+  </div>
+</div>
+<div class="sheet" id="spinSheet" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="spinTitle">
+    <h2 id="spinTitle">Where the tip hit</h2>
+    <p class="note">Touch and drag on the ball. You can start anywhere: the blue point follows your finger.</p>
+    <svg id="cueBig" viewBox="-1.3 -1.3 2.6 2.6" role="img" aria-label="Enlarged cue ball"></svg>
+    <div class="spinbig"><span class="nm" id="bigName"></span><span class="off" id="bigOff"></span><span class="warn" id="bigWarn"></span></div>
+    <div class="savebar">
+      <button class="btn" id="tipCentre2">Centre</button>
+      <button class="btn primary big" id="spinDone">Done</button>
     </div>
   </div>
 </div>
@@ -854,14 +872,15 @@ const CB_STATIC = `<defs><radialGradient id="cbShade" cx="38%" cy="32%" r="75%">
 let tipDrag = null;
 function renderSpin() {
   const t = S.tip, svg = $("cueball");
-  if (!svg.firstChild) svg.innerHTML = CB_STATIC + `<g id="cbDyn"></g>`;
+  for (const [id, dyn, gid] of [["cueball", "cbDyn", "a"], ["cueBig", "cbDynBig", "b"]]) { const el = $(id); if (!el.firstChild) el.innerHTML = CB_STATIC.replace(/cbShade/g, "cbShade" + gid) + `<g id="${dyn}"></g>`; }
   const r = Math.hypot(t.x, t.y);
-  $("cbDyn").innerHTML = (r > .02 ? `<line x1="0" y1="0" x2="${t.x}" y2="${-t.y}" stroke="var(--accent)" stroke-width=".02" stroke-opacity=".8"/>` : "") +
+  $("cbDyn").innerHTML = $("cbDynBig").innerHTML = (r > .02 ? `<line x1="0" y1="0" x2="${t.x}" y2="${-t.y}" stroke="var(--accent)" stroke-width=".02" stroke-opacity=".8"/>` : "") +
     `<circle cx="${t.x}" cy="${-t.y}" r=".23" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width=".03"/><circle cx="${t.x}" cy="${-t.y}" r=".045" fill="var(--accent)"/>`;
   $("spinName").textContent = label(VSPIN, S.vspin) + " · " + (S.side === "C" ? "no side" : label(SIDE, S.side).toLowerCase());
   const up = t.y, rt = t.x;
   $("spinOff").innerHTML = r < .005 ? "Dead centre" : `<b>${tipLen(r)}</b> from centre<br>${Math.abs(up) >= .005 ? tipLen(Math.abs(up)) + (up > 0 ? " up" : " down") : ""}${Math.abs(up) >= .005 && Math.abs(rt) >= .005 ? ", " : ""}${Math.abs(rt) >= .005 ? tipLen(Math.abs(rt)) + (rt > 0 ? " right" : " left") : ""}`;
   $("spinWarn").textContent = r > TIP_MISCUE ? "Past the miscue limit (red ring)" : "";
+  $("bigName").textContent = $("spinName").textContent; $("bigOff").innerHTML = $("spinOff").innerHTML; $("bigWarn").textContent = $("spinWarn").textContent;
   svg.setAttribute("aria-valuetext", $("spinName").textContent + ", " + tipLen(r) + " from centre");
 }
 function setTip(x, y) {
@@ -872,7 +891,7 @@ function setTip(x, y) {
   S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); renderSpin();
 }
 function cuePoint(e) {
-  const svg = $("cueball"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const svg = e.currentTarget && e.currentTarget.id === "cueball" ? $("cueball") : $("cueBig"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
   const m = svg.getScreenCTM(); if (!m) return null; const q = pt.matrixTransform(m.inverse()); return { x: q.x, y: -q.y };
 }
 function renderSpeed() {
@@ -951,8 +970,10 @@ const CSV_COLS = [
   ["table_w_in", s => s.table && s.table.W], ["table_l_in", s => s.table && s.table.L], ["notes", s => s.notes], ["is_example", s => s.example ? 1 : 0]
 ];
 function toCsv(list) {
+  // In metric, every *_in column becomes *_cm with its values converted. Tip x/y stay in ball radii.
+  const m = isMetric(), cols = CSV_COLS.map(([n, f]) => m && /_in$/.test(n) ? [n.replace(/_in$/, "_cm"), s => { const v = f(s); return v == null || v === "" ? v : r2(v * 2.54); }] : [n, f]);
   const q = v => { if (v == null) return ""; const s = String(v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  return [CSV_COLS.map(c => c[0]).join(",")].concat(list.map(s => CSV_COLS.map(c => q(c[1](s))).join(","))).join("\r\n") + "\r\n";
+  return [cols.map(c => c[0]).join(",")].concat(list.map(s => cols.map(c => q(c[1](s))).join(","))).join("\r\n") + "\r\n";
 }
 let dlP = null;
 async function exportCsv() {
@@ -1163,7 +1184,7 @@ function renderSettings() {
     <div class="chips">${[["system", "Match phone"], ["light", "Light"], ["dark", "Dark"]].map(([k, l]) => `<button class="chip" aria-pressed="${settings.theme === k}" data-theme-set="${k}">${l}</button>`).join("")}</div>
     <span class="label">Units</span>
     <div class="chips">${[["imperial", "Imperial (in)"], ["metric", "Metric (cm)"]].map(([k, l]) => `<button class="chip" aria-pressed="${settings.units === k}" data-units="${k}">${l}</button>`).join("")}</div>
-    <p class="note">Units change what the app shows. The CSV always uses inches so your analysis columns stay the same.</p>
+    <p class="note">Units apply everywhere, including the CSV: in metric its distance columns end in _cm instead of _in. If you mix exports, check the column names.</p>
   </div>
   <div class="panel">
     <h3>Table colours</h3>
@@ -1198,7 +1219,7 @@ function renderSettings() {
   </div>
   <div class="panel">
     <h3>Coordinates in the CSV</h3>
-    <p class="note">x is inches from the left long cushion, y is inches from the head cushion, both measured to the ball's centre, with the table seen from the head end. The cut angle is + for a cut to the right. Pocket offset is + when the object ball entered right of the pocket centre, looking from where the object ball started. Tip x and y are where the cue tip hit, in cue ball radii from centre (+ is right and up), and speed_pct is the 0 to 100% bar.</p>
+    <p class="note">x is ${isMetric() ? "centimetres" : "inches"} from the left long cushion, y is ${isMetric() ? "centimetres" : "inches"} from the head cushion, both measured to the ball's centre, with the table seen from the head end. The cut angle is + for a cut to the right. Pocket offset is + when the object ball entered right of the pocket centre, looking from where the object ball started. Tip x and y are where the cue tip hit, in cue ball radii from centre (+ is right and up), and speed_pct is the 0 to 100% bar.</p>
   </div>`;
 }
 function applySettings() {
@@ -1282,7 +1303,8 @@ document.addEventListener("click", async e => {
   if (t.dataset.units) { settings.units = t.dataset.units; saveSettings(); renderSettings(); return; }
   if (t.dataset.sw) { setColor(t.dataset.sw, t.dataset.hex, true); renderSettings(); return; }
   if (t.id === "resetColors") { Object.assign(settings, COLOR_DEFAULTS); saveSettings(); applyAppearance(); renderSettings(); return; }
-  if (t.id === "tipCentre") { setTip(0, 0); saveWork(); return; }
+  if (t.id === "tipCentre" || t.id === "tipCentre2") { setTip(0, 0); saveWork(); return; }
+  if (t.id === "spinDone") { $("spinSheet").hidden = true; saveWork(); return; }
   if (t.dataset.g) { settings.grid = t.dataset.g; saveSettings(); buildTable(); renderSettings(); return; }
   if (t.dataset.action === "examples" || t.id === "loadEx") return addExamples();
   if (t.dataset.del) {
@@ -1324,7 +1346,7 @@ $("zOutcome").addEventListener("click", e => {
 });
 $("sheet").addEventListener("click", e => { if (e.target.id === "sheet") { closeZoom(); saveWork(); renderLog(); } });
 document.addEventListener("keydown", e => {
-  if (e.key === "Enter" && e.target.id === "newDrillName") { e.preventDefault(); saveDrill(); return; } if (e.key === "Escape" && !$("sheet").hidden) { closeZoom(); renderLog(); } });
+  if (e.key === "Enter" && e.target.id === "newDrillName") { e.preventDefault(); saveDrill(); return; } if (e.key === "Escape" && !$("sheet").hidden) { closeZoom(); renderLog(); } if (e.key === "Escape" && !$("spinSheet").hidden) { $("spinSheet").hidden = true; saveWork(); } });
 document.addEventListener("change", e => {
   if (e.target.id === "drillSel") {
     const d = findDrill(e.target.value);
@@ -1346,12 +1368,42 @@ document.addEventListener("input", e => {
   if (id.startsWith("pick-")) { const k = id.slice(5); document.documentElement.style.setProperty("--" + k, e.target.value); const h = $("hex-" + k); if (h) h.value = e.target.value; }
 });
 $("speed").addEventListener("input", e => { S.speedPct = +e.target.value; S.speed = speedOf(S.speedPct); renderSpeed(); saveWork(); });
-const cueSvg = $("cueball");
-cueSvg.addEventListener("pointerdown", e => { e.preventDefault(); cueSvg.setPointerCapture(e.pointerId); tipDrag = e.pointerId; const p = cuePoint(e); if (p) setTip(p.x, p.y); });
+const cueSvg = $("cueball"), cueBig = $("cueBig");
+const openSpin = () => { $("spinSheet").hidden = false; renderSpin(); };
+/* Small ball: press on the blue point and drag to move it here; a tap anywhere else on the ball enlarges it. */
+let smallTouch = null;
+cueSvg.addEventListener("pointerdown", e => {
+  e.preventDefault(); const p = cuePoint(e); if (!p) return;
+  cueSvg.setPointerCapture(e.pointerId);
+  const onPoint = Math.hypot(p.x - S.tip.x, p.y - S.tip.y) < .34;
+  smallTouch = { id: e.pointerId, p, t: { x: S.tip.x, y: S.tip.y }, onPoint, moved: false };
+});
+cueSvg.addEventListener("pointermove", e => {
+  const st = smallTouch; if (!st || st.id !== e.pointerId) return; const p = cuePoint(e); if (!p) return;
+  if (Math.hypot(p.x - st.p.x, p.y - st.p.y) > .05) st.moved = true;
+  if (st.onPoint) setTip(st.t.x + p.x - st.p.x, st.t.y + p.y - st.p.y);
+});
+const smallEnd = e => {
+  const st = smallTouch; if (!st || st.id !== e.pointerId) return; smallTouch = null;
+  if (st.onPoint) { saveWork(); return; }                  // started on the point: never enlarge
+  if (!st.moved && e.type === "pointerup") openSpin();
+};
+cueSvg.addEventListener("pointerup", smallEnd); cueSvg.addEventListener("pointercancel", smallEnd);
+$("spinSheet").addEventListener("click", e => { if (e.target.id === "spinSheet") { $("spinSheet").hidden = true; saveWork(); } });
+/* Drag is relative: the point moves with the finger from wherever it lands, so the finger never hides it. */
+let tipStart = null;
+cueBig.addEventListener("pointerdown", e => { e.preventDefault(); cueBig.setPointerCapture(e.pointerId); tipDrag = e.pointerId; const p = cuePoint(e); if (p) tipStart = { p, t: { x: S.tip.x, y: S.tip.y } }; });
+cueBig.addEventListener("pointermove", e => { if (tipDrag !== e.pointerId || !tipStart) return; const p = cuePoint(e); if (p) setTip(tipStart.t.x + p.x - tipStart.p.x, tipStart.t.y + p.y - tipStart.p.y); });
 cueSvg.addEventListener("pointermove", e => { if (tipDrag !== e.pointerId) return; const p = cuePoint(e); if (p) setTip(p.x, p.y); });
-const tipEnd = e => { if (tipDrag === e.pointerId) { tipDrag = null; saveWork(); } };
-cueSvg.addEventListener("pointerup", tipEnd); cueSvg.addEventListener("pointercancel", tipEnd);
+const tipEnd = e => {
+  if (tipDrag !== e.pointerId) return; tipDrag = null;
+  // a tap without a drag puts the point where you tapped
+  const p = cuePoint(e); if (p && tipStart && Math.hypot(p.x - tipStart.p.x, p.y - tipStart.p.y) < .04) setTip(p.x, p.y);
+  tipStart = null; saveWork();
+};
+cueBig.addEventListener("pointerup", tipEnd); cueBig.addEventListener("pointercancel", tipEnd);
 cueSvg.addEventListener("keydown", e => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSpin(); return; }
   const d = { ArrowUp: [0, .05], ArrowDown: [0, -.05], ArrowLeft: [-.05, 0], ArrowRight: [.05, 0] }[e.key]; if (!d) return;
   e.preventDefault(); setTip(S.tip.x + d[0], S.tip.y + d[1]); saveWork();
 });
