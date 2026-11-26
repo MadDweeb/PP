@@ -9,6 +9,10 @@ For each shot you mark, on a to-scale 9 ft table:
 - where the object ball crossed the pocket mouth, in a zoomed pocket view turned to your line of aim
 - vertical spin (draw / stun / stun-run / follow), side spin, speed, and whether the ball was made, rattled or missed
 
+- pick a starter drill (stop shot, stun-run, draw, tangent line, follow, lag) or save your own ball setup as a drill; drills with no object ball work for position-only practice
+
+It works in portrait and landscape (the table turns sideways with controls beside it). Pockets default to the Rasson Accura's 4.25 in corners and 4.75 in sides.
+
 The app works out the cut angle, cue ball miss distance from target, pocket entry offset and aim error, shows stats by spin, and exports every shot as CSV.
 
 ## Use it
