@@ -20,6 +20,8 @@ For each shot you mark, on a to-scale 9 ft table:
 
 **Backup** (Settings tab): Save backup file writes one JSON file with every shot and break, your drills, settings (table, colours, units, section order, speed bar side) and the physics tuning. Restore it from a file or by pasting it: Add keeps what is on the device and adds the records it doesn't have (matched by id); Replace deletes what is there first. Both apply the backup's settings and tuning. The CSV export is still the format for spreadsheets; it can't be read back without losing detail, so it is not a backup.
 
+**Feedback**: Send feedback (Settings, and a link at the bottom of the Log tab) opens the club Google Form with the tab you were on, the app version (`APP_VERSION` in `src/app.html`) and your phone and browser already filled in. The form was made with `create-feedback-form.gs` (a Google Apps Script) and its answers go to a Google Sheet owned by the repo owner.
+
 Speed is a vertical bar beside the table on all three tabs (drag up for harder). The log sections (table markers, tip, hit, pocket entry and so on) have headings and can be reordered with Rearrange sections at the bottom of the Log tab, which also puts the speed bar on the left or right of the table. Each tab keeps its own order and speed bar side, saved on the device. Stats has its own Cut breaks page: 1-ball make rate, long/short miss pattern, scratch rate, where the cue ball ended up by section and on the table, and tables by break spot, speed and session.
 
 It works in portrait and landscape (the table turns sideways with controls beside it). Pockets default to the Rasson Accura's 4.25 in corners and 4.75 in sides.
