@@ -516,17 +516,19 @@ function staticTable() {
    Drawn in table inches; the cut reaches about one ball width behind the mouth. */
 function pocketSvg(pk, side) {
   const o = mul(pk.n, -1), a = unit(sub(pk.p2, pk.p1)), h = pk.w / 2;
-  const jawDepth = side ? .7 : 1.5;               // how far the facings run back from the noses
-  const throat = side ? h * .97 : h * .86;        // half-width where the facings meet the oval
-  const back = side ? 1.9 : 2.3;                  // depth of the oval beyond the throat
+  const jaw = side ? .35 : .6;                  // facings run back from the noses to here
+  const throat = side ? h * .96 : h * .84;      // half-width where the facings end
+  const front = side ? .2 : .35;                // the hole's front edge sags toward the table by this much
+  const back = side ? 1.7 : 2.1;                // depth of the oval behind the throat
   const P2 = (u, v) => { const q = toSvg(add(pk.c, add(mul(a, u), mul(o, v)))); return `${r2(q.x)},${r2(q.y)}`; };
-  // oval: cubic curves from one throat corner round the back to the other
+  // angled jaw facings, cloth grey, from the nose line back to the throat
+  const facing = `M${P2(-h, 0)} L${P2(h, 0)} L${P2(throat, jaw)} L${P2(-throat, jaw)} Z`;
+  // the hole: a shallow curved front edge just behind the mouth, then an oval back
   const k = .5523;
-  const hole = `M${P2(-h, 0)} L${P2(-throat, jawDepth)} C${P2(-throat, jawDepth + back * k)} ${P2(-throat * k, jawDepth + back)} ${P2(0, jawDepth + back)} C${P2(throat * k, jawDepth + back)} ${P2(throat, jawDepth + back * k)} ${P2(throat, jawDepth)} L${P2(h, 0)} Z`;
-  const drop = `M${P2(-throat * .78, jawDepth + .55)} C${P2(-throat * .78, jawDepth + .55 + back * .7 * k)} ${P2(-throat * .78 * k, jawDepth + .55 + back * .7)} ${P2(0, jawDepth + .55 + back * .7)} C${P2(throat * .78 * k, jawDepth + .55 + back * .7)} ${P2(throat * .78, jawDepth + .55 + back * .7 * k)} ${P2(throat * .78, jawDepth + .55)} C${P2(throat * .78, jawDepth + .2)} ${P2(-throat * .78, jawDepth + .2)} ${P2(-throat * .78, jawDepth + .55)} Z`;
+  const hole = `M${P2(-throat, jaw)} Q${P2(0, jaw - front * 2)} ${P2(throat, jaw)} C${P2(throat, jaw + back * k)} ${P2(throat * k, jaw + back)} ${P2(0, jaw + back)} C${P2(-throat * k, jaw + back)} ${P2(-throat, jaw + back * k)} ${P2(-throat, jaw)} Z`;
   const m1 = toSvg(pk.p1), m2 = toSvg(pk.p2);
-  return `<path d="${hole}" fill="#1d1d1d" stroke="#000000" stroke-opacity=".6" stroke-width="1" vector-effect="non-scaling-stroke"/>` +
-    `<path d="${drop}" fill="var(--pocket)"/>` +
+  return `<path d="${facing}" fill="var(--cushion)"/>` +
+    `<path d="${hole}" fill="var(--pocket)"/>` +
     `<line x1="${m1.x}" y1="${m1.y}" x2="${m2.x}" y2="${m2.y}" stroke="#ffffff" stroke-opacity=".3" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
 }
 function ballSvg(p, kind, active) {
