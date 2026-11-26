@@ -314,6 +314,9 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
 .bn { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: var(--f-mono); font-size: 10px; font-weight: 600; color: #111; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
 .bn i { font-style: normal; background: #fff; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; }
 .hitbtns { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.restorebox { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.restorebox p { margin: 0; font-size: 14px; }
+label.btn { cursor: pointer; display: inline-flex; align-items: center; }
 .tunebox summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--accent); padding: 2px 0; }
 .knobs { display: grid; gap: 12px; margin-top: 10px; }
 .knob { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; }
@@ -1758,20 +1761,91 @@ function toCsv(list) {
   return [cols.map(c => c[0]).join(",")].concat(list.map(s => cols.map(c => q(c[1](s))).join(","))).join("\r\n") + "\r\n";
 }
 let dlP = null;
-async function exportCsv() {
-  if (!shots.length) { toast("No shots to export yet"); return; }
-  const csv = toCsv(shots); const d = new Date();
-  const name = `pool-shots-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}.csv`;
+const dayStamp = d => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+/* save a text file: the host's save dialog when there is one, else a normal download. Returns true when saved. */
+async function saveFile(name, data, mime, what) {
   const dl = dlP ? await dlP : null;
   if (dl) {
-    try { await dl.save({ filename: name, data: csv }); toast("CSV saved"); return; }
-    catch (e) { if (e && e.code === "declined") return; if (e && e.code === "host_unavailable") { toast("This app can't save files. Use Copy CSV instead."); return; } }
+    try { await dl.save({ filename: name, data }); toast(what + " saved"); return true; }
+    catch (e) { if (e && e.code === "declined") return false; if (e && e.code === "host_unavailable") { toast(`This app can't save files. Use Copy ${what} instead.`); return false; } }
   }
   try {
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const url = URL.createObjectURL(new Blob([data], { type: mime }));
     const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-  } catch (e) { toast("Download blocked. Use Copy CSV instead."); }
+    return true;
+  } catch (e) { toast(`Download blocked. Use Copy ${what} instead.`); return false; }
+}
+async function exportCsv() {
+  if (!shots.length) { toast("No shots to export yet"); return; }
+  await saveFile(`pool-shots-${dayStamp(new Date())}.csv`, toCsv(shots), "text/csv", "CSV");
+}
+
+/* ---------- backup and restore ----------
+   One JSON file with everything: shots and breaks, your drills, settings (table, colours, units, section order)
+   and the physics tuning. CSV stays the format for spreadsheets; it can't be read back without losing detail. */
+const BACKUP_KIND = "pool-shot-log-backup", BACKUP_VERSION = 1;
+function makeBackup() {
+  const set = Object.assign({}, settings); delete set.lastBackup;
+  return { kind: BACKUP_KIND, version: BACKUP_VERSION, created: new Date().toISOString(),
+    shots: shots.map(clean), drills: myDrills.map(clean), settings: clean(set), tune: clean(ls.get(TUNE_KEY, {})) };
+}
+function backupSummary(b) {
+  const br = b.shots.filter(isBrk).length;
+  return `${b.shots.length - br} shot${b.shots.length - br === 1 ? "" : "s"}, ${br} break${br === 1 ? "" : "s"}, ${b.drills.length} drill${b.drills.length === 1 ? "" : "s"}, settings and table tuning`;
+}
+async function exportBackup() {
+  const b = makeBackup(), json = JSON.stringify(b);
+  if (await saveFile(`pool-shot-log-backup-${dayStamp(new Date())}.json`, json, "application/json", "Backup")) {
+    settings.lastBackup = b.created; saveSettings(); if (view === "settings") renderSettings();
+  }
+}
+async function copyBackup() {
+  const b = makeBackup(), json = JSON.stringify(b);
+  try { await navigator.clipboard.writeText(json); settings.lastBackup = b.created; saveSettings(); toast("Backup copied. Paste it somewhere safe."); renderSettings(); }
+  catch (e) { const ta = $("backupBox"); if (ta) { ta.hidden = false; ta.value = json; ta.select(); toast("Select all and copy"); } }
+}
+/* read and check a backup; returns it, or throws a message the person can act on */
+function parseBackup(text) {
+  let b; try { b = JSON.parse(text); } catch (e) { throw "That isn't a backup file (it isn't readable JSON)."; }
+  if (!b || b.kind !== BACKUP_KIND) throw "That file isn't a Pool Shot Log backup.";
+  if (b.version > BACKUP_VERSION) throw "That backup is from a newer version of the app. Update the app, then try again.";
+  if (!Array.isArray(b.shots) || !Array.isArray(b.drills || [])) throw "That backup is damaged: the shot list is missing.";
+  b.drills = b.drills || []; b.settings = b.settings && typeof b.settings === "object" ? b.settings : {}; b.tune = b.tune && typeof b.tune === "object" ? b.tune : {};
+  b.shots = b.shots.filter(s => s && typeof s === "object" && s.id && s.ts);
+  b.drills = b.drills.filter(d => d && typeof d === "object" && d.id && d.name);
+  return b;
+}
+let pendingRestore = null;
+async function readBackupFile(file) {
+  try { pendingRestore = parseBackup(await file.text()); }
+  catch (e) { pendingRestore = null; toast(typeof e === "string" ? e : "Could not read that file"); }
+  renderSettings();
+}
+async function applyRestore(mode) {
+  const b = pendingRestore; if (!b) return;
+  pendingRestore = null;
+  let added = 0;
+  if (mode === "replace") {
+    if (!(await store.removeMany(shots.map(s => s.id)))) { renderAll(); return; }
+    for (const d of myDrills.slice()) await store.removeDrill(d.id);
+    if (!(await store.addMany(b.shots))) { renderAll(); return; }
+    added = b.shots.length;
+    for (const d of b.drills) await store.addDrill(d);
+  } else {
+    const have = new Set(shots.map(s => s.id)), add = b.shots.filter(s => !have.has(s.id));
+    if (add.length && !(await store.addMany(add))) { renderAll(); return; }
+    added = add.length;
+    const haveD = new Set(myDrills.map(d => d.id));
+    for (const d of b.drills) if (!haveD.has(d.id)) await store.addDrill(d);
+  }
+  const keepLast = settings.lastBackup;
+  for (const k of Object.keys(settings)) delete settings[k];
+  Object.assign(settings, { W: 50, L: 100, wc: 4.25, ws: 4.75, grid: "8x4", labels: false, theme: "system", units: "imperial" }, COLOR_DEFAULTS, b.settings, { lastBackup: keepLast });
+  saveSettings();
+  ls.set(TUNE_KEY, Object.assign({}, ls.get(TUNE_KEY, {}), b.tune)); loadTune(); renderKnobs();
+  applyAppearance(); buildTable(); renderAll();
+  toast(mode === "replace" ? `Restored ${added} records from the backup` : added ? `Added ${added} records you didn't have` : "Nothing new to add: you already had every record");
 }
 async function copyCsv() {
   const csv = toCsv(shots);
@@ -2100,8 +2174,21 @@ function renderSettings() {
   </div>
   <div class="panel">
     <h3>Your data</h3>
-    <p class="note" id="dataNote">${store.mode === "cloud" ? "Shots sync to your Claude account through this page." : "Shots are stored in this browser on this device. Export a CSV now and then as a backup."}</p>
+    <p class="note" id="dataNote">${store.mode === "cloud" ? "Shots sync to your Claude account through this page." : "Shots are stored in this browser on this device. If the browser's data is cleared, they are gone, so keep a backup."}</p>
     <div class="row"><button class="btn" id="loadEx">Add 20 example shots</button><button class="btn danger" id="clearAll">${pendingDel === "__all" ? "Tap again to delete all" : "Delete all shots"}</button></div>
+  </div>
+  <div class="panel" id="backupPanel">
+    <h3>Backup</h3>
+    <p class="note">One file with everything: ${shots.filter(s => !isBrk(s)).length} shots, ${shots.filter(isBrk).length} breaks, ${myDrills.length} drills, your settings and your table tuning. Keep it in your files or cloud drive; restore it here or on a new phone. ${settings.lastBackup ? `Last backup: <b>${esc(new Date(settings.lastBackup).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }))}</b>.` : "<b>No backup yet.</b>"}</p>
+    <div class="row"><button class="btn primary" id="backupSave">Save backup file</button><button class="btn" id="backupCopy">Copy backup</button></div>
+    <textarea id="backupBox" rows="4" hidden aria-label="Backup text"></textarea>
+    <div class="row"><label class="btn" for="restoreFile">Restore from a file…</label><input type="file" id="restoreFile" accept=".json,application/json" hidden><button class="btn" id="restorePasteToggle">Paste a backup</button></div>
+    <div id="restorePaste" hidden><textarea id="restoreText" rows="4" placeholder="Paste the backup text here" aria-label="Backup text to restore"></textarea><div class="row"><button class="btn" id="restoreRead">Read it</button></div></div>
+    ${pendingRestore ? `<div class="restorebox" role="group" aria-label="Restore this backup">
+      <p><b>Backup from ${esc(new Date(pendingRestore.created).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }))}</b><br>${esc(backupSummary(pendingRestore))}.</p>
+      <p class="note">Add keeps everything here and adds the records you don't have. Replace deletes what's here first. Both use the backup's settings and tuning.</p>
+      <div class="row"><button class="btn primary" id="restoreMerge">Add to what's here</button><button class="btn danger" id="restoreReplace">${pendingDel === "__restore" ? "Tap again to replace" : "Replace everything"}</button><button class="btn" id="restoreCancel">Cancel</button></div>
+    </div>` : ""}
   </div>
   <div class="panel">
     <h3>Coordinates in the CSV</h3>
@@ -2789,6 +2876,15 @@ document.addEventListener("click", async e => {
     case "zDone": closeZoom(); saveWork(); renderLog(); return;
     case "zClear": S.entry = null; renderZoom(); return;
     case "exportCsv": return exportCsv();
+    case "backupSave": return exportBackup();
+    case "backupCopy": return copyBackup();
+    case "restorePasteToggle": $("restorePaste").hidden = !$("restorePaste").hidden; return;
+    case "restoreRead": try { pendingRestore = parseBackup($("restoreText").value.trim()); } catch (err) { pendingRestore = null; toast(typeof err === "string" ? err : "Could not read that backup"); } renderSettings(); return;
+    case "restoreCancel": pendingRestore = null; renderSettings(); return;
+    case "restoreMerge": return applyRestore("merge");
+    case "restoreReplace":
+      if (pendingDel === "__restore") { pendingDel = null; return applyRestore("replace"); }
+      pendingDel = "__restore"; clearTimeout(pendingT); pendingT = setTimeout(() => { pendingDel = null; renderSettings(); }, 3500); renderSettings(); return;
     case "copyCsv": return copyCsv();
     case "lblToggle": settings.labels = !settings.labels; saveSettings(); buildTable(); renderSettings(); return;
     case "clearEx": const ok = await store.removeMany(shots.filter(s => s.example).map(s => s.id)); renderAll(); if (ok) toast("Examples removed"); return;
@@ -2820,6 +2916,7 @@ document.addEventListener("change", e => {
     if (/^#[0-9a-f]{6}$/i.test(v)) { setColor(id.slice(4), v, false); renderSettings(); } else { toast("Use a hex code like #8a9399"); renderSettings(); }
   }
 });
+document.addEventListener("change", e => { if (e.target.id === "restoreFile" && e.target.files && e.target.files[0]) readBackupFile(e.target.files[0]); });
 /* live preview while dragging in the colour wheel */
 document.addEventListener("input", e => {
   const id = e.target.id || "";
