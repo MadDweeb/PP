@@ -74,7 +74,7 @@ button { cursor: pointer; }
 .drill input { flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid var(--line); background: var(--panel); border-radius: 9px; }
 .badge { font-family: var(--f-display); font-weight: 700; font-size: 18px; padding: 4px 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); white-space: nowrap; }
 .tablewrap { position: relative; display: flex; justify-content: center; }
-#tbl { display: block; height: min(60vh, calc((100vw - 32px) * 1.8)); max-width: 100%; aspect-ratio: 59 / 109; touch-action: none; user-select: none; -webkit-user-select: none; }
+#tbl { display: block; flex: 0 1 auto; min-width: 0; height: min(60vh, calc((100vw - 92px) * 1.8)); max-width: 100%; aspect-ratio: 59 / 109; touch-action: none; user-select: none; -webkit-user-select: none; }
 .loupe { position: absolute; top: 6px; width: 132px; height: 132px; border-radius: 50%; overflow: hidden; border: 3px solid var(--panel); box-shadow: 0 4px 18px rgba(0,0,0,.35); pointer-events: none; background: var(--rail); }
 .loupe svg { width: 100%; height: 100%; display: block; }
 .hint { font-size: 13px; color: var(--muted); min-height: 1.4em; text-align: center; }
@@ -97,7 +97,7 @@ body.land .brand .store { display: none; }
 body.land .tabs { flex: 1; max-width: 460px; margin-left: auto; }
 body.land #view-log { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr); gap: 18px; align-items: start; }
 body.land .colA { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 58px); gap: 8px; }
-body.land #tbl { height: auto; width: min(100%, calc((100dvh - 84px) * 109 / 59)); }
+body.land #tbl { height: auto; width: min(100% - 58px, calc((100dvh - 84px) * 109 / 59)); }
 body.land .tiles { grid-template-columns: repeat(5, 1fr); }
 body.land .tile:first-child { grid-column: auto; }
 body.land #scatter { height: auto; width: min(100%, 680px); }
@@ -255,17 +255,6 @@ table.t td:first-child { font-family: var(--f-body); font-weight: 500; }
 #hitBall { width: 148px; height: 80px; flex: 0 0 148px; touch-action: none; user-select: none; -webkit-user-select: none; display: block; cursor: ew-resize; }
 /* fixed height: the text changes while you drag the tip, hit or speed, and a changing height made the page jump */
 .predread { font-size: 14px; color: var(--muted); height: 2.9em; line-height: 1.45; overflow: hidden; contain: layout; display: flex; flex-direction: column; transition: opacity .15s; }
-#simWrap { display: flex; flex-direction: column; gap: 10px; }
-#simWrap[hidden] { display: none; }
-#simFrame { width: 100%; border: 0; display: block; background: var(--bg); border-radius: 12px; }
-body.simon #view-log { display: block; }
-.tunebox summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--accent); padding: 2px 0; }
-.knobs { display: grid; gap: 12px; margin-top: 10px; }
-.knob { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; }
-.knob input { grid-column: span 2; width: 100%; }
-.knob b { font-family: var(--f-mono); font-weight: 600; }
-.knob small { grid-column: span 2; color: var(--muted); font-size: 12px; }
-.tunerow { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-top: 10px; font-size: 12px; color: var(--muted); }
 .predread span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .predread.stale { opacity: .55; }
 .cards { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -287,15 +276,51 @@ body.simon #view-log { display: block; }
 .cardhead .speedread { flex: 0 0 auto; align-self: center; }
 .cards.arranging .cardhead .speedread { display: none; }
 /* cut break: tip and 1-ball hit sit side by side, compact, so they fit under the table with the speed bar */
-.cards.brk:not(.arranging) [data-card="tip"], .cards.brk:not(.arranging) [data-card="hit"] { flex: 1 1 calc(50% - 5px); }
-.cards.brk [data-card="tip"] .cardhead p, .cards.brk [data-card="hit"] .cardhead p, .cards.brk [data-card="speed"] .cardhead p { display: none; }
+.cards.brk:not(.arranging) [data-card="tip"], .cards.brk:not(.arranging) [data-card="hit"]:not([hidden]) { flex: 1 1 calc(50% - 5px); }
+.cards.brk [data-card="tip"] .cardhead p, .cards.brk [data-card="hit"] .cardhead p { display: none; }
 .cards.brk [data-card="tip"] .spinrow, .cards.brk [data-card="hit"] .spinrow { flex-direction: column; gap: 6px; align-items: center; }
 .cards.brk #cueball { width: 96px; height: 96px; flex: 0 0 auto; }
 .cards.brk #hitBall { width: 100%; max-width: 148px; height: auto; aspect-ratio: 4.8 / 2.6; flex: 0 0 auto; }
 .cards.brk .spininfo { align-items: center; text-align: center; gap: 3px; }
 .cards.brk .spininfo .nm { font-size: 16px; }
 .cards.brk .spininfo .off { display: none; }
-.cards.brk .speedread { font-size: 13px; }
+/* vertical speed bar beside the table; it can sit on either side */
+.tablewrap { gap: 10px; }
+.vspeed { flex: 0 0 48px; display: flex; flex-direction: column; align-items: center; gap: 6px; user-select: none; -webkit-user-select: none; }
+.tablewrap.vsleft .vspeed { order: -1; }
+.vsread { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.vsread b { font-family: var(--f-mono); font-size: 14px; }
+.vsread span { font-size: 11px; color: var(--muted); text-transform: lowercase; }
+.vstrack { position: relative; flex: 1; width: 30px; min-height: 160px; border-radius: 15px; background: linear-gradient(0deg, #3e9c5f 0%, #b9bd45 38%, #e39a3a 66%, #d2453b 100%); touch-action: none; cursor: ns-resize; }
+.vstrack:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.vsdim { position: absolute; left: 0; right: 0; top: 0; background: rgba(10,12,14,.42); border-radius: 15px 15px 0 0; pointer-events: none; }
+.vsthumb { position: absolute; left: -6px; right: -6px; height: 12px; margin-bottom: -6px; border-radius: 6px; background: #fff; border: 2px solid #1b1b1b; box-shadow: 0 1px 3px rgba(0,0,0,.35); pointer-events: none; }
+.vslbl { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.sidectl { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); margin-right: auto; }
+.sidectl[hidden] { display: none; }
+.seg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.seg2 button { border: 0; background: none; border-radius: 7px; padding: 7px 4px; font-weight: 600; font-size: 14px; color: var(--muted); }
+.seg2 button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+#simPreset { padding: 9px 11px; border: 1px solid var(--line); background: var(--panel); border-radius: 9px; font-weight: 600; }
+#simPreset[hidden], #simRack[hidden] { display: none; }
+.res { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+.res .k { display: block; font-size: 12px; color: var(--muted); }
+.res .v { font-family: var(--f-display); font-size: 20px; font-weight: 700; letter-spacing: .02em; line-height: 1.15; }
+.res .v.good { color: var(--good); } .res .v.warn { color: var(--warn); } .res .v.bad { color: var(--bad); }
+.res .wide { grid-column: span 2; }
+#simSum:empty { display: none; }
+#simSum h4 { margin: 6px 0 8px; font-size: 14px; }
+.bns { display: inline-flex; gap: 4px; flex-wrap: wrap; vertical-align: middle; }
+.bn { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: var(--f-mono); font-size: 10px; font-weight: 600; color: #111; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+.bn i { font-style: normal; background: #fff; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; }
+.hitbtns { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.tunebox summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--accent); padding: 2px 0; }
+.knobs { display: grid; gap: 12px; margin-top: 10px; }
+.knob { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; }
+.knob input { grid-column: span 2; width: 100%; }
+.knob b { font-family: var(--f-mono); font-weight: 600; }
+.knob small { grid-column: span 2; color: var(--muted); font-size: 12px; }
+.tunerow { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-top: 10px; font-size: 12px; color: var(--muted); }
 body.pin:not(.land) .colA { position: sticky; top: var(--pinTop, 0px); z-index: 4; background: var(--bg); padding-bottom: 6px; box-shadow: 0 6px 8px -6px rgba(0,0,0,.25); }
 body.pin:not(.land) #tbl { height: max(300px, calc(100dvh - 530px)); }
 .cardsbar[hidden] { display: none; }
@@ -320,14 +345,11 @@ body.pin:not(.land) #tbl { height: max(300px, calc(100dvh - 530px)); }
 
   <!-- LOG -->
   <section id="view-log" class="app">
-    <div id="simWrap" hidden>
-      <iframe id="simFrame" title="Ball physics simulator"></iframe>
-    </div>
     <div class="colA">
     <nav class="modeseg" id="modeSeg" role="tablist" aria-label="What you are logging">
       <button role="tab" id="modeShot" data-mode="shot">Shots</button>
       <button role="tab" id="modeBreak" data-mode="break">Cut break</button>
-      <button role="tab" id="modeSim" data-sim="1">Simulator</button>
+      <button role="tab" id="modeSim" data-mode="sim">Simulator</button>
     </nav>
     <div class="drill">
       <select id="drillSel" aria-label="Drill"></select>
@@ -342,6 +364,11 @@ body.pin:not(.land) #tbl { height: max(300px, calc(100dvh - 530px)); }
     <div class="drillinfo" id="drillInfo" hidden></div>
     <div class="tablewrap" id="tablewrap">
       <svg id="tbl" role="img" aria-label="Pool table. Tap to place balls and markers."></svg>
+      <div class="vspeed" id="vspeed">
+        <div class="vsread"><b id="vsPct">40%</b><span id="vsWord">medium</span></div>
+        <div class="vstrack" id="vsTrack" role="slider" tabindex="0" aria-label="Speed, percent of your power" aria-valuemin="0" aria-valuemax="100" aria-orientation="vertical"><div class="vsdim" id="vsDim"></div><div class="vsthumb" id="vsThumb"></div></div>
+        <div class="vslbl">Speed</div>
+      </div>
       <div class="loupe" id="loupe" hidden><svg id="loupeSvg"><g id="loupeRot"><use href="#tblContent"></use></g><g id="loupeX"></g></svg></div>
     </div>
     <div class="quickbar" id="quickbar" aria-live="polite"></div>
@@ -355,6 +382,19 @@ body.pin:not(.land) #tbl { height: max(300px, calc(100dvh - 530px)); }
           <div class="tools" id="tools"></div>
         </div>
       </section>
+      <section class="card" data-card="simset" data-only="sim" aria-labelledby="h-simset">
+        <div class="cardhead"><div><h3 id="h-simset">Shot or break</h3><p>Set up a shot or a break, then watch where the balls go. Nothing here is saved to your log.</p></div><span class="mv"></span></div>
+        <div class="cardbody">
+          <div class="seg2" role="tablist" aria-label="What to simulate"><button role="tab" data-simkind="shot" id="simKShot">Shot</button><button role="tab" data-simkind="break" id="simKBreak">Break</button></div>
+          <select id="simPreset" aria-label="Starting layout"></select>
+          <div class="chips" id="simRack"></div>
+        </div>
+      </section>
+      <section class="card" data-card="simres" data-only="sim" aria-labelledby="h-simres">
+        <div class="cardhead"><div><h3 id="h-simres">Predicted result</h3><p id="simResSub">Dashed lines on the table: white for the cue ball, coloured for the others</p></div><span class="mv"></span></div>
+        <div class="cardbody"><div class="res" id="simRes"></div><div id="simSum"></div>
+          <p class="note" style="margin:0">Top-down model: slide and roll, draw, follow and side spin, cut and spin throw, cushions with side spin, real pocket mouths. No swerve, massé, jumps or jaw facings.</p></div>
+      </section>
       <section class="card" data-card="tip" aria-labelledby="h-tip">
         <div class="cardhead"><div><h3 id="h-tip">Cue ball tip</h3><p>Drag the blue point, or tap the ball to enlarge it</p></div><span class="mv"></span></div>
         <div class="cardbody"><div class="spinrow">
@@ -362,18 +402,12 @@ body.pin:not(.land) #tbl { height: max(300px, calc(100dvh - 530px)); }
           <div class="spininfo"><span class="nm" id="spinName"></span><span class="off" id="spinOff"></span><span class="warn" id="spinWarn"></span><button class="btn small" id="tipCentre">Centre</button></div>
         </div></div>
       </section>
-      <section class="card" data-card="hit" data-only="break" aria-labelledby="h-hit">
-        <div class="cardhead"><div><h3 id="h-hit">Hit on the 1-ball</h3><p>Slide the cue ball across the 1-ball: full, 3/4, 1/2 or 1/4, left or right</p></div><span class="mv"></span></div>
+      <section class="card" data-card="hit" data-only="break sim" aria-labelledby="h-hit">
+        <div class="cardhead"><div><h3 id="h-hit">Hit on the 1-ball</h3><p id="hitSub">Slide the cue ball across the 1-ball: full, 3/4, 1/2 or 1/4, left or right</p></div><span class="mv"></span></div>
         <div class="cardbody"><div class="spinrow" id="hitRow">
           <svg id="hitBall" viewBox="-2.4 -1.3 4.8 2.6" tabindex="0" role="slider" aria-label="How full you hit the 1-ball. Drag left or right, or use arrow keys."></svg>
-          <div class="spininfo"><span class="nm" id="hitName"></span><span class="off" id="hitOff"></span><button class="btn small" id="hitFull">Full ball</button></div>
+          <div class="spininfo"><span class="nm" id="hitName"></span><span class="off" id="hitOff"></span><span class="off" id="hitNeed"></span><span class="hitbtns"><button class="btn small" id="hitFull">Full ball</button><button class="btn small" id="hitPot" hidden>Pot it</button></span></div>
         </div></div>
-      </section>
-      <section class="card" data-card="speed" aria-labelledby="h-speed">
-        <div class="cardhead"><div><h3 id="h-speed"><label for="speed">Speed</label></h3><p>Percent of your full power</p></div><div class="speedread" id="speedRead"></div><span class="mv"></span></div>
-        <div class="cardbody">
-          <div class="speedbar"><div class="sbtrack" id="sbTrack"><span>Soft</span><span>Medium</span><span>Firm</span><span>Power</span></div><div class="sbdim" id="sbDim"></div><input type="range" id="speed" min="0" max="100" step="1" aria-label="Speed, percent of your power"></div>
-        </div>
       </section>
       <section class="card" data-card="pred" data-only="break" aria-labelledby="h-pred">
         <div class="cardhead"><div><h3 id="h-pred">Predicted path</h3><p>Yellow dashes on the table. A guide only until you tune it to your table</p></div><span class="mv"></span></div>
@@ -411,7 +445,7 @@ body.pin:not(.land) #tbl { height: max(300px, calc(100dvh - 530px)); }
         <div class="cardhead"><div><h3 id="h-result">Pocket result</h3><p>Did the object ball go in?</p></div><span class="mv"></span></div>
         <div class="cardbody"><div class="chips" id="outcomeChips"></div></div>
       </section>
-      <section class="card" data-card="tune" data-only="break" aria-labelledby="h-tune">
+      <section class="card" data-card="tune" data-only="break sim" aria-labelledby="h-tune">
         <div class="cardhead"><div><h3 id="h-tune">Tune to your table</h3><p>Cloth, cushions and break speed used for the predicted path. Shared with the Simulator tab.</p></div><span class="mv"></span></div>
         <div class="cardbody"><details class="tunebox" id="tuneBox"><summary>Show the settings</summary>
           <p class="note" style="margin:8px 0 0">Every table plays differently. Break a few times, then move these until the predicted path matches where your 1-ball and cue ball really went. Saved on this device.</p>
@@ -419,12 +453,12 @@ body.pin:not(.land) #tbl { height: max(300px, calc(100dvh - 530px)); }
           <div class="tunerow"><span id="tuneState"></span><button class="btn small" id="resetKnobs">Reset to defaults</button></div>
         </details></div>
       </section>
-      <section class="card" data-card="note" aria-labelledby="h-note">
+      <section class="card" data-card="note" data-only="shot break" aria-labelledby="h-note">
         <div class="cardhead"><div><h3 id="h-note"><label for="notes" id="notesLbl">Note</label></h3><p id="notesSub">Optional</p></div><span class="mv"></span></div>
         <div class="cardbody"><textarea id="notes" rows="1" placeholder="Anything worth remembering"></textarea></div>
       </section>
     </div>
-    <div class="cardsbar"><button class="btn small" id="arrange" aria-pressed="false">Rearrange sections</button><button class="btn small" id="arrangeReset" hidden>Reset order</button></div>
+    <div class="cardsbar"><span class="sidectl" id="sideCtl" hidden>Speed bar <button class="chip sm" data-vside="left">Left</button><button class="chip sm" data-vside="right">Right</button></span><button class="btn small" id="arrangeReset" hidden>Reset order</button><button class="btn small" id="arrange" aria-pressed="false">Rearrange sections</button></div>
     <div class="sessionline"><span id="sessionText"></span><button class="btn small" id="newSession">New session</button></div>
     <div class="savebar">
       <button class="btn" id="undo">Undo last</button>
@@ -435,633 +469,6 @@ body.pin:not(.land) #tbl { height: max(300px, calc(100dvh - 530px)); }
 
   <!-- STATS -->
   <section id="view-stats" class="app" hidden></section>
-  <!-- Simulator tab: the physics prototype page, run in a frame so its ids and styles stay separate. The physics script is added when it opens. -->
-  <template id="simTpl">
-<title>Pool Physics Sim</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
-<style>
-/* Layout: phone-first single column (table on top, controls under it); landscape puts controls beside the table. Same look as Pool Shot Log. */
-:root {
-  --bg: #eef1f3; --panel: #ffffff; --ink: #161a1e; --muted: #5b646d; --line: #d6dce1;
-  --accent: #1d66c4; --accent-ink: #ffffff; --accent-soft: #dce9f8;
-  --good: #1a7f48; --warn: #a8690f; --bad: #b8382f;
-  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
-  --f-body: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
-  --cloth: #8a9399; --cushion: #737c82; --rail: #2b2723; --pocket: #0c0c0c; --diamond: #efe6cf;
-  --cbpath: #7cc4ff; --obpath: #ffd84a; --target: #a9d8ff;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #101316; --panel: #191d21; --ink: #e8ecef; --muted: #9aa3ab; --line: #2b3238;
-    --accent: #5b9ff0; --accent-ink: #08111d; --accent-soft: #1b2b40;
-    --good: #4cb97f; --warn: #d8a344; --bad: #e46b61; color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #101316; --panel: #191d21; --ink: #e8ecef; --muted: #9aa3ab; --line: #2b3238;
-  --accent: #5b9ff0; --accent-ink: #08111d; --accent-soft: #1b2b40;
-  --good: #4cb97f; --warn: #d8a344; --bad: #e46b61; color-scheme: dark;
-}
-* { box-sizing: border-box; }
-[hidden] { display: none !important; }
-html, body { background: var(--bg); color: var(--ink); }
-body {
-  font-family: var(--f-body); font-size: 15px; line-height: 1.45; margin: 0;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 0 32px; -webkit-tap-highlight-color: transparent;
-}
-body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
-button, input, select { font: inherit; color: inherit; }
-button { cursor: pointer; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.app { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
-header { padding-block: 10px 6px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); }
-h1 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 26px; letter-spacing: .02em; text-transform: uppercase; line-height: 1; }
-.tag { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--warn); border: 1px solid currentColor; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
-.main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.tablewrap { display: flex; justify-content: center; }
-#tbl { display: block; height: min(62vh, calc((100vw - 32px) * 1.8)); max-width: 100%; aspect-ratio: 59 / 109; touch-action: none; user-select: none; -webkit-user-select: none; }
-.hint { font-size: 13px; color: var(--muted); text-align: center; min-height: 1.4em; }
-.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-select, .btn { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 9px 12px; font-weight: 600; font-size: 14px; }
-select { flex: 1; min-width: 0; }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.btn.big { flex: 1; padding: 13px; font-size: 17px; font-family: var(--f-display); letter-spacing: .04em; text-transform: uppercase; }
-.btn.small { padding: 4px 10px; font-size: 13px; }
-.btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-.label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.group { display: flex; flex-direction: column; gap: 6px; }
-.spinrow { display: flex; gap: 14px; align-items: center; }
-#cueball { width: 120px; height: 120px; flex: 0 0 120px; touch-action: none; user-select: none; display: block; border-radius: 50%; }
-.spininfo { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; min-width: 0; }
-.spininfo .nm { font-family: var(--f-display); font-weight: 700; font-size: 22px; line-height: 1.05; }
-.spininfo .off { font-size: 13px; color: var(--muted); }
-.spininfo .off b, .read b { font-family: var(--f-mono); color: var(--ink); font-weight: 600; }
-.sb { position: relative; height: 42px; }
-.sbtrack { position: absolute; inset: 0; border-radius: 10px; overflow: hidden; background: linear-gradient(90deg, #3e9c5f 0%, #b9bd45 38%, #e39a3a 66%, #d2453b 100%); display: grid; grid-template-columns: repeat(4, 1fr); }
-.sbtrack span { display: flex; align-items: center; justify-content: center; font-family: var(--f-display); font-weight: 700; font-size: 16px; letter-spacing: .08em; text-transform: uppercase; color: #fff; opacity: .4; border-left: 1px solid rgba(255,255,255,.28); }
-.sbtrack span:first-child { border-left: 0; }
-.sb input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; touch-action: pan-y; }
-.sb input::-webkit-slider-runnable-track { height: 42px; background: transparent; }
-.sb input::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 50px; margin-top: -4px; border-radius: 6px; background: #fff; border: 2px solid #15181b; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
-.sb input::-moz-range-track { height: 42px; background: transparent; }
-.sb input::-moz-range-thumb { width: 12px; height: 48px; border-radius: 6px; background: #fff; border: 2px solid #15181b; }
-.read { font-size: 13px; color: var(--muted); }
-input[type="range"].plain { width: 100%; accent-color: var(--accent); }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.panel h2 { margin: 0; font-size: 15px; font-weight: 600; }
-.res { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
-.res div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.res .k { font-size: 12px; color: var(--muted); }
-.res .v { font-family: var(--f-display); font-weight: 700; font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.res .v.good { color: var(--good); } .res .v.bad { color: var(--bad); } .res .v.warn { color: var(--warn); }
-.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
-.legend span { display: inline-flex; gap: 5px; align-items: center; }
-.legend i { width: 16px; height: 0; border-top: 3px dashed; display: inline-block; }
-details.panel summary { cursor: pointer; font-weight: 600; font-size: 15px; }
-.knobs { display: grid; gap: 10px; }
-.knob { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; }
-.knob input { grid-column: span 2; }
-.knob b { font-family: var(--f-mono); font-weight: 600; }
-.knob small { grid-column: span 2; color: var(--muted); font-size: 12px; }
-.note { font-size: 13px; color: var(--muted); margin: 0; }
-body.land .app { max-width: 1180px; }
-body.land .body { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 18px; align-items: start; }
-body.land #tbl { height: calc(100dvh - 170px); min-height: 240px; }
-body.land .body { grid-template-columns: auto minmax(300px, 1fr); }
-.body { display: flex; flex-direction: column; gap: 12px; }
-</style>
-
-<style>
-.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
-.seg button { border: 0; background: none; border-radius: 7px; padding: 7px 4px; font-weight: 600; font-size: 14px; color: var(--muted); }
-.seg button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
-.balls { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; min-height: 26px; }
-.bn { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: var(--f-mono); font-size: 11px; font-weight: 600; color: #111; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
-.bn i { font-style: normal; background: #fff; border-radius: 50%; width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; }
-.res .wide { grid-column: span 2; }
-.prog { font-size: 13px; color: var(--muted); }
-</style>
-
-<div class="app">
-  <header><h1>Pool Physics Sim</h1><span class="tag">Prototype</span></header>
-  <nav class="seg" role="tablist" aria-label="Mode">
-    <button role="tab" id="mShot" data-mode="shot">Shot</button>
-    <button role="tab" id="mBreak" data-mode="break">Break</button>
-  </nav>
-  <div class="body">
-    <div class="main">
-      <div class="row" id="shotRow">
-        <select id="preset" aria-label="Starting layout"></select>
-        <button class="btn" id="obToggle" aria-pressed="true">Object ball</button>
-      </div>
-      <div class="row" id="breakRow" hidden>
-        <select id="rackSel" aria-label="Rack">
-          <option value="0">9-ball, perfect rack</option>
-          <option value="1">9-ball, tight rack (gaps up to 0.5 mm)</option>
-          <option value="2">9-ball, loose rack (gaps up to 2 mm)</option>
-        </select>
-      </div>
-      <div class="tablewrap"><svg id="tbl" role="img" aria-label="Pool table"></svg></div>
-      <div class="hint" id="hint"></div>
-      <div class="row">
-        <button class="btn" id="paths" aria-pressed="true">Show paths</button>
-        <button class="btn" id="run50" hidden>Run 50</button>
-        <button class="btn primary big" id="shoot">Shoot</button>
-      </div>
-    </div>
-    <div class="side">
-      <div class="panel" aria-live="polite">
-        <h2 id="resTitle">Predicted result</h2>
-        <div class="res" id="res"></div>
-        <div class="legend" id="legend"><span><i style="color:var(--cbpath)"></i>Cue ball</span><span><i style="color:var(--obpath)"></i>Object ball</span><span>● ring = where it stops</span></div>
-      </div>
-      <div class="panel" id="sumPanel" aria-live="polite" hidden>
-        <h2 id="sumTitle">50 breaks</h2>
-        <div class="res" id="sum"></div>
-        <p class="note">Each break gets a fresh rack and the small wobble a real stroke has (aim ±0.15°, speed ±2 %). Dots on the table show where the cue ball finished; red ones are scratches.</p>
-      </div>
-      <div class="group"><span class="label">Tip contact: drag the blue point</span>
-        <div class="spinrow">
-          <svg id="cueball" viewBox="-1.3 -1.3 2.6 2.6" tabindex="0" role="slider" aria-label="Tip contact point. Arrow keys move it."></svg>
-          <div class="spininfo"><span class="nm" id="spinName"></span><span class="off" id="spinOff"></span><button class="btn small" id="tipCentre">Centre</button></div>
-        </div>
-      </div>
-      <div class="group"><label class="label" for="speed">Speed</label>
-        <div class="sb"><div class="sbtrack"><span>Soft</span><span>Medium</span><span>Firm</span><span>Power</span></div><input type="range" id="speed" min="0" max="100" step="1" value="35"></div>
-        <div class="read" id="speedRead"></div>
-      </div>
-      <div class="group"><label class="label" for="aimErr" id="aimLabel">Aim error (thicker ← → thinner)</label>
-        <input type="range" class="plain" id="aimErr" min="-30" max="30" step="1" value="0">
-        <div class="read" id="aimRead"></div>
-      </div>
-      <details class="panel" id="tune">
-        <summary>Tune to your table</summary>
-        <p class="note">Every table plays differently. Shoot a few real shots, then move these until the sim matches what your cue ball did. Saved in this browser.</p>
-        <div class="knobs" id="knobs"></div>
-        <button class="btn" id="resetKnobs">Reset to defaults</button>
-      </details>
-      <p class="note">Top-down model: slide and roll on the cloth, draw/follow/side spin, cut and spin throw, cushions with side spin, real pocket mouths. It does not model swerve, massé, jump shots, a cue ball that leaves the cloth on the break, or jaw facings.</p>
-    </div>
-  </div>
-</div>
-
-<script data-physics></script>
-<script>
-(() => {
-"use strict";
-const PP = window.PoolPhysics, R = PP.R;
-const $ = id => document.getElementById(id);
-const W = 50, L = 100, RAIL = 4.5, wc = 4.25, ws = 4.75;
-const fmt = (v, d = 1) => v == null || isNaN(v) ? "–" : v.toFixed(d);
-const pct = v => Math.round(v * 100) + "%";
-const ls = {
-  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-};
-
-/* Starting layouts: the same starter drills as the shot log. x from the left cushion, y from the head cushion (inches). */
-const DIAG = t => ({ x: 50 * t, y: 100 * t });
-const PRESETS = [
-  { name: "Stop shot, straight in", cb: DIAG(.5), ob: DIAG(.75), target: { x: 36.99, y: 73.99 }, pocket: "FR", tip: { x: 0, y: -.5 }, speed: 36 },
-  { name: "Stun-follow 1 ft, straight in", cb: DIAG(.5), ob: DIAG(.75), target: { x: 42.36, y: 84.72 }, pocket: "FR", tip: { x: 0, y: -.25 }, speed: 35 },
-  { name: "Draw back 2 ft, straight in", cb: DIAG(.4), ob: DIAG(.75), target: { x: 26.26, y: 52.52 }, pocket: "FR", tip: { x: 0, y: -.5 }, speed: 49 },
-  { name: "Stun along the tangent line", cb: { x: 40.3, y: 52 }, ob: { x: 40, y: 82 }, target: { x: 21.2, y: 89.2 }, pocket: "FR", tip: { x: 0, y: -.35 }, speed: 53 },
-  { name: "Follow to the foot rail", cb: { x: 18, y: 30 }, ob: { x: 42, y: 46 }, target: { x: 30, y: 92 }, pocket: "SR", tip: { x: 0, y: .2 }, speed: 52 },
-  { name: "Lag to the head rail", cb: { x: 25, y: 25 }, ob: null, target: { x: 25, y: 2.5 }, pocket: "FR", tip: { x: 0, y: .15 }, speed: 57 }
-];
-const KNOBS = [
-  ["mu_r", "Cloth speed (rolling resistance)", .004, .02, .0005, 4, "Lower = faster cloth. Tune with a lag: the ball should stop where yours does."],
-  ["mu_s", "Sliding friction", .1, .35, .01, 2, "How fast stun and draw wear off. Higher = draw fades sooner."],
-  ["e_c", "Cushion bounce", .55, .95, .01, 2, "How lively the rails are."],
-  ["mu_c", "Cushion grip", 0, .4, .01, 2, "How much side spin changes the angle off a rail."],
-  ["mu_sp", "Side spin fade", .005, .06, .001, 3, "How quickly side spin dies on the cloth."],
-  ["e_b", "Ball bounce", .85, .99, .01, 2, "Ball-on-ball restitution."],
-  ["vmax", "Top speed at 100 %", 180, 400, 5, 0, "Shot mode, in inches per second (300 ≈ 7.6 m/s)."],
-  ["vbreak", "Top break speed at 100 %", 300, 520, 5, 0, "Break mode, in inches per second (420 ≈ 24 mph)."],
-  ["squirt", "Squirt at half-tip side", 0, 4, .1, 1, "Degrees the cue ball pushes off line with side. Low-deflection shafts ≈ 1."]
-];
-const params = Object.assign({}, PP.DEFAULTS, ls.get("psim.params", {}));
-const BRK0 = { cb: { x: 25, y: 22 }, tip: { x: 0, y: -.1 }, speed: 92, aimErr: 0, rack: 1, seed: 1 };
-const st = Object.assign({ mode: "shot", preset: 0, cb: null, ob: null, target: null, pocket: "FR", tip: { x: 0, y: 0 }, speed: 35, aimErr: 0, showOb: true, paths: true }, ls.get("psim.state", {}));
-st.brk = Object.assign({}, BRK0, st.brk || {});
-if (!st.cb) loadPreset(0, false);
-const brkMode = () => st.mode === "break";
-const C = () => brkMode() ? st.brk : st;          // the settings the shared controls change
-
-function loadPreset(i, render = true) {
-  const p = PRESETS[i]; st.preset = i;
-  st.cb = { ...p.cb }; st.ob = p.ob ? { ...p.ob } : { x: 40, y: 75 }; st.showOb = !!p.ob;
-  st.target = { ...p.target }; st.pocket = p.pocket; st.tip = { ...p.tip }; st.speed = p.speed; st.aimErr = 0;
-  if (render) { syncControls(); update(); }
-}
-const save = () => { ls.set("psim.state", st); ls.set("psim.params", params); };
-
-/* ---------- shot mode: aim ---------- */
-const geo = PP.geometry(params);
-function aimInfo() {
-  if (st.showOb) {
-    const m = geo.pockets[st.pocket].c;
-    const ux = m.x - st.ob.x, uy = m.y - st.ob.y, l = Math.hypot(ux, uy);
-    const ghost = { x: st.ob.x - ux / l * 2 * R, y: st.ob.y - uy / l * 2 * R };
-    const base = Math.atan2(ghost.y - st.cb.y, ghost.x - st.cb.x);
-    let cut = (Math.atan2(uy, ux) - base) * 180 / Math.PI; cut = ((cut + 540) % 360) - 180;
-    // aim error: positive = thinner, i.e. rotate the aim away from the object ball centre
-    const toOb = Math.atan2(st.ob.y - st.cb.y, st.ob.x - st.cb.x);
-    const sideSign = Math.sign(((base - toOb + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) || 1;
-    return { aim: base + sideSign * st.aimErr / 10 * Math.PI / 180, ghost, cut, pocketC: m };
-  }
-  return { aim: Math.atan2(st.target.y - st.cb.y, st.target.x - st.cb.x) + st.aimErr / 10 * Math.PI / 180, ghost: null, cut: null };
-}
-let result = null;
-function runShot() {
-  const a = aimInfo();
-  const balls = [{ id: "cb", ...st.cb }]; if (st.showOb) balls.push({ id: "ob", ...st.ob });
-  result = PP.simulate({ balls, cue: 0, aim: a.aim, tip: st.tip, speed: st.speed / 100 }, params);
-  result.aim = a;
-}
-
-/* ---------- break mode: rack and break ---------- */
-const GAPS = [0.002, 0.02, 0.08];                // largest gap between racked balls, inches
-function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-/* 9-ball diamond: 1 on the foot spot at the apex, 9 in the middle, the rest in random order */
-function rack9(seed, gap) {
-  const rnd = rng(seed), d = 2 * R + gap, rows = [1, 2, 3, 2, 1], out = [];
-  const rest = [2, 3, 4, 5, 6, 7, 8];
-  for (let i = rest.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [rest[i], rest[j]] = [rest[j], rest[i]]; }
-  rows.forEach((n, r) => {
-    for (let i = 0; i < n; i++) {
-      const num = r === 0 ? 1 : r === 2 && i === 1 ? 9 : rest.pop();
-      const jx = (rnd() - .5) * gap * .7, jy = (rnd() - .5) * gap * .7;
-      out.push({ id: "b" + num, n: num, x: W / 2 + (i - (n - 1) / 2) * d + jx, y: L * .75 + r * d * Math.sqrt(3) / 2 + jy });
-    }
-  });
-  return out;
-}
-function breakAim(b, cb) {
-  const head = { x: W / 2, y: L * .75 }, dist = Math.hypot(head.x - cb.x, head.y - cb.y);
-  const off = b.aimErr / 2 / 25.4;               // slider is half-millimetres; + = cue ball passes right of the 1-ball centre
-  return Math.atan2(head.y - cb.y, head.x - cb.x) - Math.asin(Math.max(-1, Math.min(1, off / dist)));
-}
-const bparams = () => Object.assign({}, params, { vmax: params.vbreak });
-function simBreak(b, seed, jitter) {
-  const j = jitter ? () => Math.random() * 2 - 1 : () => 0;
-  const rack = rack9(seed, GAPS[b.rack]);
-  const aim = breakAim(b, b.cb) + j() * .15 * Math.PI / 180;
-  const speed = Math.max(0, Math.min(1, b.speed / 100 * (1 + j() * .02)));
-  const tip = { x: b.tip.x + j() * .02, y: b.tip.y + j() * .02 };
-  const r = PP.simulate({ balls: [{ id: "cb", ...b.cb }, ...rack], cue: 0, aim, tip, speed, tMax: 30, seed }, bparams());
-  r.balls.forEach((x, i) => { x.n = i === 0 ? 0 : rack[i - 1].n; });
-  return r;
-}
-function breakStats(r) {
-  const cb = r.balls[0], obs = r.balls.slice(1);
-  const made = obs.filter(b => b.potted && b.potted !== "off");
-  const railed = obs.filter(b => b.potted || b.events.some(e => e.type === "cushion")).length;
-  return { made, nine: made.some(b => b.n === 9), scratch: !!cb.potted, legal: railed >= 4 || made.length > 0, railed, cb };
-}
-let brkResult = null, summary = null, runToken = 0;
-
-/* ---------- drawing ---------- */
-const tbl = $("tbl");
-tbl.setAttribute("viewBox", `${-RAIL} ${-RAIL} ${W + 2 * RAIL} ${L + 2 * RAIL}`);
-const sv = p => ({ x: p.x, y: L - p.y });              // head end at the bottom of the screen
-function staticTable() {
-  let g = `<rect x="${-RAIL}" y="${-RAIL}" width="${W + 2 * RAIL}" height="${L + 2 * RAIL}" rx="2.2" fill="var(--rail)"/>`;
-  g += `<rect x="-1.1" y="-1.1" width="${W + 2.2}" height="${L + 2.2}" fill="var(--cushion)"/><rect x="0" y="0" width="${W}" height="${L}" fill="var(--cloth)"/>`;
-  g += `<line x1="0" y1="${L * .75}" x2="${W}" y2="${L * .75}" stroke="#fff" stroke-opacity=".28" stroke-dasharray="1.5 1.5" stroke-width=".25"/>`;
-  g += `<circle cx="${W / 2}" cy="${L * .25}" r=".35" fill="#fff" fill-opacity=".55"/><circle cx="${W / 2}" cy="${L * .75}" r=".35" fill="#fff" fill-opacity=".55"/>`;
-  for (const k in geo.pockets) {
-    const m = geo.pockets[k], side = k[0] === "S", r = (side ? ws : wc) / 2;
-    const o = sv({ x: m.c.x + m.n.x * (side ? 1.6 : 1.2), y: m.c.y + m.n.y * (side ? 1.6 : 1.2) });
-    const p1 = sv(m.p1), p2 = sv(m.p2);
-    g += `<path d="M${p1.x} ${p1.y} L${p2.x} ${p2.y} L${o.x} ${o.y} Z" fill="var(--pocket)"/><circle cx="${o.x}" cy="${o.y}" r="${r}" fill="var(--pocket)"/>`;
-  }
-  const off = RAIL * .55 + .6; let d = "";
-  for (let k = 1; k < 8; k++) { if (k === 4) continue; const y = L / 8 * k; d += `<circle cx="${-off}" cy="${y}" r=".42"/><circle cx="${W + off}" cy="${y}" r=".42"/>`; }
-  for (let k = 1; k < 4; k++) { const x = W / 4 * k; d += `<circle cx="${x}" cy="${-off}" r=".42"/><circle cx="${x}" cy="${L + off}" r=".42"/>`; }
-  return g + `<g fill="var(--diamond)">${d}</g>`;
-}
-const STATIC = staticTable();
-const pathD = pts => pts.map((p, i) => { const q = sv(p); return (i ? "L" : "M") + q.x.toFixed(2) + " " + q.y.toFixed(2); }).join("");
-function ball(p, fill, extra = "") { const q = sv(p); return `<circle cx="${q.x}" cy="${q.y}" r="${R}" fill="${fill}" stroke="#000" stroke-opacity=".35" stroke-width=".12" ${extra}/>`; }
-const BCOL = { 1: "#f2c300", 2: "#1f4fbf", 3: "#d0302a", 4: "#6a2c91", 5: "#ef7d1a", 6: "#1d8a4a", 7: "#7a1f1f", 8: "#151515", 9: "#f2c300" };
-function nball(p, n) {
-  if (!n) return ball(p, "#f7f5ee");
-  const q = sv(p);
-  let g = n === 9
-    ? `<circle cx="${q.x}" cy="${q.y}" r="${R}" fill="#f7f5ee" stroke="#000" stroke-opacity=".35" stroke-width=".12"/><rect x="${q.x - R * .98}" y="${q.y - R * .55}" width="${R * 1.96}" height="${R * 1.1}" fill="${BCOL[9]}"/>`
-    : `<circle cx="${q.x}" cy="${q.y}" r="${R}" fill="${BCOL[n]}" stroke="#000" stroke-opacity=".35" stroke-width=".12"/>`;
-  return g + `<circle cx="${q.x}" cy="${q.y}" r=".5" fill="#fff"/><text x="${q.x}" y="${q.y + .02}" font-size=".66" font-family="var(--f-mono)" font-weight="600" text-anchor="middle" dominant-baseline="central" fill="#111">${n}</text>`;
-}
-const bcol = n => n ? (n === 9 ? "#f2c300" : BCOL[n]) : "var(--cbpath)";
-
-function drawShot(anim) {
-  let g = STATIC;
-  const r = result, a = r.aim;
-  const tq = sv(st.target);
-  g += `<circle cx="${tq.x}" cy="${tq.y}" r="3" fill="var(--target)" fill-opacity=".18" stroke="var(--target)" stroke-width=".25" stroke-dasharray=".8 .6"/><circle cx="${tq.x}" cy="${tq.y}" r=".35" fill="var(--target)"/>`;
-  if (a.ghost) {
-    const gq = sv(a.ghost), cq = sv(st.cb), pc = sv(a.pocketC), oq = sv(st.ob);
-    g += `<line x1="${cq.x}" y1="${cq.y}" x2="${gq.x}" y2="${gq.y}" stroke="#fff" stroke-opacity=".35" stroke-width=".18"/>`;
-    g += `<line x1="${oq.x}" y1="${oq.y}" x2="${pc.x}" y2="${pc.y}" stroke="#fff" stroke-opacity=".25" stroke-width=".15" stroke-dasharray=".6 .6"/>`;
-    g += `<circle cx="${gq.x}" cy="${gq.y}" r="${R}" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width=".12" stroke-dasharray=".4 .3"/>`;
-  }
-  const [cb, ob] = r.balls;
-  if (st.paths && !anim) {
-    if (ob) g += `<path d="${pathD(ob.path)}" fill="none" stroke="var(--obpath)" stroke-width=".35" stroke-dasharray="1 .6" stroke-linejoin="round"/>`;
-    g += `<path d="${pathD(cb.path)}" fill="none" stroke="var(--cbpath)" stroke-width=".35" stroke-dasharray="1 .6" stroke-linejoin="round"/>`;
-    for (const e of cb.events) if (e.type === "roll") { const q = sv(e); g += `<circle cx="${q.x}" cy="${q.y}" r=".45" fill="none" stroke="var(--cbpath)" stroke-width=".2"/>`; }
-    if (ob && !ob.potted) { const q = sv(ob); g += `<circle cx="${q.x}" cy="${q.y}" r="${R}" fill="none" stroke="var(--obpath)" stroke-width=".3"/>`; }
-    if (!cb.potted) { const q = sv(cb); g += `<circle cx="${q.x}" cy="${q.y}" r="${R}" fill="none" stroke="var(--cbpath)" stroke-width=".3"/>`; }
-  }
-  if (anim) {
-    for (const [b, col] of [[ob, "var(--obpath)"], [cb, "var(--cbpath)"]]) if (b) g += `<path d="${pathD(b.path.slice(0, anim.i[b.id] + 1))}" fill="none" stroke="${col}" stroke-width=".3" stroke-opacity=".7"/>`;
-    if (ob && anim.pos.ob) g += ball(anim.pos.ob, "#f2c300");
-    if (anim.pos.cb) g += ball(anim.pos.cb, "#f7f5ee");
-  } else {
-    if (st.showOb) g += ball(st.ob, "#f2c300");
-    g += ball(st.cb, "#f7f5ee");
-  }
-  if (st.showOb) { const m = geo.pockets[st.pocket], q = sv({ x: m.c.x + m.n.x * 1.4, y: m.c.y + m.n.y * 1.4 }); g += `<circle cx="${q.x}" cy="${q.y}" r="1.7" fill="none" stroke="var(--obpath)" stroke-width=".3"/>`; }
-  tbl.innerHTML = g;
-}
-function drawBreak(anim) {
-  const b = st.brk; let g = STATIC;
-  // the kitchen (behind the head string), and the break box: head string to head rail, between the outer head-rail diamonds
-  g += `<rect x="0" y="${L * .75}" width="${W}" height="${L * .25}" fill="#fff" fill-opacity=".04"/>`;
-  g += `<rect x="${W / 4}" y="${L * .75}" width="${W / 2}" height="${L * .25}" fill="#fff" fill-opacity=".05" stroke="#fff" stroke-opacity=".7" stroke-width=".22"/>`;
-  if (summary && !anim && !brkResult) {
-    for (const e of summary.ends) { const q = sv(e); g += `<circle cx="${q.x}" cy="${q.y}" r=".65" fill="${e.scratch ? "var(--bad)" : "#fff"}" fill-opacity=".8"/>`; }
-  }
-  if (anim || brkResult) {
-    const r = brkResult;
-    if (st.paths) for (const x of r.balls.slice().reverse()) {
-      const pts = anim ? x.path.slice(0, anim.i[x.id] + 1) : x.path;
-      g += `<path d="${pathD(pts)}" fill="none" stroke="${bcol(x.n)}" stroke-width="${x.n ? .22 : .32}" stroke-opacity="${x.n ? .55 : .9}" ${anim ? "" : 'stroke-dasharray="1 .6"'} stroke-linejoin="round"/>`;
-    }
-    for (const x of r.balls.slice(1).concat(r.balls[0])) {
-      const p = anim ? anim.pos[x.id] : (x.potted ? null : x);
-      if (p) g += nball(p, x.n);
-    }
-  } else {
-    const rack = rack9(b.seed, GAPS[b.rack]);
-    const head = rack[0], cq = sv(b.cb), a = breakAim(b, b.cb), far = { x: b.cb.x + Math.cos(a) * 200, y: b.cb.y + Math.sin(a) * 200 };
-    const fq = sv({ x: b.cb.x + Math.cos(a) * (Math.hypot(head.x - b.cb.x, head.y - b.cb.y) - 2 * R), y: b.cb.y + Math.sin(a) * (Math.hypot(head.x - b.cb.x, head.y - b.cb.y) - 2 * R) });
-    g += `<line x1="${cq.x}" y1="${cq.y}" x2="${fq.x}" y2="${fq.y}" stroke="#fff" stroke-opacity=".4" stroke-width=".18"/>`;
-    for (const x of rack) g += nball(x, x.n);
-    g += nball(b.cb, 0);
-  }
-  tbl.innerHTML = g;
-}
-const draw = anim => brkMode() ? drawBreak(anim) : drawShot(anim);
-
-/* ---------- readouts ---------- */
-const PN = { HL: "head left", HR: "head right", SL: "side left", SR: "side right", FL: "foot left", FR: "foot right" };
-const chips = list => list.length ? `<span class="balls">${list.map(b => `<span class="bn" style="background:${b.n === 9 ? "linear-gradient(#f7f5ee 22%, #f2c300 22% 78%, #f7f5ee 78%)" : BCOL[b.n]}"><i>${b.n}</i></span>`).join("")}</span>` : "None";
-const cell = ([k, v, c, wide]) => `<div class="${wide ? "wide" : ""}"><span class="k">${k}</span><span class="v ${c || ""}">${v}</span></div>`;
-function readShot() {
-  const r = result, [cb, ob] = r.balls, items = [];
-  if (ob) {
-    const ok = ob.potted === st.pocket;
-    items.push(["Object ball", ob.potted ? (ok ? "Made" : ob.potted === "off" ? "Off table" : "In " + PN[ob.potted]) : "Missed", ok ? "good" : "bad"]);
-    const hit = ob.events.find(e => e.type === "hit");
-    let throwDeg = null;
-    if (hit) {   // throw = object ball direction vs the line of centres at contact
-      const cbh = cb.events.find(e => e.type === "hit");
-      const loc = Math.atan2(hit.y - cbh.y, hit.x - cbh.x), dir = Math.atan2(hit.vy, hit.vx);
-      throwDeg = ((dir - loc) * 180 / Math.PI + 540) % 360 - 180;
-    }
-    const imp = r.aim.cut != null && Math.abs(r.aim.cut) >= 89;
-    items.push(["Cut angle", r.aim.cut == null ? "–" : imp ? "Impossible" : fmt(Math.abs(r.aim.cut), 1) + "°", imp ? "bad" : ""]);
-    items.push(["Throw", throwDeg == null ? "No contact" : fmt(Math.abs(throwDeg), 1) + "°"]);
-  }
-  const d = cb.potted ? null : Math.hypot(cb.x - st.target.x, cb.y - st.target.y);
-  items.push(["Cue ball", cb.potted ? "Scratch" : fmt(d, 1) + " in from target", cb.potted ? "bad" : d <= 3 ? "good" : d <= 6 ? "warn" : ""]);
-  const hitE = cb.events.find(e => e.type === "hit");
-  if (hitE) items.push(["At contact", cb.events.find(e => e.type === "roll" && e.t < hitE.t) ? "Rolling" : "Still sliding"]);
-  items.push(["Cushions (cue ball)", String(cb.events.filter(e => e.type === "cushion").length)]);
-  items.push(["Time to rest", fmt(r.t, 1) + " s"]);
-  $("res").innerHTML = items.map(cell).join("");
-}
-function readBreak() {
-  if (!brkResult) { $("res").innerHTML = `<p class="note wide">Set the cue ball, tip, speed and where you hit the 1-ball, then tap Break.</p>`; return; }
-  const s = breakStats(brkResult), cb = s.cb;
-  const items = [
-    ["Balls made", chips(s.made), s.made.length ? "good" : "", true],
-    ["9-ball", s.nine ? "On the break" : "On the table", s.nine ? "good" : ""],
-    ["Cue ball", s.scratch ? "Scratch" : fmt(Math.hypot(cb.x - W / 2, cb.y - L / 2), 0) + " in from centre", s.scratch ? "bad" : ""],
-    ["Legal break", s.legal ? "Yes" : "No", s.legal ? "good" : "bad"],
-    ["Balls to a rail", String(s.railed)],
-    ["Time to rest", fmt(brkResult.t, 1) + " s"]
-  ];
-  $("res").innerHTML = items.map(cell).join("");
-}
-function readSummary() {
-  $("sumPanel").hidden = !summary || !brkMode();
-  if (!summary) return;
-  const s = summary, n = s.n;
-  const top = Object.entries(s.pockets).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${PN[k]} ${pct(v / Math.max(1, s.madeTotal))}`).join(", ");
-  $("sumTitle").textContent = s.done < n ? `Running breaks… ${s.done} of ${n}` : `${n} breaks`;
-  $("sum").innerHTML = [
-    ["Balls made per break", fmt(s.madeTotal / Math.max(1, s.done), 2)],
-    ["Made at least one", pct(s.some / Math.max(1, s.done)), "good"],
-    ["9 on the break", pct(s.nine / Math.max(1, s.done))],
-    ["Scratches", pct(s.scratch / Math.max(1, s.done)), s.scratch ? "bad" : ""],
-    ["Legal breaks", pct(s.legal / Math.max(1, s.done))],
-    ["Cue ball from centre (median)", fmt(median(s.dists), 0) + " in"],
-    ["Pockets that take the most", top || "–", "", true]
-  ].map(cell).join("");
-}
-const median = a => { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
-
-/* ---------- controls ---------- */
-const VS = [[.4, "Follow"], [.12, "Stun-follow"], [-.12, "Stun"], [-.4, "Stun-draw"], [-9, "Draw"]];
-function spinName(t) { const v = VS.find(([y]) => t.y > y)[1]; const s = t.x >= .12 ? " + right" : t.x <= -.12 ? " + left" : ""; return v + s; }
-function drawCue() {
-  const t = C().tip;
-  $("cueball").innerHTML = `<circle r="1" fill="#f7f5ee" stroke="#9aa3ab" stroke-width=".03"/><circle r=".5" fill="none" stroke="#b8382f" stroke-opacity=".45" stroke-width=".02" stroke-dasharray=".05 .05"/>
-    <line x1="-1" y1="0" x2="1" y2="0" stroke="#9aa3ab" stroke-width=".015"/><line x1="0" y1="-1" x2="0" y2="1" stroke="#9aa3ab" stroke-width=".015"/>
-    <circle cx="${t.x}" cy="${-t.y}" r=".14" fill="#1d66c4" stroke="#fff" stroke-width=".03"/>`;
-  $("spinName").textContent = spinName(t);
-  const mm = v => Math.round(Math.abs(v) * R * 25.4);
-  $("spinOff").innerHTML = `<b>${mm(t.y)} mm</b> ${t.y >= 0 ? "above" : "below"}, <b>${mm(t.x)} mm</b> ${t.x >= 0 ? "right" : "left"}` + (Math.hypot(t.x, t.y) > .5 ? `<br><span style="color:var(--bad)">Past the miscue limit</span>` : "");
-}
-const HINT = { shot: "Drag the cue ball, object ball or target ring. Tap a pocket to aim at it.", break: "Drag the cue ball behind the head string. The white box is the break box." };
-function syncControls() {
-  const c = C(), bm = brkMode();
-  $("speed").value = c.speed; $("aimErr").value = c.aimErr;
-  $("obToggle").setAttribute("aria-pressed", st.showOb); $("paths").setAttribute("aria-pressed", st.paths);
-  $("preset").value = st.preset; $("rackSel").value = st.brk.rack;
-  $("mShot").setAttribute("aria-selected", !bm); $("mBreak").setAttribute("aria-selected", bm);
-  $("shotRow").hidden = bm; $("breakRow").hidden = !bm; $("run50").hidden = !bm; $("legend").hidden = bm;
-  $("resTitle").textContent = bm ? "This break" : "Predicted result";
-  $("aimLabel").textContent = bm ? "Hit on the 1-ball (left ← → right of centre)" : "Aim error (thicker ← → thinner)";
-  $("shoot").textContent = bm ? "Break" : "Shoot";
-  $("hint").textContent = HINT[st.mode];
-  drawCue();
-}
-function readControls() {
-  const c = C(), bm = brkMode();
-  const v = PP.speedOf(c.speed / 100, bm ? bparams() : params);
-  const word = c.speed < 25 ? "soft" : c.speed < 50 ? "medium" : c.speed < 75 ? "firm" : "power";
-  $("speedRead").innerHTML = `<b>${c.speed}%</b> ${word} · cue ball leaves at <b>${(v * .0254).toFixed(1)} m/s</b>` + (bm ? ` (${Math.round(v * .0568)} mph)` : "");
-  $("aimRead").innerHTML = bm
-    ? (c.aimErr === 0 ? "Full on the 1-ball" : `<b>${fmt(Math.abs(c.aimErr) / 2, 1)} mm</b> ${c.aimErr > 0 ? "right" : "left"} of centre`)
-    : (c.aimErr === 0 ? "Aimed exactly at the ghost ball" : `<b>${fmt(Math.abs(c.aimErr) / 10, 1)}°</b> ${c.aimErr > 0 ? "thinner" : "thicker"} than the ghost ball`);
-}
-let pend = false;
-/* any change: shot mode re-predicts live; break mode clears the last break (a break takes too long to re-run on every drag) */
-function update(keepBreak) {
-  if (pend) return; pend = true;
-  requestAnimationFrame(() => {
-    pend = false; stopAnim();
-    if (brkMode()) { if (!keepBreak) { brkResult = null; } readBreak(); readSummary(); }
-    else { runShot(); readShot(); }
-    draw(); readControls(); save();
-  });
-}
-function changed() { if (brkMode()) { summary = null; runToken++; $("run50").textContent = "Run 50"; } update(); }
-function setMode(m) { if (st.mode === m) return; stopAnim(); st.mode = m; syncControls(); update(true); }
-$("mShot").addEventListener("click", () => setMode("shot"));
-$("mBreak").addEventListener("click", () => setMode("break"));
-$("preset").innerHTML = PRESETS.map((p, i) => `<option value="${i}">${p.name}</option>`).join("");
-$("preset").addEventListener("change", e => loadPreset(+e.target.value));
-$("rackSel").addEventListener("change", e => { st.brk.rack = +e.target.value; changed(); });
-$("speed").addEventListener("input", e => { C().speed = +e.target.value; changed(); });
-$("aimErr").addEventListener("input", e => { C().aimErr = +e.target.value; changed(); });
-$("obToggle").addEventListener("click", () => { st.showOb = !st.showOb; syncControls(); update(); });
-$("paths").addEventListener("click", () => { st.paths = !st.paths; syncControls(); update(true); });
-$("tipCentre").addEventListener("click", () => { C().tip = { x: 0, y: 0 }; drawCue(); changed(); });
-
-/* tip picker: drag anywhere on the ball */
-const cue = $("cueball");
-function setTip(e) {
-  const r = cue.getBoundingClientRect(), s = 2.6 / r.width;
-  let x = (e.clientX - r.left) * s - 1.3, y = -((e.clientY - r.top) * s - 1.3);
-  const l = Math.hypot(x, y); if (l > .7) { x *= .7 / l; y *= .7 / l; }
-  C().tip = { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 }; drawCue(); changed();
-}
-cue.addEventListener("pointerdown", e => { cue.setPointerCapture(e.pointerId); setTip(e); });
-cue.addEventListener("pointermove", e => { if (cue.hasPointerCapture(e.pointerId)) setTip(e); });
-cue.addEventListener("keydown", e => {
-  const k = { ArrowUp: [0, .05], ArrowDown: [0, -.05], ArrowLeft: [-.05, 0], ArrowRight: [.05, 0] }[e.key]; if (!k) return;
-  e.preventDefault(); const t = C().tip; C().tip = { x: Math.max(-.7, Math.min(.7, t.x + k[0])), y: Math.max(-.7, Math.min(.7, t.y + k[1])) }; drawCue(); changed();
-});
-
-/* table: drag balls / target, tap pockets */
-let drag = null;
-function tablePt(e) {
-  const p = tbl.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
-  const q = p.matrixTransform(tbl.getScreenCTM().inverse()); return { x: q.x, y: L - q.y };
-}
-const clampB = p => ({ x: Math.min(W - R, Math.max(R, p.x)), y: Math.min(L - R, Math.max(R, p.y)) });
-const clampK = p => ({ x: Math.min(W - R, Math.max(R, p.x)), y: Math.min(L * .25, Math.max(R, p.y)) });   // behind the head string
-tbl.addEventListener("pointerdown", e => {
-  stopAnim();
-  const p = tablePt(e);
-  if (brkMode()) {
-    const b = st.brk;
-    if (Math.hypot(b.cb.x - p.x, b.cb.y - p.y) < 5 || (brkResult == null && p.y <= L * .25)) {
-      drag = { k: "bcb", dx: Math.hypot(b.cb.x - p.x, b.cb.y - p.y) < 5 ? b.cb.x - p.x : 0, dy: Math.hypot(b.cb.x - p.x, b.cb.y - p.y) < 5 ? b.cb.y - p.y : 0 };
-      tbl.setPointerCapture(e.pointerId); $("hint").textContent = "Release to place.";
-      if (brkResult) { brkResult = null; }
-      b.cb = clampK({ x: p.x + drag.dx, y: p.y + drag.dy }); changed();
-    }
-    return;
-  }
-  const cands = [["cb", st.cb, 4], ...(st.showOb ? [["ob", st.ob, 4]] : []), ["target", st.target, 4.5]]
-    .map(([k, b, r]) => [k, Math.hypot(b.x - p.x, b.y - p.y), r]).filter(c => c[1] < c[2]).sort((a, b) => a[1] - b[1]);
-  if (cands.length) { drag = { k: cands[0][0], dx: st[cands[0][0]].x - p.x, dy: st[cands[0][0]].y - p.y }; tbl.setPointerCapture(e.pointerId); $("hint").textContent = "Release to place."; return; }
-  let best = null;
-  for (const k in geo.pockets) { const d = Math.hypot(geo.pockets[k].c.x - p.x, geo.pockets[k].c.y - p.y); if (d < 7 && (!best || d < best[1])) best = [k, d]; }
-  if (best && st.showOb) { st.pocket = best[0]; $("hint").textContent = "Aiming at the " + PN[best[0]] + " pocket."; update(); }
-});
-tbl.addEventListener("pointermove", e => {
-  if (!drag) return;
-  const p = tablePt(e); let q = { x: p.x + drag.dx, y: p.y + drag.dy };
-  if (drag.k === "bcb") { const c = clampK(q); st.brk.cb = { x: Math.round(c.x * 100) / 100, y: Math.round(c.y * 100) / 100 }; changed(); return; }
-  q = drag.k === "target" ? { x: Math.min(W, Math.max(0, q.x)), y: Math.min(L, Math.max(0, q.y)) } : clampB(q);
-  const other = drag.k === "cb" ? (st.showOb ? st.ob : null) : drag.k === "ob" ? st.cb : null;
-  if (other) { const dx = q.x - other.x, dy = q.y - other.y, d = Math.hypot(dx, dy); if (d < 2 * R + .05) { const k = (2 * R + .05) / (d || 1); q = clampB({ x: other.x + dx * k, y: other.y + dy * k }); } }
-  st[drag.k] = { x: Math.round(q.x * 100) / 100, y: Math.round(q.y * 100) / 100 }; update();
-});
-const endDrag = () => { if (drag) { drag = null; $("hint").textContent = HINT[st.mode]; } };
-tbl.addEventListener("pointerup", endDrag); tbl.addEventListener("pointercancel", endDrag);
-
-/* play a result back in real time */
-let animId = 0;
-function stopAnim() { if (animId) { cancelAnimationFrame(animId); animId = 0; $("shoot").textContent = brkMode() ? "Break" : "Shoot"; } }
-function play(r) {
-  const t0 = performance.now(), reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  $("shoot").textContent = "Stop";
-  const step = now => {
-    const t = reduce ? r.t : (now - t0) / 1000, anim = { i: {}, pos: {} };
-    for (const b of r.balls) {
-      let i = b.path.findIndex(p => p.t > t); if (i < 0) i = b.path.length; i = Math.max(0, i - 1);
-      anim.i[b.id] = i; anim.pos[b.id] = b.potted && i >= b.path.length - 1 ? null : b.path[i];
-    }
-    draw(anim);
-    if (t < r.t) animId = requestAnimationFrame(step);
-    else { animId = 0; $("shoot").textContent = brkMode() ? "Break again" : "Shoot again"; draw(); setTimeout(() => { if (!animId) $("shoot").textContent = brkMode() ? "Break" : "Shoot"; }, 1500); }
-  };
-  animId = requestAnimationFrame(step);
-}
-$("shoot").addEventListener("click", () => {
-  if (animId) { stopAnim(); draw(); return; }
-  if (brkMode()) {
-    const b = st.brk;
-    if (brkResult) b.seed = (Math.random() * 2 ** 31) >>> 0;     // a fresh rack for each new break
-    brkResult = simBreak(b, b.seed, false);
-    readBreak(); save(); play(brkResult);
-  } else play(result);
-});
-
-/* run 50 breaks in small batches so the page stays responsive */
-$("run50").addEventListener("click", () => {
-  if (summary && summary.done < summary.n) { runToken++; summary = null; $("run50").textContent = "Run 50"; update(true); return; }
-  stopAnim(); brkResult = null;
-  const tok = ++runToken, b = JSON.parse(JSON.stringify(st.brk));
-  summary = { n: 50, done: 0, madeTotal: 0, some: 0, nine: 0, scratch: 0, legal: 0, pockets: {}, ends: [], dists: [] };
-  $("run50").textContent = "Cancel";
-  const one = () => {
-    if (tok !== runToken) return;
-    const r = simBreak(b, (Math.random() * 2 ** 31) >>> 0, true), s = breakStats(r), S = summary;
-    S.done++; S.madeTotal += s.made.length; if (s.made.length) S.some++; if (s.nine) S.nine++; if (s.scratch) S.scratch++; if (s.legal) S.legal++;
-    for (const m of s.made) S.pockets[m.potted] = (S.pockets[m.potted] || 0) + 1;
-    const last = s.cb.path[s.cb.path.length - 1];
-    S.ends.push({ x: s.scratch ? last.x : s.cb.x, y: s.scratch ? last.y : s.cb.y, scratch: s.scratch });
-    if (!s.scratch) S.dists.push(Math.hypot(s.cb.x - W / 2, s.cb.y - L / 2));
-    readSummary(); readBreak(); draw();
-    if (S.done < S.n) setTimeout(one, 0); else $("run50").textContent = "Run 50";
-  };
-  readBreak(); readSummary(); draw(); setTimeout(one, 30);
-});
-
-/* tuning knobs */
-function renderKnobs() {
-  $("knobs").innerHTML = KNOBS.map(([k, name, lo, hi, step, d, help]) =>
-    `<label class="knob" for="k-${k}"><span>${name}</span><b id="kv-${k}">${(+params[k]).toFixed(d)}</b><input type="range" class="plain" id="k-${k}" min="${lo}" max="${hi}" step="${step}" value="${params[k]}"><small>${help}</small></label>`).join("");
-  for (const [k, , , , , d] of KNOBS) $("k-" + k).addEventListener("input", e => { params[k] = +e.target.value; $("kv-" + k).textContent = params[k].toFixed(d); changed(); });
-}
-$("resetKnobs").addEventListener("click", () => { Object.assign(params, PP.DEFAULTS); renderKnobs(); changed(); });
-renderKnobs();
-
-/* orientation */
-const mq = matchMedia("(orientation: landscape) and (min-width: 700px)");
-const orient = () => document.body.classList.toggle("land", mq.matches);
-mq.addEventListener ? mq.addEventListener("change", orient) : mq.addListener(orient); orient();
-
-syncControls(); update();
-})();
-</script>
-
-  </template>
 
   <!-- SHOTS -->
   <section id="view-shots" class="app" hidden></section>
@@ -1097,7 +504,7 @@ syncControls(); update();
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-<script id="physicsSrc">
+<script>
 /* Pool ball physics (same engine as prototype/physics.js on the prototype branch), used by Cut break mode for the predicted 1-ball line.
  *
  * Top-down (2D table, 3D spin). Units: inches, seconds, radians.
@@ -1425,20 +832,44 @@ const CB_SECS = [["upper", "Upper"], ["centre", "Centre"], ["lower", "Lower"], [
 const sectionOf = (p, Lt) => { if (!p) return null; const L = Lt || settings.L; return p.y < L * 3 / 8 ? "lower" : p.y > L * 5 / 8 ? "upper" : "centre"; };
 const secOf = s => s.cbSec || (s.scratch ? "scratch" : s.result ? sectionOf(s.result, s.table && s.table.L) : null);
 const brkMode = () => S.mode === "break";
-const MODE_KEYS = ["tip", "vspin", "side", "speed", "speedPct", "pocket", "cb", "ob", "target", "result", "entry", "outcome", "tool", "tz", "drill", "drillId"];
+const simMode = () => S.mode === "sim";
+const simBrk = () => S.mode === "sim" && S.simKind === "break";
+const brkShape = () => brkMode() || simBrk();      // break-shaped table: rack, break box, kitchen
+const MODE_KEYS = ["tip", "vspin", "side", "speed", "speedPct", "pocket", "cb", "ob", "target", "result", "entry", "outcome", "tool", "tz", "drill", "drillId", "hit"];
 if (!S.stash || typeof S.stash !== "object") S.stash = {};
 if (!S.rack) S.rack = "9";
 if (typeof S.hit !== "number") S.hit = 0;      // 1-ball hit: cue ball centre line offset from the 1-ball centre, in ball widths; + = hitting its right side
-if (S.mode !== "break") S.mode = "shot";
+if (S.mode !== "break" && S.mode !== "sim") S.mode = "shot";
+if (S.simKind !== "break") S.simKind = "shot";
+/* Simulator starting layouts: the same starter drills as the shot log. x from the left cushion, y from the head cushion (inches). */
+const SIM_DIAG = t => ({ x: 50 * t, y: 100 * t });
+const SIM_PRESETS = [
+  { name: "Stop shot, straight in", cb: SIM_DIAG(.5), ob: SIM_DIAG(.75), target: { x: 36.99, y: 73.99 }, pocket: "FR", tip: { x: 0, y: -.5 }, speed: 36 },
+  { name: "Stun-follow 1 ft, straight in", cb: SIM_DIAG(.5), ob: SIM_DIAG(.75), target: { x: 42.36, y: 84.72 }, pocket: "FR", tip: { x: 0, y: -.25 }, speed: 35 },
+  { name: "Draw back 2 ft, straight in", cb: SIM_DIAG(.4), ob: SIM_DIAG(.75), target: { x: 26.26, y: 52.52 }, pocket: "FR", tip: { x: 0, y: -.5 }, speed: 49 },
+  { name: "Stun along the tangent line", cb: { x: 40.3, y: 52 }, ob: { x: 40, y: 82 }, target: { x: 21.2, y: 89.2 }, pocket: "FR", tip: { x: 0, y: -.35 }, speed: 53 },
+  { name: "Follow to the foot rail", cb: { x: 18, y: 30 }, ob: { x: 42, y: 46 }, target: { x: 30, y: 92 }, pocket: "SR", tip: { x: 0, y: .2 }, speed: 52 },
+  { name: "Lag to the head rail", cb: { x: 25, y: 25 }, ob: null, target: { x: 25, y: 2.5 }, pocket: "FR", tip: { x: 0, y: .15 }, speed: 57 }
+];
+const SIM_BREAK0 = { cb: { x: 37, y: 22 }, ob: null, target: null, pocket: "SR", tip: { x: 0, y: -.1 }, speedPct: 90, hit: 0, tool: "cb" };
+const SIM_KEYS = ["cb", "ob", "target", "pocket", "tip", "speedPct", "hit", "tool"];
+function simPresetState(i) {
+  const p = SIM_PRESETS[i];
+  return { cb: { ...p.cb }, ob: p.ob ? { ...p.ob } : null, target: { ...p.target }, pocket: p.pocket, tip: { ...p.tip }, speedPct: p.speed, hit: null, tool: "cb", tz: "point", result: null, entry: null, outcome: null };
+}
+function simStart() { return S.simKind === "break" ? Object.assign({ result: null, entry: null, outcome: null, tz: "point" }, SIM_BREAK0) : simPresetState(S.simPreset || 0); }
 const BRK_START = { tip: { x: 0, y: -.1 }, speedPct: 90, pocket: "SR", cb: { x: 37, y: 22 }, ob: null, target: null, result: null, entry: null, outcome: null, tool: "result", tz: "point", drill: BRK_DRILL, drillId: "" };
 function setMode(m) {
   if (S.mode === m) return;
   const keep = {}; for (const k of MODE_KEYS) keep[k] = S[k];
   S.stash[S.mode] = JSON.parse(JSON.stringify(keep));
-  const next = S.stash[m] ? S.stash[m] : m === "break" ? BRK_START : { tool: "result", drill: "", drillId: "", pocket: "FR", cb: { x: 20, y: 52 }, ob: { x: 40, y: 82 }, target: { x: 30, y: 70 }, result: null, entry: null, outcome: null };
+  if (S.mode === "sim") simStop();
+  const next = S.stash[m] ? S.stash[m] : m === "break" ? BRK_START : m === "sim" ? simStart() : { tool: "result", drill: "", drillId: "", pocket: "FR", cb: { x: 20, y: 52 }, ob: { x: 40, y: 82 }, target: { x: 30, y: 70 }, result: null, entry: null, outcome: null };
   Object.assign(S, JSON.parse(JSON.stringify(next)));
   if (!S.tip) S.tip = { x: 0, y: 0 }; if (S.speedPct == null) S.speedPct = 40;
   S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); S.speed = speedOf(S.speedPct);
+  if (m === "sim") { S.result = null; S.entry = null; S.outcome = null; S.tool = "cb"; }
+  if (typeof S.hit !== "number") S.hit = m === "sim" && S.simKind === "shot" && S.ob && S.cb ? (ghostHit() || 0) : 0;
   if (m === "break") { S.ob = null; S.target = null; S.entry = null; S.drill = BRK_DRILL; S.drillId = ""; if (S.pocket !== "SL" && S.pocket !== "SR") S.pocket = "SL"; if (S.tool !== "cb") S.tool = "result"; }
   S.mode = m; S.rail = null; S.scratch = false; S.cbSec = null; S.ballsMade = null;
   saveWork();
@@ -1771,6 +1202,7 @@ function dynBreak() {
   return g;
 }
 function dynTable() {
+  if (simMode()) return dynSim();
   if (brkMode()) return dynBreak();
   const P = pockets(); const pk = P[S.pocket]; let g = "";
   // target pocket ring
@@ -1821,23 +1253,39 @@ function svgPt(svg, e, el) {
 }
 let drag = null;
 /* in break mode the cue ball starts behind the head string */
-function placeFor(p) { const q = clampBall(p); if (brkMode() && S.tool === "cb") q.y = Math.min(q.y, settings.L / 4); return q; }
+function placeFor(p) {
+  const q = clampBall(p); if (brkShape() && S.tool === "cb") q.y = Math.min(q.y, settings.L / 4);
+  if (simMode() && (S.tool === "cb" || S.tool === "ob")) {      // keep the two balls from overlapping
+    const o = S.tool === "cb" ? S.ob : S.cb;
+    if (o) { const d = sub(q, o), l = len(d); if (l < 2 * R_BALL + .05) { const k = (2 * R_BALL + .05) / (l || 1); return clampBall(add(o, mul(d, k))); } }
+  }
+  return q;
+}
 function onTableDown(e) {
   const svg = $("tbl"); const p = svgPt(svg, e, $("tblContent")); if (!p) return;
+  if (simMode()) {
+    simStopAnim();
+    if (!simBrk()) {   // grab whichever ball or marker is under the finger
+      const near = [["cb", S.cb, 3.5], ["ob", S.ob, 3.5], ["target", S.target, 3.5]].filter(([, b, r]) => b && len(sub(b, p)) < r).sort((a, b) => len(sub(a[1], p)) - len(sub(b[1], p)));
+      if (near.length && S.tool !== near[0][0]) { S.tool = near[0][0]; renderTools(); }
+    }
+  }
   // pocket tap: near a mouth, or anywhere off the cloth near a pocket
   const P = pockets(); let best = null, bd = 1e9;
   for (const k in P) { const d = len(sub(p, P[k].c)); if (d < bd) { bd = d; best = k; } }
   const offCloth = p.x < 0 || p.y < 0 || p.x > settings.W || p.y > settings.L;
   const marker = S.tool === "result" || S.tool === "target";      // a cue ball can stop right by a pocket
   if ((offCloth && bd < 7) || (bd < 2.6 && !marker)) {
-    if (brkMode() && best[0] !== "S") { if (offCloth) return; }
-    else { S.pocket = best; S.entry = null; if (brkMode()) S.rail = null; saveWork(); renderLog(); toast(POCKET_NAMES[best] + " pocket"); return; }
+    if (simBrk() || (brkMode() && best[0] !== "S")) { if (offCloth) return; }
+    else if (simMode() && !S.ob) { if (offCloth) return; }
+    else { S.pocket = best; S.entry = null; if (brkMode()) S.rail = null; if (simMode() && simHitWasPot) S.hit = ghostHit() || 0; saveWork(); renderLog(); toast(POCKET_NAMES[best] + " pocket"); return; }
   }
   if (offCloth) return;
   e.preventDefault();
   svg.setPointerCapture(e.pointerId);
   drag = { id: e.pointerId };
   S[S.tool] = placeFor(p);
+  if (simMode() && simHitWasPot && S.tool !== "target") S.hit = ghostHit() || 0;
   if (brkMode() && S.tool === "result") { S.scratch = false; S.cbSec = null; }
   if (S.tool === "ob" || S.tool === "cb") S.entry = null;
   showLoupe(p, e);
@@ -1847,8 +1295,9 @@ function onTableMove(e) {
   if (!drag || e.pointerId !== drag.id) return;
   const p = svgPt($("tbl"), e, $("tblContent")); if (!p) return;
   S[S.tool] = placeFor(p);
+  if (simMode() && simHitWasPot && S.tool !== "target") { S.hit = ghostHit() || 0; renderHit(); }
   showLoupe(p, e);
-  renderTable();
+  renderTable(); if (simMode()) renderSimRes();
 }
 function onTableUp(e) {
   if (!drag || e.pointerId !== drag.id) return;
@@ -1946,7 +1395,22 @@ const ICONS = {
   target: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="3 2"/><path d="M3 12h18M12 3v18" stroke="var(--accent)" stroke-width="1.4"/></svg>`,
   result: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#fbfaf4" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.6" fill="#c23b2e"/></svg>`
 };
+const TOOLS_SIM = [["cb", "Cue ball"], ["ob", "Object ball"], ["target", "Target"]];
+const HINTS_SIM = { cb: "Tap or drag to place the cue ball. Tap a pocket to aim the object ball at it.", ob: "Tap or drag to place the object ball. Tap a pocket to aim at it.", target: "Tap where you want the cue ball to finish." };
+const TOOLS_SIMB = [["cb", "Break spot"]];
+const HINTS_SIMB = { cb: "Tap or drag the cue ball anywhere behind the head string. The white box is the break box." };
 function renderTools() {
+  if (simMode()) {
+    const b = simBrk(), list = b ? TOOLS_SIMB : TOOLS_SIM;
+    if (!list.some(([k]) => k === S.tool)) S.tool = "cb";
+    $("tools").style.gridTemplateColumns = `repeat(${list.length}, 1fr)`;
+    $("tools").innerHTML = list.map(([k, lbl]) => `<button class="tool" aria-pressed="${S.tool === k}" data-tool="${k}">${ICONS[k]}<span>${lbl}</span><span class="set num">${S[k] ? zone(S[k], 4, 8) : "none"}</span></button>`).join("");
+    $("hint").textContent = (b ? HINTS_SIMB : HINTS_SIM)[S.tool];
+    const rm = $("removeItem"), can = !b && S.tool === "ob" && S.ob;
+    rm.hidden = !can; if (can) rm.textContent = "Remove object ball";
+    $("zoneChips").hidden = true;
+    return;
+  }
   const bm = brkMode();
   if (bm && S.tool !== "cb" && S.tool !== "result") S.tool = "result";
   $("tools").style.gridTemplateColumns = bm ? "repeat(2, 1fr)" : "";
@@ -2006,8 +1470,9 @@ function renderSessionLine() {
 }
 /* ---------- log sections: order per mode, rearrangeable, saved in settings ---------- */
 const CARD_ORDER = {
-  shot: ["marks", "pocket", "result", "tip", "speed", "note"],
-  break: ["tip", "hit", "speed", "pred", "marks", "rail", "cbfin", "balls", "rack", "tune", "note"]
+  shot: ["marks", "pocket", "result", "tip", "note"],
+  break: ["tip", "hit", "pred", "marks", "rail", "cbfin", "balls", "rack", "tune", "note"],
+  sim: ["tip", "hit", "simres", "simset", "marks", "tune"]
 };
 let arranging = false;
 function cardOrder(m) {
@@ -2016,12 +1481,15 @@ function cardOrder(m) {
   for (const k of def) if (!o.includes(k)) o.splice(Math.min(def.indexOf(k), o.length), 0, k);   // new sections slot in near their default place
   return o;
 }
+const tabKey = () => S.mode === "break" || S.mode === "sim" ? S.mode : "shot";
 function renderCards() {
-  const m = brkMode() ? "break" : "shot", box = $("cards"), order = cardOrder(m);
+  const m = tabKey(), box = $("cards"), order = cardOrder(m);
+  const tags = m === "sim" ? ["sim", "sim" + S.simKind] : [m];
   for (const el of box.querySelectorAll(".card")) {
     const only = el.dataset.only;
-    el.hidden = !!only && only !== m;
+    el.hidden = !!only && !only.split(" ").some(t => tags.includes(t));
   }
+  if (m === "sim" && S.simKind === "shot" && !S.ob) box.querySelector('[data-card="hit"]').hidden = true;   // no object ball, nothing to hit
   order.forEach((k, i) => {
     const el = box.querySelector(`[data-card="${k}"]`); if (!el) return;
     box.appendChild(el);
@@ -2029,63 +1497,44 @@ function renderCards() {
     el.querySelector(".mv").innerHTML = `<button class="btn" data-mv="${k}" data-dir="-1" aria-label="Move ${esc(name)} up" ${i === 0 ? "disabled" : ""}>↑</button><button class="btn" data-mv="${k}" data-dir="1" aria-label="Move ${esc(name)} down" ${i === order.length - 1 ? "disabled" : ""}>↓</button>`;
   });
   box.classList.toggle("arranging", arranging);
-  box.classList.toggle("brk", m === "break");
+  box.classList.toggle("brk", m !== "shot");
+  applySpeedSide();
   $("arrange").textContent = arranging ? "Done" : "Rearrange sections";
   $("arrange").setAttribute("aria-pressed", arranging);
-  $("arrangeReset").hidden = !arranging;
+  $("arrangeReset").hidden = !arranging; $("sideCtl").hidden = !arranging;
   updatePin();
 }
 function moveCard(k, dir) {
-  const m = brkMode() ? "break" : "shot", o = cardOrder(m), i = o.indexOf(k), j = i + dir;
+  const m = tabKey(), o = cardOrder(m), i = o.indexOf(k), j = i + dir;
   if (i < 0 || j < 0 || j >= o.length) return;
   [o[i], o[j]] = [o[j], o[i]];
   settings.cardOrder = Object.assign({}, settings.cardOrder, { [m]: o }); saveSettings();
   renderCards();
   const b = document.querySelector(`[data-mv="${k}"][data-dir="${dir}"]`); if (b && !b.disabled) b.focus();
 }
-/* ---------- Simulator tab: the physics prototype in a frame ---------- */
-let simOn = false;
-function simDoc() {
-  const r = document.documentElement, cs = getComputedStyle(r), th = r.getAttribute("data-theme");
-  const vars = ["cloth", "cushion", "rail"].map(k => `--${k}:${cs.getPropertyValue("--" + k).trim()}`).join(";");
-  const body = $("simTpl").innerHTML.replace(/<script data-physics(="")?><\/script>/, () => "<script>" + $("physicsSrc").textContent + "<\/script>");
-  return `<!doctype html><html lang="en"${th ? ` data-theme="${th}"` : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>${body}
-<style>header{display:none!important} :root{${vars}} body{background:var(--bg)}</style></body></html>`;
-}
-function sizeSim() {
-  if (!simOn) return;
-  const f = $("simFrame"), top = f.getBoundingClientRect().top + scrollY;
-  f.style.height = Math.max(land ? 560 : 420, innerHeight - top - 8) + "px";   // landscape: tall enough for a usable table, the page scrolls a little
-}
-function applySimView() {
-  document.body.classList.toggle("simon", simOn);
-  $("simWrap").hidden = !simOn;
-  document.querySelector(".colA").hidden = simOn; document.querySelector(".colB").hidden = simOn;
-  if (simOn) $("simWrap").prepend($("modeSeg")); else placeColumns();
-  $("modeSim").setAttribute("aria-selected", simOn);
-  if (simOn) {
-    $("modeShot").setAttribute("aria-selected", false); $("modeBreak").setAttribute("aria-selected", false);
-    scrollTo(0, 0); $("simFrame").srcdoc = simDoc(); sizeSim();
-  } else { $("simFrame").removeAttribute("srcdoc"); loadTune(); renderKnobs(); renderLog(); }
-}
-addEventListener("resize", sizeSim);
-$("modeSim").addEventListener("click", () => { if (!simOn) { simOn = true; applySimView(); } });
 /* Pin table (portrait, cut break): the table shrinks and stays on screen while the sections scroll under it */
+/* the vertical speed bar sits on the right of the table unless you move it; each tab remembers its side */
+const speedSide = () => (settings.speedSide && settings.speedSide[tabKey()]) || "right";
+function applySpeedSide() {
+  $("tablewrap").classList.toggle("vsleft", speedSide() === "left");
+  for (const b of document.querySelectorAll("[data-vside]")) b.setAttribute("aria-pressed", b.dataset.vside === speedSide());
+}
 function updatePin() {
-  const on = brkMode() && settings.pinTable !== false && !arranging;   // unpinned while rearranging, so the whole list is in view
+  const on = (brkMode() || simMode()) && settings.pinTable !== false && !arranging;   // unpinned while rearranging, so the whole list is in view
   document.body.classList.toggle("pin", on);
-  const btn = $("pinTable"); btn.hidden = !brkMode() || land; btn.setAttribute("aria-pressed", on); btn.textContent = on ? "Unpin table" : "Pin table";
+  const btn = $("pinTable"); btn.hidden = !(brkMode() || simMode()) || land; btn.setAttribute("aria-pressed", on); btn.textContent = on ? "Unpin table" : "Pin table";
   if (!on || land) return;
   const top = document.querySelector(".top"), a = document.querySelector(".colA"), tw = $("tablewrap");
   const headH = top.getBoundingClientRect().height + (parseFloat(getComputedStyle(top).top) || 0);
   a.style.setProperty("--pinTop", (headH - (tw.getBoundingClientRect().top - a.getBoundingClientRect().top) - 2) + "px");
 }
 $("pinTable").addEventListener("click", () => { settings.pinTable = settings.pinTable === false; saveSettings(); updatePin(); });
-addEventListener("resize", () => { if (brkMode()) updatePin(); });
+addEventListener("resize", () => { if (brkMode() || simMode()) updatePin(); });
 $("arrange").addEventListener("click", () => { arranging = !arranging; renderCards(); });
 $("arrangeReset").addEventListener("click", () => {
-  const m = brkMode() ? "break" : "shot";
+  const m = tabKey();
   if (settings.cardOrder) { delete settings.cardOrder[m]; saveSettings(); }
+  if (settings.speedSide) { delete settings.speedSide[m]; saveSettings(); }
   renderCards();
 });
 $("cards").addEventListener("click", e => {
@@ -2093,13 +1542,15 @@ $("cards").addEventListener("click", e => {
   moveCard(b.dataset.mv, +b.dataset.dir);
 });
 function renderLog() {
-  const bm = brkMode();
-  $("modeShot").setAttribute("aria-selected", !bm); $("modeBreak").setAttribute("aria-selected", bm);
-  $("drillSel").hidden = bm; $("brkTitle").hidden = !bm;
+  const bm = brkMode(), sm = simMode();
+  $("modeShot").setAttribute("aria-selected", !bm && !sm); $("modeBreak").setAttribute("aria-selected", bm); $("modeSim").setAttribute("aria-selected", sm);
+  $("drillSel").hidden = bm || sm; $("brkTitle").hidden = !bm && !sm; $("brkTitle").textContent = sm ? "Simulator" : "Cut break";
+  $("shotNo").hidden = sm;
+  document.querySelector(".sessionline").hidden = sm; document.querySelector(".savebar").hidden = sm;
   renderCards();
   $("save").textContent = bm ? "Save break" : "Save shot";
   $("notesLbl").textContent = bm ? "Note for this break" : "Note for this shot";
-  renderDrills(); if (bm) { $("freeRow").hidden = true; $("drillInfo").hidden = true; }
+  renderDrills(); if (bm || sm) { $("freeRow").hidden = true; $("drillInfo").hidden = true; }
   renderSessionLine();
   updatePin();
   $("drill").value = S.drill || "";
@@ -2107,11 +1558,12 @@ function renderLog() {
   $("shotNo").textContent = (bm ? "Break " : "Shot ") + (drillShots(S.drill).length + 1);
   renderTable(); renderTools();
   if (bm) renderBreakPanel();
+  if (sm) renderSimPanel();
   const P = pockets(); const pk = P[S.pocket];
   const off = pocketOffset(S.entry, pk, S.ob);
   const cut = cutAngle(S.cb, S.ob, pk);
   $("openZoom").hidden = !S.ob;
-  document.querySelector('[data-card="result"]').hidden = bm || !S.ob;
+  document.querySelector('[data-card="result"]').hidden = bm || sm || !S.ob;
   if (!S.ob) $("pocketWhat").innerHTML = `<b>Position only</b><br><span style="font-size:12px;color:var(--muted)">No object ball on the table. Pick Object ball and tap to add one.</span>`;
   else $("pocketWhat").innerHTML = `<b>${esc(POCKET_NAMES[S.pocket])}</b><br><span class="num" style="font-size:12px;color:var(--muted)">${cut == null ? "" : "cut " + fmt(Math.abs(cut), 0) + "°" + (Math.abs(cut) < .5 ? "" : cut > 0 ? " right" : " left") + " · "}${S.entry ? "entry " + sgn(off, 2) : "entry not marked"}</span>`;
   chips("outcomeChips", OUTCOME, S.outcome, "outcome");
@@ -2125,6 +1577,13 @@ function renderLog() {
 let quickBusy = false;
 function renderQuick() {
   const q = $("quickbar");
+  if (simMode()) {
+    const b = simBrk(), playing = !!simAnim, running = sum50 && sum50.done < sum50.n;
+    q.innerHTML = `<button class="qs good" data-simq="shoot">${playing ? "Stop" : b ? "Break" : "Shoot"}<small>${playing ? "stop the replay" : "play it in real time"}</small></button>` +
+      (b ? `<button class="qs plain" data-simq="run50">${running ? "Cancel" : "Run 50"}<small>${running ? sum50.done + " of 50 done" : "random racks, real-stroke wobble"}</small></button>` : "") +
+      `<button class="qs plain" data-simq="paths" aria-pressed="${S.simPaths !== false}">${S.simPaths !== false ? "Hide paths" : "Show paths"}<small>dashed lines</small></button>`;
+    return;
+  }
   if (brkMode()) {
     if (!canSave()) { q.innerHTML = `<div class="qmsg">Tap where the cue ball stopped, or pick its section, then tap the 1-ball result here to save</div>`; return; }
     q.innerHTML = OUTCOME.map(([k, lbl, cls]) => `<button class="qs ${cls}" data-qs="${k}" ${quickBusy ? "disabled" : ""}>1-ball ${lbl.toLowerCase()}<small>save break</small></button>`).join("");
@@ -2177,17 +1636,24 @@ function setTip(x, y) {
   S.tip = { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
   S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); renderSpin();
   if (brkMode()) { renderTable(); renderPredText(); }
+  if (simMode()) { simStopAnim(); renderTable(); renderSimRes(); }
 }
 function cuePoint(e) {
   const svg = e.currentTarget && e.currentTarget.id === "cueball" ? $("cueball") : $("cueBig"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
   const m = svg.getScreenCTM(); if (!m) return null; const q = pt.matrixTransform(m.inverse()); return { x: q.x, y: -q.y };
 }
 function renderSpeed() {
-  const p = S.speedPct, sp = speedOf(p);
-  $("speed").value = p; $("sbDim").style.left = p + "%";
-  [...$("sbTrack").children].forEach((el, i) => el.classList.toggle("on", i === sp - 1));
-  $("speedRead").innerHTML = `<b>${p}%</b> · feels ${label(SPEED, sp).toLowerCase()}`;
-  $("speed").setAttribute("aria-valuetext", p + "%, " + label(SPEED, sp));
+  const p = S.speedPct, sp = speedOf(p), t = $("vsTrack");
+  $("vsThumb").style.bottom = p + "%"; $("vsDim").style.height = (100 - p) + "%";
+  $("vsPct").textContent = p + "%"; $("vsWord").textContent = label(SPEED, sp).toLowerCase();
+  t.setAttribute("aria-valuenow", p); t.setAttribute("aria-valuetext", p + "%, " + label(SPEED, sp));
+}
+function setSpeed(p) {
+  p = Math.max(0, Math.min(100, Math.round(p)));
+  if (p === S.speedPct) return;
+  S.speedPct = p; S.speed = speedOf(p); renderSpeed(); saveWork();
+  if (brkMode()) { renderTable(); renderPredText(); }
+  if (simMode()) { simStopAnim(); renderTable(); renderSimRes(); }
 }
 
 /* ---------- shot record ---------- */
@@ -2740,25 +2206,34 @@ const FULL_NAMES = [[1, "Full ball"], [7 / 8, "7/8 ball"], [3 / 4, "3/4 ball"], 
 function hitName(h) {
   const f = 1 - Math.abs(h); let best = FULL_NAMES[0];
   for (const n of FULL_NAMES) if (Math.abs(n[0] - f) < Math.abs(best[0] - f)) best = n;
-  return Math.abs(h) < .03 ? "Full ball" : best[1] + (h > 0 ? ", right side" : ", left side");
+  return Math.abs(h) < .03 || best[0] === 1 ? "Full ball" : best[1] + (h > 0 ? ", right side" : ", left side");
 }
 function renderHit() {
   const h = S.hit || 0, x = h * 2;
-  $("hitBall").innerHTML = `<circle r="1" fill="#f2c300" stroke="#5c4300" stroke-width=".04"/><circle r=".45" fill="#fffdf4"/><text y=".03" font-size=".6" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="#1b1b1b" font-family="var(--f-body)">1</text>
+  const obj = simMode() && !simBrk();
+  $("h-hit").textContent = obj ? "Hit on the object ball" : "Hit on the 1-ball";
+  $("hitSub").textContent = obj ? "Slide the cue ball across the object ball: full, 3/4, 1/2 or 1/4, left or right" : "Slide the cue ball across the 1-ball: full, 3/4, 1/2 or 1/4, left or right";
+  $("hitPot").hidden = !(obj && S.ob);
+  const need = obj && S.ob && S.cb ? ghostHit() : null;
+  $("hitNeed").innerHTML = !obj || !S.ob ? "" : need == null ? `Too thin to pot in the ${POCKET_NAMES[S.pocket].toLowerCase()}` : `To pot in the ${POCKET_NAMES[S.pocket].toLowerCase()}: <b>${hitName(need).toLowerCase()}</b>`;
+  $("hitBall").innerHTML = `<circle r="1" fill="#f2c300" stroke="#5c4300" stroke-width=".04"/>` + (obj ? "" : `<circle r=".45" fill="#fffdf4"/><text y=".03" font-size=".6" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="#1b1b1b" font-family="var(--f-body)">1</text>`) + `
     <circle cx="${x}" r="1" fill="#fbfaf4" fill-opacity=".55" stroke="#1b1b1b" stroke-width=".04" stroke-dasharray=".12 .08"/>
     <line x1="${x}" y1="-1.25" x2="${x}" y2="1.25" stroke="var(--accent)" stroke-width=".04"/>`;
   $("hitName").textContent = hitName(h);
-  $("hitOff").innerHTML = Math.abs(h) < .03 ? "Cue ball aimed at the 1-ball centre" : `Aimed <b>${isMetric() ? Math.round(Math.abs(h) * 2 * R_BALL * 25.4) + " mm" : fmt(Math.abs(h) * 2 * R_BALL, 2) + " in"}</b> ${h > 0 ? "right" : "left"} of centre`;
+  $("hitOff").innerHTML = Math.abs(h) < .03 ? `Cue ball aimed at the ${obj ? "object ball" : "1-ball"} centre` : `Aimed <b>${isMetric() ? Math.round(Math.abs(h) * 2 * R_BALL * 25.4) + " mm" : fmt(Math.abs(h) * 2 * R_BALL, 2) + " in"}</b> ${h > 0 ? "right" : "left"} of centre`;
   $("hitBall").setAttribute("aria-valuetext", hitName(h));
 }
-function setHit(h) { h = Math.max(-.95, Math.min(.95, h)); S.hit = Math.abs(h) < .03 ? 0 : Math.round(h * 100) / 100; renderHit(); renderTable(); }
+function setHit(h, pot) {
+  h = Math.max(-.95, Math.min(.95, h)); S.hit = Math.abs(h) < .03 ? 0 : Math.round(h * 100) / 100; simHitWasPot = !!pot;
+  renderHit(); if (simMode()) simStopAnim(); renderTable(); if (simMode()) renderSimRes();
+}
 let hitDrag = null;
 function hitFromEvent(e) { const svg = $("hitBall"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const m = svg.getScreenCTM(); if (!m) return null; return pt.matrixTransform(m.inverse()).x / 2; }
 
 /* ---------- cut break: predicted 1-ball line ----------
    Runs the break through the physics engine: cue ball from the break spot, aimed at the 1-ball with the chosen hit,
    at the speed bar (100 % = about 24 mph), with your tip point. Defaults are untuned textbook values. */
-let pred = null, predKey = "", predT = 0;
+let pred = null, predKey = "", predT = 0, predLast = 0;
 const BREAK_VMAX = 420;
 function predInputs() { return [S.cb, S.tip, S.speedPct, S.hit, S.rack, S.pocket, settings.W, settings.L, settings.wc, settings.ws, tuneKey()]; }
 function schedulePrediction() {
@@ -2766,7 +2241,8 @@ function schedulePrediction() {
   const key = JSON.stringify(predInputs());
   if (key === predKey) return;
   predKey = key; clearTimeout(predT);
-  predT = setTimeout(() => { if (JSON.stringify(predInputs()) !== key) return; pred = runPrediction(); pred.key = key; renderTable(); renderPredText(); }, 140);
+  const wait = Math.max(0, 90 - (performance.now() - predLast));      // at most about 11 updates a second while you drag
+  predT = setTimeout(() => { if (JSON.stringify(predInputs()) !== predKey) return; pred = runPrediction(); pred.key = predKey; predLast = performance.now(); renderTable(); renderPredText(); }, wait);
 }
 /* table tuning: the same knobs and the same saved values ("psim.params") as the Simulator tab */
 const TUNE_KEY = "psim.params";
@@ -2777,6 +2253,7 @@ const KNOBS = [
   ["mu_c", "Cushion grip", 0, .4, .01, 2, "How much side spin changes the angle off a rail."],
   ["mu_sp", "Side spin fade", .005, .06, .001, 3, "How quickly side spin dies on the cloth."],
   ["e_b", "Ball bounce", .85, .99, .01, 2, "Ball-on-ball restitution: how hard the 1-ball comes off the rack."],
+  ["vmax", "Top shot speed at 100 %", 180, 400, 5, 0, "Simulator shots, in inches per second (300 ≈ 7.6 m/s)."],
   ["vbreak", "Top break speed at 100 %", 300, 520, 5, 0, "Inches per second at full power (420 ≈ 24 mph)."],
   ["squirt", "Squirt at half-tip side", 0, 4, .1, 1, "Degrees the cue ball pushes off line with side. Low-deflection shafts ≈ 1."]
 ];
@@ -2795,12 +2272,234 @@ $("knobs").addEventListener("input", e => {
   const k = e.target.dataset.knob; if (!k) return;
   const d = KNOBS.find(x => x[0] === k)[5]; tune[k] = +e.target.value; $("kv-" + k).textContent = tune[k].toFixed(d);
   saveTune(); renderTuneState(); schedulePrediction(); renderPredText();
+  if (simMode()) { simStopAnim(); renderTable(); renderSimRes(); }
 });
-$("resetKnobs").addEventListener("click", () => { const D = window.PoolPhysics.DEFAULTS; for (const [k] of KNOBS) tune[k] = D[k]; saveTune(); renderKnobs(); schedulePrediction(); renderPredText(); });
+$("resetKnobs").addEventListener("click", () => { const D = window.PoolPhysics.DEFAULTS; for (const [k] of KNOBS) tune[k] = D[k]; saveTune(); renderKnobs(); schedulePrediction(); renderPredText(); if (simMode()) { renderTable(); renderSimRes(); } });
 loadTune(); renderKnobs();
 function breakAimAngle(cb, head, h) {
   const d = unit(sub(head, cb)), right = { x: d.y, y: -d.x }, aimPt = add(head, mul(right, h * 2 * R_BALL));
   return Math.atan2(aimPt.y - cb.y, aimPt.x - cb.x);
+}
+/* ---------- Simulator tab ----------
+   Shot: cue ball aimed at the object ball with the chosen hit (or at the target when there is no object ball).
+   Break: the rack from the Cut break tab, broken from the break spot. Paths are worked out live while you drag. */
+let simRes = null, simKey = "", simT = 0, simLast = 0, simAnim = null, sum50 = null, runTok = 0, simHitWasPot = false;
+/* the hit that sends the object ball straight at the pocket (ghost ball), in the same units as S.hit, or null when too thin */
+function ghostHit() {
+  if (!S.cb || !S.ob) return null;
+  const pk = pockets()[S.pocket]; if (!pk) return null;
+  const u = unit(sub(pk.c, S.ob)), ghost = sub(S.ob, mul(u, 2 * R_BALL));
+  const v = sub(S.ob, S.cb), d = unit(v), right = { x: d.y, y: -d.x }, a = unit(sub(ghost, S.cb));
+  if (a.x * d.x + a.y * d.y <= 0) return null;
+  const det = -a.x * right.y + right.x * a.y; if (Math.abs(det) < 1e-9) return 0;
+  const h = (a.x * v.y - a.y * v.x) / det / (2 * R_BALL);
+  return Math.abs(h) > .95 ? null : Math.round(h * 100) / 100;
+}
+function simParams() { return Object.assign({}, tune, { W: settings.W, L: settings.L, wc: settings.wc, ws: settings.ws }, simBrk() ? { vmax: tune.vbreak || BREAK_VMAX } : {}); }
+function simInputs() { return [S.simKind, S.cb, S.ob, S.target, S.pocket, S.tip, S.speedPct, S.hit, S.rack, settings.W, settings.L, settings.wc, settings.ws, tuneKey()]; }
+/* one break: optional loose rack and stroke wobble for Run 50 */
+function simBreakRun(seed, wobble) {
+  const rnd = seededRnd(seed), rack = rackBalls(S.rack), head = rack[0];
+  if (wobble) {   // gaps of up to 0.08 in between balls, and a small random shift, so no two racks are the same
+    const gap = .02 + rnd() * .06, k = (2 * R_BALL + gap) / (2 * R_BALL);
+    for (const b of rack) { b.x = head.x + (b.x - head.x) * k + (rnd() - .5) * gap * .7; b.y = head.y + (b.y - head.y) * k + (rnd() - .5) * gap * .7; }
+  }
+  const j = () => wobble ? rnd() * 2 - 1 : 0;
+  const aim = breakAimAngle(S.cb, rackBalls(S.rack)[0], S.hit || 0) + j() * .15 * Math.PI / 180;
+  const speed = Math.max(0, Math.min(1, S.speedPct / 100 * (1 + j() * .02)));
+  const tip = { x: S.tip.x + j() * .02, y: S.tip.y + j() * .02 };
+  const r = window.PoolPhysics.simulate({ balls: [{ id: "cb", x: S.cb.x, y: S.cb.y }].concat(rack.map(b => ({ id: "b" + b.n, x: b.x, y: b.y }))), cue: 0, aim, tip, speed, tMax: 25, sample: 1 / 60, seed }, simParams());
+  r.balls.forEach((b, i) => { b.n = i ? rack[i - 1].n : 0; });
+  r.kind = "break"; r.rack = rack;
+  return r;
+}
+function seededRnd(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function simRun() {
+  if (!S.cb || !window.PoolPhysics) return null;
+  if (simBrk()) return simBreakRun(1, false);
+  const balls = [{ id: "cb", x: S.cb.x, y: S.cb.y }]; if (S.ob) balls.push({ id: "ob", x: S.ob.x, y: S.ob.y });
+  const aim = S.ob ? breakAimAngle(S.cb, S.ob, S.hit || 0) : S.target ? Math.atan2(S.target.y - S.cb.y, S.target.x - S.cb.x) : Math.PI / 2;
+  const r = window.PoolPhysics.simulate({ balls, cue: 0, aim, tip: S.tip, speed: S.speedPct / 100, tMax: 20, sample: 1 / 60, seed: 1 }, simParams());
+  r.kind = "shot";
+  return r;
+}
+/* the result for what is on screen now: shots run every time; breaks at most about 11 times a second while you drag */
+function simLive() {
+  const key = JSON.stringify(simInputs()), kind = simBrk() ? "break" : "shot";
+  if (key === simKey && simRes) return simRes;
+  if (sum50) { runTok++; sum50 = null; renderQuick(); }
+  const now = performance.now();
+  if (kind === "shot" || !simRes || simRes.kind !== kind || now - simLast > 90) {
+    clearTimeout(simT); simRes = simRun(); simKey = key; simLast = performance.now();
+  } else {
+    clearTimeout(simT); simT = setTimeout(() => { renderTable(); renderSimRes(); }, 95 - (now - simLast));
+  }
+  return simRes;
+}
+function simStopAnim() { if (simAnim) { cancelAnimationFrame(simAnim.id); simAnim = null; renderQuick(); } }
+function simStop() { simStopAnim(); runTok++; sum50 = null; clearTimeout(simT); }
+function simPlay(r) {
+  simStopAnim();
+  const t0 = performance.now(), reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  simAnim = { r, pos: {}, i: {}, id: 0 };
+  const step = now => {
+    if (!simAnim) return;
+    const t = reduce ? r.t : (now - t0) / 1000;
+    for (const b of r.balls) {
+      let i = b.path.findIndex(q => q.t > t); if (i < 0) i = b.path.length; i = Math.max(0, i - 1);
+      simAnim.i[b.id] = i; simAnim.pos[b.id] = b.potted && i >= b.path.length - 1 ? null : b.path[i];
+    }
+    renderTable();
+    if (t < r.t) simAnim.id = requestAnimationFrame(step);
+    else { simAnim = null; renderTable(); renderQuick(); }
+  };
+  simAnim.id = requestAnimationFrame(step); renderQuick();
+}
+function simQuick(k) {
+  if (k === "paths") { S.simPaths = S.simPaths === false; saveWork(); renderTable(); renderQuick(); return; }
+  if (k === "shoot") { if (simAnim) { simStopAnim(); renderTable(); return; } const r = simLive(); if (r) simPlay(r); return; }
+  if (k === "run50") {
+    if (sum50 && sum50.done < sum50.n) { runTok++; sum50 = null; renderQuick(); renderSimRes(); renderTable(); return; }
+    simStopAnim();
+    const tok = ++runTok;
+    sum50 = { n: 50, done: 0, made: 0, some: 0, game: 0, scratch: 0, legal: 0, oneMade: 0, pockets: {}, ends: [], key: simKey };
+    const one = () => {
+      if (tok !== runTok || !sum50) return;
+      const r = simBreakRun((Math.random() * 2 ** 31) >>> 0, true), st = simBreakStats(r), m = sum50;
+      m.done++; m.made += st.made.length; if (st.made.length) m.some++; if (st.game) m.game++; if (st.scratch) m.scratch++; if (st.legal) m.legal++; if (st.oneMade) m.oneMade++;
+      for (const b of st.made) m.pockets[b.potted] = (m.pockets[b.potted] || 0) + 1;
+      const last = st.cb.path[st.cb.path.length - 1];
+      m.ends.push({ x: st.scratch ? last.x : st.cb.x, y: st.scratch ? last.y : st.cb.y, scratch: st.scratch });
+      renderSimRes(); renderTable(); renderQuick();
+      if (m.done < m.n) setTimeout(one, 0);
+    };
+    renderQuick(); setTimeout(one, 30);
+  }
+}
+function setSimKind(k) {
+  if (S.simKind === k) return;
+  simStop();
+  S.simStash = S.simStash || {};
+  const keep = {}; for (const key of SIM_KEYS) keep[key] = S[key];
+  S.simStash[S.simKind] = JSON.parse(JSON.stringify(keep));
+  S.simKind = k;
+  Object.assign(S, JSON.parse(JSON.stringify(S.simStash[k] || simStart())));
+  if (typeof S.hit !== "number") S.hit = k === "shot" && S.ob ? (ghostHit() || 0) : 0;
+  S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); S.speed = speedOf(S.speedPct);
+  simHitWasPot = false; saveWork(); renderLog();
+}
+function loadSimPreset(i) {
+  simStop();
+  Object.assign(S, simPresetState(i)); S.simPreset = i;
+  S.hit = S.ob ? (ghostHit() || 0) : 0; simHitWasPot = !!S.ob;
+  S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); S.speed = speedOf(S.speedPct);
+  saveWork(); renderLog();
+}
+$("simPreset").innerHTML = SIM_PRESETS.map((p, i) => `<option value="${i}">${esc(p.name)}</option>`).join("") + `<option value="-1" hidden>Your own layout</option>`;
+$("simPreset").addEventListener("change", e => { const i = +e.target.value; if (i >= 0) loadSimPreset(i); });
+function renderSimPanel() {
+  const b = simBrk();
+  $("simKShot").setAttribute("aria-selected", !b); $("simKBreak").setAttribute("aria-selected", b);
+  $("simPreset").hidden = b; $("simRack").hidden = !b;
+  $("simRack").innerHTML = RACKS.map(([k, l]) => `<button class="chip" aria-pressed="${S.rack === k}" data-rack="${k}">${l}</button>`).join("");
+  if (!b) { const i = S.simPreset || 0, p = SIM_PRESETS[i], same = p && JSON.stringify([p.cb, p.ob, p.target]) === JSON.stringify([S.cb, S.ob, S.target]); $("simPreset").value = same ? i : -1; }
+  renderHit(); renderSimRes();
+}
+const BN_BG = n => n > 8 ? `linear-gradient(#fbfaf4 22%, ${BALL_COL[n]} 22% 78%, #fbfaf4 78%)` : BALL_COL[n];
+const bnList = list => list.length ? `<span class="bns">${list.map(b => `<span class="bn" style="background:${BN_BG(b.n)}"><i>${b.n}</i></span>`).join("")}</span>` : "None";
+const cellHtml = ([k, v, c, wide]) => `<div class="${wide ? "wide" : ""}"><span class="k">${k}</span><span class="v ${c || ""}">${v}</span></div>`;
+function simBreakStats(r) {
+  const cb = r.balls[0], obs = r.balls.slice(1), gameN = S.rack === "8" ? 8 : S.rack === "10" ? 10 : 9;
+  const made = obs.filter(b => b.potted && b.potted !== "off");
+  const railed = obs.filter(b => b.potted || b.events.some(e => e.type === "cushion")).length;
+  const one = obs.find(b => b.n === 1);
+  return { made, game: made.some(b => b.n === gameN), gameN, scratch: !!cb.potted, legal: railed >= 4 || made.length > 0, railed, cb, one, oneMade: !!(one && one.potted && one.potted !== "off") };
+}
+function renderSimRes() {
+  if (!simMode()) return;
+  const r = simLive(), el = $("simRes");
+  if (!r) { el.innerHTML = `<p class="note wide">Place the cue ball to start.</p>`; return; }
+  let items;
+  if (r.kind === "break") {
+    const st = simBreakStats(r), one = st.one;
+    items = [
+      ["Balls made", bnList(st.made), st.made.length ? "good" : "", true],
+      ["1-ball", st.oneMade ? "In the " + POCKET_NAMES[one.potted].toLowerCase() : one ? (one.events.some(e => e.type === "cushion") ? "Hit a rail, stayed up" : "Stayed in the pack") : "–", st.oneMade ? "good" : ""],
+      [st.gameN + "-ball", st.game ? "On the break" : "On the table", st.game ? "good" : ""],
+      ["Cue ball", st.scratch ? "Scratch" : "Finishes " + label(CB_SECS, sectionOf(st.cb)).toLowerCase(), st.scratch ? "bad" : ""],
+      ["Legal break", st.legal ? "Yes" : "No", st.legal ? "good" : "bad"],
+      ["Balls to a rail", String(st.railed)],
+      ["Time to rest", fmt(r.t, 1) + " s"]
+    ];
+  } else {
+    const [cb, ob] = r.balls; items = [];
+    if (ob) {
+      const ok = ob.potted === S.pocket;
+      items.push(["Object ball", ob.potted ? (ok ? "Made" : ob.potted === "off" ? "Off the table" : "In the " + POCKET_NAMES[ob.potted].toLowerCase()) : "Missed", ok ? "good" : "bad"]);
+      const hit = ob.events.find(e => e.type === "hit"), cbh = cb.events.find(e => e.type === "hit");
+      let thr = null;
+      if (hit && cbh) { const loc = Math.atan2(hit.y - cbh.y, hit.x - cbh.x), dir = Math.atan2(hit.vy, hit.vx); thr = ((dir - loc) * 180 / Math.PI + 540) % 360 - 180; }
+      const cut = cutAngle(S.cb, S.ob, pockets()[S.pocket]);
+      items.push(["Hit", hitName(S.hit || 0)]);
+      items.push(["Cut to the pocket", cut == null ? "–" : Math.abs(cut) >= 89 ? "Impossible" : fmt(Math.abs(cut), 1) + "°", cut != null && Math.abs(cut) >= 89 ? "bad" : ""]);
+      items.push(["Throw", thr == null ? "No contact" : fmt(Math.abs(thr), 1) + "°"]);
+    }
+    if (S.target) { const d = cb.potted ? null : len(sub(cb, S.target)); items.push(["Cue ball", cb.potted ? "Scratch" : fl(d, 1) + " " + uName() + " from target", cb.potted ? "bad" : d <= 3 ? "good" : d <= 6 ? "warn" : ""]); }
+    else items.push(["Cue ball", cb.potted ? "Scratch" : "Stops " + zone(cb, 4, 8), cb.potted ? "bad" : ""]);
+    const hitE = cb.events.find(e => e.type === "hit");
+    if (hitE) items.push(["At contact", cb.events.find(e => e.type === "roll" && e.t < hitE.t) ? "Rolling" : "Still sliding"]);
+    items.push(["Cushions (cue ball)", String(cb.events.filter(e => e.type === "cushion").length)]);
+    items.push(["Time to rest", fmt(r.t, 1) + " s"]);
+  }
+  el.innerHTML = items.map(cellHtml).join("");
+  const m = sum50, sm = $("simSum");
+  if (!m || !simBrk()) { sm.innerHTML = ""; return; }
+  const d = Math.max(1, m.done), pc = v => Math.round(v / d * 100) + "%";
+  const top = Object.entries(m.pockets).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${POCKET_NAMES[k].toLowerCase()} ${Math.round(v / Math.max(1, m.made) * 100)}%`).join(", ");
+  sm.innerHTML = `<h4>${m.done < m.n ? `Running breaks… ${m.done} of ${m.n}` : `${m.n} breaks`}</h4><div class="res">` + [
+    ["1-ball made", pc(m.oneMade), "good"], ["Balls made per break", fmt(m.made / d, 2)],
+    ["Made at least one", pc(m.some)], [`${S.rack === "8" ? 8 : S.rack === "10" ? 10 : 9} on the break`, pc(m.game)],
+    ["Scratches", pc(m.scratch), m.scratch ? "bad" : ""], ["Legal breaks", pc(m.legal)],
+    ["Pockets that take the most", top || "–", "", true]
+  ].map(cellHtml).join("") + `</div><p class="note" style="margin:6px 0 0">Each break gets a slightly loose rack and a real stroke's wobble (aim ±0.15°, speed ±2 %). Dots on the table show where the cue ball finished; red ones are scratches.</p>`;
+}
+const pathD = pts => pts.map((q, i) => { const v = toSvg(q); return (i ? "L" : "M") + v.x.toFixed(2) + " " + v.y.toFixed(2); }).join("");
+function dynSim() {
+  const r = simLive(), A = simAnim, paths = S.simPaths !== false; let g = "";
+  const dashed = (pts, col, w, op) => `<path d="${pathD(pts)}" fill="none" stroke="${col}" stroke-width="${w}" stroke-opacity="${op}" ${A ? "" : 'stroke-dasharray="5 3"'} stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+  const ring = (p, col, op) => { const q = toSvg(p); return `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="none" stroke="${col}" stroke-opacity="${op}" stroke-width="2" vector-effect="non-scaling-stroke"/>`; };
+  if (simBrk()) {
+    g += breakBoxSvg();
+    if (sum50 && !A) for (const e of sum50.ends) { const q = toSvg(e); g += `<circle cx="${q.x}" cy="${q.y}" r=".7" fill="${e.scratch ? "var(--bad)" : "#ffffff"}" fill-opacity=".85"/>`; }
+    const rack = rackBalls(S.rack);
+    if (r && paths) for (const b of r.balls.slice().reverse()) {
+      const pts = A ? b.path.slice(0, (A.i[b.id] || 0) + 1) : b.path;
+      g += dashed(pts, b.n ? (b.n > 8 ? BALL_COL[b.n] : BALL_COL[b.n]) : "#ffffff", b.n ? 1.6 : 2.2, b.n ? (b.n === 1 ? .95 : .55) : .9);
+    }
+    if (A) { for (const b of r.balls.slice(1)) { const q = A.pos[b.id]; if (q) g += numBall(q, b.n); } if (A.pos.cb) g += ballSvg(A.pos.cb, "cb", false); return g; }
+    if (S.cb) g += line(S.cb, rack[0], "#ffffff", "2 3", .45);
+    for (const b of rack) g += numBall(b, b.n);
+    if (r && paths) { const one = r.balls.find(b => b.n === 1), cb = r.balls[0]; if (one && !one.potted) g += ring(one, "#f2c300", .95); if (!cb.potted) g += ring(cb, "#ffffff", .8); }
+    if (S.cb) g += ballSvg(S.cb, "cb", true);
+    return g;
+  }
+  const pk = pockets()[S.pocket];
+  if (S.ob && pk) {
+    const pc = toSvg(pk.c);
+    g += `<circle cx="${pc.x}" cy="${pc.y}" r="${pk.w / 2 + 1}" fill="none" stroke="var(--marker)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>`;
+    g += line(S.ob, pk.c, "#ffffff", "4 3", .35);
+  }
+  if (S.target) g += zoneSvg(zoneShape(S.target, "point"), .16) + ballSvg(S.target, "target", S.tool === "target");
+  if (r && paths) {
+    const [cb, ob] = r.balls;
+    if (ob) g += dashed(A ? ob.path.slice(0, (A.i.ob || 0) + 1) : ob.path, "#f2c300", 2, .95);
+    g += dashed(A ? cb.path.slice(0, (A.i.cb || 0) + 1) : cb.path, "#ffffff", 2.2, .9);
+    if (!A) { if (ob && !ob.potted) g += ring(ob, "#f2c300", .95); if (!cb.potted) g += ring(cb, "#ffffff", .8); }
+  }
+  if (A) { if (A.pos.ob) g += ballSvg(A.pos.ob, "ob", false); if (A.pos.cb) g += ballSvg(A.pos.cb, "cb", false); return g; }
+  if (S.ob) g += ballSvg(S.ob, "ob", S.tool === "ob");
+  if (S.cb) g += ballSvg(S.cb, "cb", S.tool === "cb");
+  return g;
 }
 function runPrediction() {
   const PP = window.PoolPhysics, rack = rackBalls(S.rack);
@@ -2836,7 +2535,7 @@ function renderPredText() {
   const el = $("predRead"); if (!el) return;
   const ok = pred && pred.key === JSON.stringify(predInputs());
   // while a new prediction is being worked out, keep the old text (dimmed) so nothing moves
-  if (!ok) { if (!el.innerHTML) el.textContent = "Working it out…"; el.classList.add("stale"); return; }
+  if (!ok) { if (!el.innerHTML) el.textContent = "Working it out…"; if (!pred) el.classList.add("stale"); return; }
   el.classList.remove("stale");
   const pn = POCKET_NAMES[S.pocket].toLowerCase();
   const one = pred.made ? `<b>made</b> in the ${pn}` : pred.rail != null ? `${pn} rail, <b>${railTxt(pred.rail)}</b>` : pred.onePocket ? `goes in the ${POCKET_NAMES[pred.onePocket] ? POCKET_NAMES[pred.onePocket].toLowerCase() : "another pocket"}` : pred.otherFirst ? `heads to the <b>other side rail</b>` : `doesn't reach the ${pn} rail`;
@@ -3016,7 +2715,10 @@ async function addExamples() {
 document.addEventListener("click", async e => {
   const t = e.target.closest("button"); if (!t) return;
   if (t.dataset.view) return setView(t.dataset.view);
-  if (t.dataset.mode) { const was = simOn; simOn = false; setMode(t.dataset.mode); if (was) applySimView(); else renderLog(); return; }
+  if (t.dataset.mode) { setMode(t.dataset.mode); renderLog(); return; }
+  if (t.dataset.simkind) { setSimKind(t.dataset.simkind); return; }
+  if (t.dataset.simq) { simQuick(t.dataset.simq); return; }
+  if (t.dataset.vside) { settings.speedSide = Object.assign({}, settings.speedSide, { [tabKey()]: t.dataset.vside }); saveSettings(); applySpeedSide(); return; }
   if (t.dataset.smode) { statsMode = t.dataset.smode; renderStats(); return; }
   if (t.dataset.rack) { S.rack = t.dataset.rack; saveWork(); renderLog(); return; }
   if (t.dataset.bpk) { S.pocket = t.dataset.bpk; S.rail = null; saveWork(); renderLog(); return; }
@@ -3081,6 +2783,7 @@ document.addEventListener("click", async e => {
     case "madeClear": S.ballsMade = null; saveWork(); renderBreakPanel(); return;
     case "railClear": S.rail = null; saveWork(); renderLog(); return;
     case "hitFull": setHit(0); saveWork(); renderPredText(); return;
+    case "hitPot": { const g = ghostHit(); if (g == null) { toast("Too thin to pot from here"); return; } setHit(g, true); saveWork(); return; }
     case "undo": return undoLast();
     case "openZoom": return openZoom();
     case "zDone": closeZoom(); saveWork(); renderLog(); return;
@@ -3122,7 +2825,18 @@ document.addEventListener("input", e => {
   const id = e.target.id || "";
   if (id.startsWith("pick-")) { const k = id.slice(5); document.documentElement.style.setProperty("--" + k, e.target.value); const h = $("hex-" + k); if (h) h.value = e.target.value; }
 });
-$("speed").addEventListener("input", e => { S.speedPct = +e.target.value; S.speed = speedOf(S.speedPct); renderSpeed(); saveWork(); if (brkMode()) { renderTable(); renderPredText(); } });
+/* vertical speed bar: drag up for harder; arrow keys step 1 %, page keys 10 % */
+let vsDrag = null;
+const vsTrack = $("vsTrack");
+const vsAt = e => { const r = vsTrack.getBoundingClientRect(); return (r.bottom - e.clientY) / r.height * 100; };
+vsTrack.addEventListener("pointerdown", e => { e.preventDefault(); vsTrack.setPointerCapture(e.pointerId); vsDrag = e.pointerId; vsTrack.focus({ preventScroll: true }); setSpeed(vsAt(e)); });
+vsTrack.addEventListener("pointermove", e => { if (vsDrag === e.pointerId) setSpeed(vsAt(e)); });
+const vsEnd = e => { if (vsDrag === e.pointerId) vsDrag = null; };
+vsTrack.addEventListener("pointerup", vsEnd); vsTrack.addEventListener("pointercancel", vsEnd);
+vsTrack.addEventListener("keydown", e => {
+  const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 10, PageDown: -10, Home: -100, End: 100 }[e.key]; if (d == null) return;
+  e.preventDefault(); setSpeed(S.speedPct + d * (e.shiftKey ? 5 : 1));
+});
 const cueSvg = $("cueball"), cueBig = $("cueBig");
 const openSpin = () => { $("spinSheet").hidden = false; renderSpin(); };
 /* Small ball: press on the blue point and drag to move it here; a tap anywhere else on the ball enlarges it. */
@@ -3195,7 +2909,6 @@ function placeColumns() {
   const a = document.querySelector(".colA"), b = document.querySelector(".colB");
   const top = [$("modeSeg"), document.querySelector(".drill"), $("freeRow"), $("drillInfo")];
   if (land) b.prepend(...top); else a.prepend(...top);
-  if (simOn) $("simWrap").prepend($("modeSeg"));
 }
 function applyOrientation() {
   land = !!(LAND_MQ && LAND_MQ.matches);
