@@ -3,7 +3,7 @@
 /* ---------- Play mode ---------- */
 const PATHS = [["all", "All balls"], ["cue", "Cue ball"], ["ghost", "Ghost ball"], ["none", "No paths"]];
 const BREAK_FROM = [["box", "Break box"], ["kitchen", "Behind the head string"]];
-let playRes = null, playKey = "", playT = 0, playLast = 0, playGap = 90, playArm = null, playDrag = null, playConfirm = null, playConfirmT = 0;
+let playRes = null, playKey = "", playT = 0, playLast = 0, playGap = 33, playArm = null, playDrag = null, playConfirm = null, playConfirmT = 0;
 const soloPlay = () => settings.playSolo === true;
 /* Player names from Settings; the referee's messages use them */
 function applyPlayerNames() { const n = Array.isArray(settings.playNames) ? settings.playNames : []; PLAYER_NAMES = [0, 1].map(i => String(n[i] || "").trim().slice(0, 16) || "Player " + (i + 1)); }
@@ -31,7 +31,7 @@ function playNew(kind, keepScore) {
   const g = newRack(kind, breaker, keepScore && old ? old.score : [0, 0], Object.assign(playOpts(), { rackNo: keepScore && old ? old.rackNo : 0 }));
   g.pct = old && old.pct != null ? old.pct : 40; g.log = keepScore && old ? (old.log || []) : [];
   g.last = { text: `${playerName(breaker)} breaks`, fouls: [] };
-  S.game = g; S.gameUndo = null; playPrep(); S.speedPct = 90; S.speed = speedOf(90); S.tip = { x: 0, y: -.1 }; S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip);
+  S.game = g; S.gameHist = []; playPrep(); S.speedPct = 90; S.speed = speedOf(90); S.tip = { x: 0, y: -.1 }; S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip);
   playArm = null; saveWork();
 }
 function ensureGame() {
@@ -82,15 +82,15 @@ function playRun() {
   const g = S.game; if (!g || !g.cb || !window.PoolPhysics || g.over) return null;
   const r = window.PoolPhysics.simulate(playSpec(g), simParams()); r.kind = "play"; return r;
 }
-/* the prediction for what is on screen: worked out again at most about 11 times a second while you drag */
+/* the prediction for what is on screen: worked out again up to about 30 times a second while you drag, less on a slow phone */
 function playLive() {
   const g = S.game; if (!g || !g.cb) return null;
   const key = JSON.stringify([g.cb, g.aim, S.tip, S.speedPct, g.balls, g.phase, settings.W, settings.L, settings.wc, settings.ws, tuneKey()]);
   if (key === playKey && playRes) return playRes;
   const now = performance.now();
   /* a slow phone gets fewer updates rather than a stuck screen: wait at least half again as long as the last one took */
-  if (!playRes || now - playLast > playGap) { clearTimeout(playT); playRes = playRun(); playKey = key; const t = performance.now(); playGap = Math.max(90, (t - now) * 1.5); playLast = t; }
-  else { clearTimeout(playT); playT = setTimeout(() => { renderTable(); renderPlayInfo(); }, playGap + 5 - (now - playLast)); }
+  if (!playRes || now - playLast > playGap) { clearTimeout(playT); playRes = playRun(); playKey = key; const t = performance.now(); playGap = Math.max(33, (t - now) * 1.3); playLast = t; }
+  else { clearTimeout(playT); playT = setTimeout(() => { renderTable(); renderPlayInfo(); playLoupe(); }, playGap + 5 - (now - playLast)); }
   return playRes;
 }
 /* the first ball the cue ball hits in the prediction, and the cue ball's centre at that moment (the ghost ball) */
@@ -202,10 +202,11 @@ function renderPlayBar() {
   const two = g.kind !== "8" && !g.over && g.fouls[g.turn] === 2;
   if (two) detail.push("on two fouls");
   const sc = solo ? "" : `<span class="score num" aria-label="Score ${g.score[0]} to ${g.score[1]}">${g.score[0]}<i style="background:var(--accent)"></i>–<i style="background:var(--p2)"></i>${g.score[1]}</span>`;
-  const undo = S.gameUndo && !simAnim ? `<button class="btn small" data-play="undo">Undo shot</button>` : "";
+  const undo = undoList().length && !simAnim ? `<button class="btn small" id="undoBtn" data-play="undo">Undo shot</button>` : "";
   const hint = (settings.playShots || 0) < AIM_HINT_SHOTS && !g.over && !g.choice
-    ? `<div class="plhint">${g.inHand ? "Drag the cue ball to place it. " : ""}Drag on the table to aim, or tap where to aim. ↺ ↻ fine-tune.</div>` : "";
+    ? `<div class="plhint">${g.inHand ? "Drag the cue ball to place it. " : ""}The aim line follows your finger: drag or tap where to aim. ↺ ↻ fine-tune.</div>` : "";
   $("playStatus").innerHTML = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><div class="who"><b>${head}</b>${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</div>${sc}${undo}</div>${hint}`;
+  fitCallout();
 }
 function renderGameCard() {
   const g = S.game, el = $("gameBody"); if (!g || !playMode()) return;
@@ -271,8 +272,15 @@ function showCallout(kind, title, body) {
   if (soloPlay() && kind === "info") return;          // solo: no "next player" messages, only fouls and results
   if (!title) return;
   const el = $("callout"); clearTimeout(calloutT);
-  el.className = "callout " + kind; el.innerHTML = `<b>${esc(title)}</b>${body ? `<span>${esc(body)}</span>` : ""}`; el.hidden = false;
+  el.className = "callout " + kind; el.innerHTML = `<div class="cot"><b>${esc(title)}</b>${body ? `<span>${esc(body)}</span>` : ""}</div><span class="cox" aria-hidden="true">✕</span>`;
+  el.title = "Tap to dismiss"; el.hidden = false; fitCallout();
   calloutT = setTimeout(() => { el.hidden = true; }, kind === "bad" ? 7000 : 3200);
+}
+/* the callout covers the status line but not its Undo button */
+function fitCallout() {
+  const el = $("callout"), u = $("undoBtn"); if (!el || el.hidden) return;
+  const bar = $("playBar").getBoundingClientRect(), r = u && u.offsetParent ? u.getBoundingClientRect() : null;
+  el.style.right = r ? Math.max(0, bar.right - r.left + 6) + "px" : "0";
 }
 const hideCallout = () => { clearTimeout(calloutT); $("callout").hidden = true; };
 
@@ -286,7 +294,7 @@ function playShoot() {
 }
 function playApply(r, ctx) {
   const g = S.game, wasBreak = g.phase === "break";
-  S.gameUndo = { game: JSON.parse(JSON.stringify(g)), speedPct: S.speedPct, tip: Object.assign({}, S.tip) };
+  pushUndo(g, true);
   if ((settings.playShots || 0) < AIM_HINT_SHOTS) { settings.playShots = (settings.playShots || 0) + 1; saveSettings(); }
   const g2 = ref(g, shotFacts(r), ctx);
   g2.pct = g.pct; g2.log = (g.log || []).concat([{ rack: g.rackNo, shot: g2.shots, by: g.turn, text: g2.last.text, fouls: g2.last.fouls }]).slice(-40);
@@ -302,6 +310,7 @@ function playApply(r, ctx) {
 }
 function playChoose(id) {
   const g = S.game; if (!g || !g.choice) return;
+  pushUndo(g, false);
   const g2 = choose(g, id, playOpts());
   g2.pct = g.pct; g2.log = g.log || [];
   if (g2.phase === "break") { S.speedPct = 90; S.speed = speedOf(90); }
@@ -320,12 +329,28 @@ function playAction(k) {
     playConfirm = "newgame"; clearTimeout(playConfirmT); playConfirmT = setTimeout(() => { playConfirm = null; renderGameCard(); }, 3500); renderGameCard(); return;
   }
 }
-/* Put the table back as it was before the last shot: balls, turn, fouls, score and the stroke used */
+/* Undo goes back one shot (or one choice) at a time, as far as the start of the rack. Each step keeps the table, turn,
+   fouls, score and the stroke used; the game log isn't copied, only whether the step added a line to it. */
+const UNDO_MAX = 150;
+function undoList() {
+  if (!Array.isArray(S.gameHist)) S.gameHist = S.gameUndo ? [Object.assign({ logged: true }, S.gameUndo)] : [];
+  delete S.gameUndo;
+  return S.gameHist;
+}
+function pushUndo(g, logged) {
+  const snap = JSON.parse(JSON.stringify(Object.assign({}, g, { log: [] })));
+  const h = undoList(); h.push({ game: snap, logged, speedPct: S.speedPct, tip: Object.assign({}, S.tip) });
+  if (h.length > UNDO_MAX) h.splice(0, h.length - UNDO_MAX);
+}
 function playUndo() {
-  const u = S.gameUndo; if (!u || simAnim) return;
-  S.game = u.game; S.gameUndo = null; S.speedPct = u.speedPct; S.speed = speedOf(u.speedPct);
+  const h = undoList(), u = h[h.length - 1]; if (!u || simAnim) return;
+  h.pop();
+  const log = (S.game && S.game.log) || u.game.log || [];
+  S.game = Object.assign(u.game, { log: u.logged ? log.slice(0, -1) : log });
+  S.speedPct = u.speedPct; S.speed = speedOf(u.speedPct);
   S.tip = u.tip; S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip);
-  playArm = null; hideCallout(); saveWork(); renderLog(); toast("Shot undone");
+  playArm = null; hideCallout(); saveWork(); renderLog();
+  toast(h.length ? `Undone. ${h.length} more to the start of the rack` : "Undone. Back at the start of the rack");
 }
 /* Fine aim: a tap turns 0.1°; holding repeats, faster after a second */
 let fineT = 0, fineStart = 0, fineDir = 0;
@@ -359,8 +384,14 @@ function setCall(o) {
 }
 
 /* ---------- touch on the table ----------
-   Press on the cue ball while you have ball in hand to move it. Anywhere else: a tap aims straight at that point, and a
-   drag turns the aim by how far your finger goes around the cue ball (far from the ball turns it finely). */
+   With ball in hand, press on or near the cue ball to move it; the aim stays on the ball it was on. Anywhere else, the
+   aim line runs from the cue ball through your finger and follows it as you drag (further from the ball is finer). */
+/* inches on the table that a distance of px screen pixels covers here */
+function playInches(e, px) {
+  const svg = $("tbl"), a = svgPt(svg, e, $("tblContent")), b = svgPt(svg, { clientX: e.clientX + px, clientY: e.clientY }, $("tblContent"));
+  return a && b ? len(sub(a, b)) : 3.5;
+}
+const AIM_DEAD = 2.5;      // inches: closer than this to the cue ball the finger doesn't steer, the angle would jump about
 function playDown(e) {
   const g = ensureGame(); if (simAnim || g.over || g.choice) return;
   const svg = $("tbl"), p = svgPt(svg, e, $("tblContent")); if (!p) return;
@@ -371,25 +402,38 @@ function playDown(e) {
   if (needsCall(g) && ((offCloth && bd < 7) || bd < 2.6)) { setCall({ pocket: best }); toast("Called: " + POCKET_NAMES[best].toLowerCase()); return; }
   if (offCloth || !g.cb) return;
   e.preventDefault(); svg.setPointerCapture(e.pointerId);
-  if (g.inHand && len(sub(p, g.cb)) < 3.5) { playDrag = { id: e.pointerId, kind: "cb", off: sub(g.cb, p) }; showLoupe(p, e, g.cb); return; }
-  playDrag = { id: e.pointerId, kind: "aim", p0: p, a0: Math.atan2(p.y - g.cb.y, p.x - g.cb.x), aim0: g.aim, moved: false };
+  /* a fingertip is bigger than the ball on a phone: grab it within about 30 screen pixels */
+  if (g.inHand && len(sub(p, g.cb)) < Math.max(3.5, playInches(e, 30))) {
+    const c = playContact(playLive()), on = c && g.balls.some(b => b.n === c.n) ? c.n : null;
+    playDrag = { id: e.pointerId, kind: "cb", off: sub(g.cb, p), target: on }; showLoupe(p, e, g.cb); return;
+  }
+  playDrag = { id: e.pointerId, kind: "aim", p0: p, moved: false };
+}
+/* while aiming, the magnifier shows where the cue ball meets the first ball, or the point under your finger when it meets none */
+function playLoupe() {
+  const d = playDrag; if (!d || d.kind !== "aim" || !d.at) return;
+  const c = playContact(playLive()); showLoupe(d.p, d.at, c ? c.ghost : d.p);
+}
+/* aim at the middle of ball n, or the usual default when it's gone */
+function aimAtBall(g, n) {
+  const b = n != null && g.balls.find(x => x.n === n);
+  return b ? Math.atan2(b.y - g.cb.y, b.x - g.cb.x) : defaultAim(g);
 }
 function playMove(e) {
   const d = playDrag; if (!d || d.id !== e.pointerId) return;
   const g = S.game, p = svgPt($("tbl"), e, $("tblContent")); if (!p) return;
-  if (d.kind === "cb") { const q = placeCb(g, add(p, d.off)); if (q) { g.cb = q; g.aim = defaultAim(g); } showLoupe(p, e, g.cb); }
+  if (d.kind === "cb") { const q = placeCb(g, add(p, d.off)); if (q) { g.cb = q; g.aim = aimAtBall(g, d.target); } showLoupe(p, e, g.cb); }
   else {
     if (!d.moved && len(sub(p, d.p0)) < .6) return;
     d.moved = true;
-    const a = Math.atan2(p.y - g.cb.y, p.x - g.cb.x); let da = a - d.a0; da = Math.atan2(Math.sin(da), Math.cos(da));
-    g.aim = d.aim0 + da;
-    const c = playContact(playLive()); showLoupe(p, e, c ? c.ghost : null);
+    if (len(sub(p, g.cb)) >= AIM_DEAD) g.aim = Math.atan2(p.y - g.cb.y, p.x - g.cb.x);
+    d.p = p; d.at = { clientX: e.clientX, clientY: e.clientY }; playLoupe();
   }
   renderTable(); renderPlayBar(); renderQuick();
 }
 function playUp(e) {
   const d = playDrag; if (!d || d.id !== e.pointerId) return; playDrag = null; $("loupe").hidden = true;
   const g = S.game;
-  if (d.kind === "aim" && !d.moved && e.type === "pointerup") { const p = svgPt($("tbl"), e, $("tblContent")); if (p && len(sub(p, g.cb)) > .5) g.aim = Math.atan2(p.y - g.cb.y, p.x - g.cb.x); }
+  if (d.kind === "aim" && !d.moved && e.type === "pointerup") { const p = svgPt($("tbl"), e, $("tblContent")); if (p && len(sub(p, g.cb)) >= AIM_DEAD) g.aim = Math.atan2(p.y - g.cb.y, p.x - g.cb.x); }
   saveWork(); renderTable(); renderPlayInfo();
 }
