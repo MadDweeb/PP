@@ -78,9 +78,9 @@ function renderSessionLine() {
 }
 /* ---------- log sections: order per mode, rearrangeable, saved in settings ---------- */
 const CARD_ORDER = {
-  shot: ["tip", "pocket", "marks", "note", "session"],
-  break: ["tip", "hit", "pred", "marks", "rail", "cbfin", "balls", "note", "session", "tune"],
-  sim: ["tip", "hit", "game", "simres", "marks", "tune"]
+  shot: ["pocket", "marks", "note", "session"],
+  break: ["hit", "pred", "marks", "rail", "cbfin", "balls", "note", "session", "tune"],
+  sim: ["hit", "game", "simres", "marks", "tune"]
 };
 let arranging = false;
 function cardOrder(m) {
@@ -237,12 +237,13 @@ function renderSpin() {
   const r = Math.hypot(t.x, t.y);
   $("cbDyn").innerHTML = $("cbDynBig").innerHTML = (r > .02 ? `<line x1="0" y1="0" x2="${t.x}" y2="${-t.y}" stroke="var(--accent)" stroke-width=".02" stroke-opacity=".8"/>` : "") +
     `<circle cx="${t.x}" cy="${-t.y}" r=".23" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width=".03"/><circle cx="${t.x}" cy="${-t.y}" r=".045" fill="var(--accent)"/>`;
-  $("spinName").textContent = label(VSPIN, S.vspin) + " · " + (S.side === "C" ? "no side" : label(SIDE, S.side).toLowerCase());
+  const sideTxt = S.side === "C" ? "no side" : label(SIDE, S.side).toLowerCase() + " side";
+  $("spinName").textContent = label(VSPIN, S.vspin); $("spinSide").textContent = sideTxt;
   const up = t.y, rt = t.x;
   $("spinOff").innerHTML = r < .005 ? "Dead centre" : `<b>${tipLen(r)}</b> from centre<br>${Math.abs(up) >= .005 ? tipLen(Math.abs(up)) + (up > 0 ? " up" : " down") : ""}${Math.abs(up) >= .005 && Math.abs(rt) >= .005 ? ", " : ""}${Math.abs(rt) >= .005 ? tipLen(Math.abs(rt)) + (rt > 0 ? " right" : " left") : ""}`;
-  $("spinWarn").textContent = r > TIP_MISCUE ? "Past the miscue limit (red ring)" : "";
-  $("bigName").textContent = $("spinName").textContent; $("bigOff").innerHTML = $("spinOff").innerHTML; $("bigWarn").textContent = $("spinWarn").textContent;
-  svg.setAttribute("aria-valuetext", $("spinName").textContent + ", " + tipLen(r) + " from centre");
+  $("spinWarn").textContent = r > TIP_MISCUE ? "Miscue risk" : "";
+  $("bigName").textContent = label(VSPIN, S.vspin) + " · " + sideTxt; $("bigOff").innerHTML = $("spinOff").innerHTML; $("bigWarn").textContent = r > TIP_MISCUE ? "Past the miscue limit (red ring)" : "";
+  svg.setAttribute("aria-valuetext", $("bigName").textContent + ", " + tipLen(r) + " from centre");
 }
 function setTip(x, y) {
   const snap = v => Math.abs(v) < .03 ? 0 : v;

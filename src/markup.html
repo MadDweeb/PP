@@ -32,6 +32,12 @@
     </div>
     <div class="playbar" id="playBar" hidden></div>
     <div class="tablewrap" id="tablewrap">
+      <div class="vtip" id="vtip">
+        <div class="vsread"><b id="spinName"></b><span id="spinSide"></span></div>
+        <svg id="cueball" viewBox="-1.3 -1.3 2.6 2.6" tabindex="0" role="slider" aria-label="Tip contact point on the cue ball. Tap to enlarge, or use arrow keys."></svg>
+        <span class="tipwarn" id="spinWarn"></span><span id="spinOff" hidden></span>
+        <div class="vslbl">Tip</div>
+      </div>
       <svg id="tbl" role="img" aria-label="Pool table. Tap to place balls and markers."></svg>
       <div class="vspeed" id="vspeed">
         <div class="vsread"><b id="vsPct">40%</b><span id="vsWord">medium</span></div>
@@ -60,13 +66,6 @@
       <section class="card" data-card="game" data-only="simplay" aria-labelledby="h-game">
         <div class="cardhead"><div><h2 id="h-game">Game</h2><p id="gameSub">Two players on one phone. WPA rules.</p></div><span class="mv"></span></div>
         <div class="cardbody" id="gameBody"></div>
-      </section>
-      <section class="card" data-card="tip" aria-labelledby="h-tip">
-        <div class="cardhead"><div><h2 id="h-tip">Cue ball tip</h2><p>Drag the blue point, or tap the ball to enlarge it</p></div><span class="mv"></span></div>
-        <div class="cardbody"><div class="spinrow">
-          <svg id="cueball" viewBox="-1.3 -1.3 2.6 2.6" tabindex="0" role="slider" aria-label="Tip contact point on the cue ball. Tap to enlarge, or use arrow keys."></svg>
-          <div class="spininfo"><span class="nm" id="spinName"></span><span class="off" id="spinOff"></span><span class="warn" id="spinWarn"></span><button class="btn small" id="tipCentre">Centre</button></div>
-        </div></div>
       </section>
       <section class="card" data-card="hit" data-only="break simshot simbreak" aria-labelledby="h-hit">
         <div class="cardhead"><div><h2 id="h-hit">Hit on the 1-ball</h2><p id="hitSub">Slide the cue ball across the 1-ball: full, 3/4, 1/2 or 1/4, left or right</p></div><span class="mv"></span></div>
@@ -125,7 +124,7 @@
         <div class="cardbody"><textarea id="notes" rows="1" placeholder="Anything worth remembering"></textarea></div>
       </section>
     </div>
-    <div class="cardsbar"><span class="sidectl" id="sideCtl" hidden>Speed bar <button class="chip sm" data-vside="left">Left</button><button class="chip sm" data-vside="right">Right</button></span><button class="btn small" id="arrangeReset" hidden>Reset order</button><button class="btn small" id="arrange" aria-pressed="false">Rearrange sections</button></div>
+    <div class="cardsbar"><span class="sidectl" id="sideCtl" hidden>Speed bar <button class="chip sm" data-vside="left">Left</button><button class="chip sm" data-vside="right">Right</button> (the cue ball goes on the other side)</span><button class="btn small" id="arrangeReset" hidden>Reset order</button><button class="btn small" id="arrange" aria-pressed="false">Rearrange sections</button></div>
     <a class="fblink" id="fbLog" href="#" target="_blank" rel="noopener">Something not right, or an idea? Send feedback</a>
     <div class="savebar">
       <button class="btn" id="undo">Undo last</button>

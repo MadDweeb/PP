@@ -117,6 +117,20 @@ function kitchenSvg(g) {
   const t = toSvg({ x: 0, y: settings.L / 4 });
   return `<rect x="0" y="${t.y}" width="${settings.W}" height="${settings.L / 4}" fill="#ffffff" fill-opacity=".07" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.2" stroke-dasharray="5 3" vector-effect="non-scaling-stroke"/>`;
 }
+/* The cue behind the cue ball, about 30 in of it: chalked blue tip, white ferrule, a maple shaft that tapers up to the
+   joint, a steel joint ring and the start of a dark wood butt. Drawn in table inches (a touch wider than life so it reads). */
+const CUE_PARTS = [[.45, .62, .62, "#2f6db5"], [1.2, .64, .66, "#f4f1e8"], [19.6, .66, .98, "#e6c995"], [.7, 1, 1, "#b9bec4"], [8.3, 1.02, 1.3, "#5a2f1a"]];
+function cueStickSvg(cb, aim) {
+  const u = { x: Math.cos(aim), y: Math.sin(aim) }, n = { x: -u.y, y: u.x };
+  let d = R_BALL + .9, out = "";
+  for (const [l, w0, w1, col] of CUE_PARTS) {
+    const p0 = sub(cb, mul(u, d)), p1 = sub(cb, mul(u, d + l));
+    const pts = [add(p0, mul(n, w0 / 2)), add(p1, mul(n, w1 / 2)), sub(p1, mul(n, w1 / 2)), sub(p0, mul(n, w0 / 2))].map(toSvg);
+    out += `<polygon points="${pts.map(q => q.x.toFixed(3) + "," + q.y.toFixed(3)).join(" ")}" fill="${col}" stroke="#1b1b1b" stroke-opacity=".4" stroke-width=".6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+    d += l;
+  }
+  return out;
+}
 const playCol = n => n ? BALL_COL[n] : "#ffffff";
 function dynPlay() {
   const g = ensureGame(), A = simAnim, mode = pathMode(); let s = kitchenSvg(g);
@@ -135,9 +149,7 @@ function dynPlay() {
   const r = g.cb && !g.over && !g.choice ? (g.phase === "break" ? null : playLive()) : null, c = playContact(r);
   if (g.cb && !g.over) {
     // the cue stick behind the ball, along the aim
-    const u = { x: Math.cos(g.aim), y: Math.sin(g.aim) }, a = sub(g.cb, mul(u, R_BALL + 1.2)), b = sub(g.cb, mul(u, R_BALL + 16));
-    const qa = toSvg(a), qb = toSvg(b);
-    s += `<line x1="${qa.x}" y1="${qa.y}" x2="${qb.x}" y2="${qb.y}" stroke="#d9b779" stroke-opacity=".85" stroke-width="4" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+    s += cueStickSvg(g.cb, g.aim);
     if (g.phase === "break" && mode !== "none") {
       const hit = rayFirst(g.cb, g.aim, g.balls);
       if (hit) s += line(g.cb, hit.ghost, "#ffffff", "4 3", .7) + ring(hit.ghost, "#ffffff", .75, 1.4);
@@ -166,19 +178,19 @@ function rayFirst(cb, aim, balls) {
 }
 
 /* ---------- panels: player bar above the table, game card, quick bar ---------- */
+/* one line above the foot of the table: whose turn, their group, the score */
 function renderPlayBar() {
   const g = S.game, el = $("playBar"); el.hidden = !playMode(); if (!playMode() || !g) return;
-  const pill = p => {
-    const grp = g.kind === "8" ? (g.groups ? GROUP_NAMES[g.groups[p]] : "Open table") : "";
-    const fouls = g.kind !== "8" && g.fouls[p] ? `<span class="fouls" title="Fouls in a row">${"●".repeat(g.fouls[p])}</span>` : "";
-    return `<div class="pl ${g.turn === p && !g.over ? "on" : ""}"><b>${esc(playerName(p))}</b><span>${grp ? esc(grp) : ""}${fouls}</span><i class="num">${g.score[p]}</i></div>`;
-  };
+  const who = p => esc(playerName(p)) + (g.kind === "8" && g.groups ? ` (${GROUP_NAMES[g.groups[p]].toLowerCase()})` : "");
   let st;
-  if (g.over) st = `${esc(playerName(g.over.winner))} wins the rack`;
-  else if (g.choice) st = `${esc(playerName(g.choice.by))} to choose`;
-  else if (g.phase === "break") st = `${esc(playerName(g.turn))} to break${breakFrom() === "box" ? " from the box" : ""}`;
-  else st = `${esc(playerName(g.turn))} to shoot` + (g.inHand ? ", ball in hand" + (g.inHand === "kitchen" ? " behind the head string" : "") : "") + (g.kind !== "8" && g.fouls[g.turn] === 2 ? ". On two fouls" : "");
-  el.innerHTML = `<div class="pls">${pill(0)}${pill(1)}</div><div class="plst ${g.kind !== "8" && g.fouls[g.turn] === 2 && !g.over ? "warn" : ""}">${st}</div>`;
+  if (g.over) st = `${who(g.over.winner)} wins the rack`;
+  else if (g.choice) st = `${who(g.choice.by)} to choose`;
+  else if (g.phase === "break") st = `${who(g.turn)} to break`;
+  else st = `${who(g.turn)} to shoot` + (g.inHand ? ", ball in hand" + (g.inHand === "kitchen" ? " behind the head string" : "") : "") + (g.kind === "8" && !g.groups ? ", open table" : "");
+  const two = g.kind !== "8" && !g.over && g.fouls[g.turn] === 2;
+  if (two) st += ", on two fouls";
+  const sc = g.score[0] + g.score[1] ? ` <span class="plsc num">${g.score[0]}–${g.score[1]}</span>` : "";
+  el.innerHTML = `<div class="plst ${two ? "warn" : ""}">${st}${sc}</div>`;
 }
 function renderGameCard() {
   const g = S.game, el = $("gameBody"); if (!g || !playMode()) return;
