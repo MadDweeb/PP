@@ -1,6 +1,6 @@
 // Send feedback: the club Google Form link with tab, version and device filled in.
 /* ---------- feedback: the club Google Form, with the tab, app version and phone filled in ---------- */
-const APP_VERSION = "2026.11.27-play";
+const APP_VERSION = "2026.11.27-play-ux";
 const FEEDBACK_FORM = "https://docs.google.com/forms/d/e/1FAIpQLSc2I7ezYHUnVFqxsS-ih7k8uljZ2TruEJ4os5WCLlriBqMbyg/viewform";
 const FB_ENTRY = { tab: "entry.823033499", version: "entry.1110955210", device: "entry.995188720" };
 function feedbackTab() {

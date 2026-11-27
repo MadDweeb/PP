@@ -9,7 +9,11 @@ document.addEventListener("click", async e => {
   if (t.dataset.vside) { settings.speedSide = Object.assign({}, settings.speedSide, { [tabKey()]: t.dataset.vside }); saveSettings(); applySpeedSide(); return; }
   if (t.dataset.smode) { statsMode = t.dataset.smode; renderStats(); return; }
   if (t.dataset.rack && playMode()) { playRack(t.dataset.rack); return; }
-  if (t.dataset.play) { playAction(t.dataset.play); return; }
+  if (t.dataset.play) {
+    if ((t.dataset.play === "left" || t.dataset.play === "right") && e.detail > 0) return;   // taps and holds are handled on press, below; this is the keyboard
+    playAction(t.dataset.play); return;
+  }
+  if (t.dataset.solo) { settings.playSolo = t.dataset.solo === "1"; saveSettings(); hideCallout(); renderLog(); return; }
   if (t.id === "vcue") { openCueSheet(); return; }
   if (t.id === "cueDone") { closeCueSheet(); return; }
   if (t.dataset.cuefor) { cueFor = +t.dataset.cuefor; renderCueSheet(); return; }
@@ -192,6 +196,21 @@ $("drill").addEventListener("input", e => { S.drill = e.target.value; saveWork()
 $("notes").addEventListener("input", e => { S.notes = e.target.value; saveWork(); });
 const tbl = $("tbl");
 tbl.addEventListener("pointerdown", onTableDown);
+/* Play: arrow keys on the table turn the aim (Shift for 1°), Enter shoots */
+tbl.addEventListener("keydown", e => {
+  if (!playMode()) return;
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); nudgeAim(e.key === "ArrowLeft" ? 1 : -1, e.shiftKey ? 1 : .1); }
+  else if (e.key === "Enter") { e.preventDefault(); playAction("shoot"); }
+});
+/* Play: hold ↺ or ↻ to keep turning */
+document.addEventListener("pointerdown", e => { const b = e.target.closest('[data-play="left"], [data-play="right"]'); if (!b) return; e.preventDefault(); fineHold(b.dataset.play === "left" ? 1 : -1); });
+for (const ev of ["pointerup", "pointercancel", "blur"]) (ev === "blur" ? window : document).addEventListener(ev, fineStop);
+$("callout").addEventListener("click", hideCallout);
+document.addEventListener("input", e => {
+  const m = /^pname([01])$/.exec(e.target.id || ""); if (!m) return;
+  const n = (Array.isArray(settings.playNames) ? settings.playNames : ["", ""]).slice(0, 2); while (n.length < 2) n.push("");
+  n[+m[1]] = e.target.value.slice(0, 16); settings.playNames = n; saveSettings(); applyPlayerNames(); renderPlayBar(); renderQuick(); renderCueSide();
+});
 tbl.addEventListener("pointermove", onTableMove);
 tbl.addEventListener("pointerup", onTableUp);
 tbl.addEventListener("pointercancel", onTableUp);

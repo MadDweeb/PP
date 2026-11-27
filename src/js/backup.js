@@ -57,7 +57,9 @@ function cleanSettings(set) {
     else if (["W", "L", "wc", "ws"].includes(k)) { if (Number.isFinite(+v) && +v > 0) out[k] = +v; }
     else if (["theme", "units", "grid", "playPaths", "playBreak"].includes(k)) { if (typeof v === "string") out[k] = v; }
     else if (k === "cues") { if (Array.isArray(v)) out[k] = v.slice(0, 2).map(c => { const o = {}; if (c && typeof c === "object") for (const p of ["shaft", "butt", "inlay", "wrap"]) if (typeof c[p] === "string") o[p] = c[p]; return o; }); }
-    else if (["labels", "pinTable", "wakeLock", "haptics"].includes(k)) out[k] = !!v;
+    else if (["labels", "pinTable", "wakeLock", "haptics", "playSolo"].includes(k)) out[k] = !!v;
+    else if (k === "playNames") { if (Array.isArray(v)) out[k] = v.slice(0, 2).map(x => typeof x === "string" ? x.slice(0, 16) : ""); }
+    else if (k === "playShots") { if (Number.isFinite(+v) && +v >= 0) out[k] = Math.min(99, Math.round(+v)); }
     else if (k === "cardOrder" || k === "speedSide") { if (v && typeof v === "object") out[k] = JSON.parse(JSON.stringify(v)); }
   }
   return out;

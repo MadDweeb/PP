@@ -4,6 +4,24 @@
 const PATHS = [["all", "All balls"], ["cue", "Cue ball"], ["ghost", "Ghost ball"], ["none", "No paths"]];
 const BREAK_FROM = [["box", "Break box"], ["kitchen", "Behind the head string"]];
 let playRes = null, playKey = "", playT = 0, playLast = 0, playGap = 90, playArm = null, playDrag = null, playConfirm = null, playConfirmT = 0;
+const soloPlay = () => settings.playSolo === true;
+/* Player names from Settings; the referee's messages use them */
+function applyPlayerNames() { const n = Array.isArray(settings.playNames) ? settings.playNames : []; PLAYER_NAMES = [0, 1].map(i => String(n[i] || "").trim().slice(0, 16) || "Player " + (i + 1)); }
+applyPlayerNames();
+/* Solo: one person plays both sides, so the referee's messages drop who is to shoot and keep only what happened. */
+function soloText(t) {
+  if (!soloPlay() || !t) return t;
+  const N = "(?:" + PLAYER_NAMES.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")";
+  const rx = (s, f) => new RegExp(s.replace(/N/g, () => N), f || "g");
+  t = t.replace(rx("N made (\\d+) on the break and shoots again"), "$1 down on the break")
+    .replace(rx("N made the called"), "Made the called").replace(rx(",? and shoots again"), "")
+    .replace(rx("N shoots again"), "").replace(rx(":? rack to N"), "")
+    .replace(rx("N has ball in hand"), "Ball in hand").replace(rx("N picks who shoots"), "Choose who shoots next")
+    .replace(rx("N pushed out"), "Pushed out").replace(rx("N plays the table as it lies"), "Playing the table as it lies")
+    .replace(rx("N chooses"), "Choose").replace(rx("N breaks"), "Break").replace(rx("N to shoot with "), "Shoot with ").replace(rx("N to shoot"), "")
+    .replace(rx("N has (solids|stripes)"), "$1");
+  return t.replace(/\.\s*\./g, ".").replace(/^[\s.]+|[\s.]+$/g, "").replace(/\s{2,}/g, " ");
+}
 const pathMode = () => PATHS.some(([k]) => k === settings.playPaths) ? settings.playPaths : "all";
 const breakFrom = () => settings.playBreak === "kitchen" ? "kitchen" : "box";
 const playOpts = () => ({ W: settings.W, L: settings.L });
@@ -13,7 +31,7 @@ function playNew(kind, keepScore) {
   const g = newRack(kind, breaker, keepScore && old ? old.score : [0, 0], Object.assign(playOpts(), { rackNo: keepScore && old ? old.rackNo : 0 }));
   g.pct = old && old.pct != null ? old.pct : 40; g.log = keepScore && old ? (old.log || []) : [];
   g.last = { text: `${playerName(breaker)} breaks`, fouls: [] };
-  S.game = g; playPrep(); S.speedPct = 90; S.speed = speedOf(90); S.tip = { x: 0, y: -.1 }; S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip);
+  S.game = g; S.gameUndo = null; playPrep(); S.speedPct = 90; S.speed = speedOf(90); S.tip = { x: 0, y: -.1 }; S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip);
   playArm = null; saveWork();
 }
 function ensureGame() {
@@ -164,19 +182,30 @@ function rayFirst(cb, aim, balls) {
 }
 
 /* ---------- panels: player bar above the table, game card, quick bar ---------- */
-/* one line above the foot of the table: whose turn, their group, the score */
+/* Above the table: whose turn it is, large and in that player's colour, with the score and Undo.
+   Solo: no names or score, only the state of the table. */
+const AIM_HINT_SHOTS = 5;
 function renderPlayBar() {
   const g = S.game, el = $("playBar"); el.hidden = !playMode(); if (!playMode() || !g) return;
-  const who = p => esc(playerName(p)) + (g.kind === "8" && g.groups ? ` (${GROUP_NAMES[g.groups[p]].toLowerCase()})` : "");
-  let st;
-  if (g.over) st = `${who(g.over.winner)} wins the rack`;
-  else if (g.choice) st = `${who(g.choice.by)} to choose`;
-  else if (g.phase === "break") st = `${who(g.turn)} to break`;
-  else st = `${who(g.turn)} to shoot` + (g.inHand ? ", ball in hand" + (g.inHand === "kitchen" ? " behind the head string" : "") : "") + (g.kind === "8" && !g.groups ? ", open table" : "");
+  const solo = soloPlay(), grp = p => g.kind === "8" && g.groups ? GROUP_NAMES[g.groups[p]].toLowerCase() : "";
+  const p = g.over ? g.over.winner : g.choice ? g.choice.by : g.turn;
+  let head, detail = [];
+  if (g.over) head = solo ? "Rack over" : `${esc(playerName(p))} wins the rack`;
+  else if (g.choice) head = solo ? "Your choice" : `${esc(playerName(p))} to choose`;
+  else if (g.phase === "break") head = solo ? "Break" : `${esc(playerName(p))} to break`;
+  else head = solo ? (grp(p) ? "Shooting " + grp(p) : "Your shot") : esc(playerName(p));
+  if (!g.over && !g.choice && g.phase !== "break") {
+    if (!solo && grp(p)) detail.push(grp(p));
+    if (g.inHand) detail.push("ball in hand" + (g.inHand === "kitchen" ? " behind the head string" : ""));
+    if (g.kind === "8" && !g.groups) detail.push("open table");
+  }
   const two = g.kind !== "8" && !g.over && g.fouls[g.turn] === 2;
-  if (two) st += ", on two fouls";
-  const sc = g.score[0] + g.score[1] ? ` <span class="plsc num">${g.score[0]}–${g.score[1]}</span>` : "";
-  el.innerHTML = `<div class="plst ${two ? "warn" : ""}">${st}${sc}</div>`;
+  if (two) detail.push("on two fouls");
+  const sc = solo ? "" : `<span class="score num" aria-label="Score ${g.score[0]} to ${g.score[1]}">${g.score[0]}<i style="background:var(--accent)"></i>–<i style="background:var(--p2)"></i>${g.score[1]}</span>`;
+  const undo = S.gameUndo && !simAnim ? `<button class="btn small" data-play="undo">Undo shot</button>` : "";
+  const hint = (settings.playShots || 0) < AIM_HINT_SHOTS && !g.over && !g.choice
+    ? `<div class="plhint">${g.inHand ? "Drag the cue ball to place it. " : ""}Drag on the table to aim, or tap where to aim. ↺ ↻ fine-tune.</div>` : "";
+  $("playStatus").innerHTML = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><div class="who"><b>${head}</b>${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</div>${sc}${undo}</div>${hint}`;
 }
 function renderGameCard() {
   const g = S.game, el = $("gameBody"); if (!g || !playMode()) return;
@@ -189,14 +218,16 @@ function renderGameCard() {
       `<div class="chips">${g.kind === "8" ? `<button class="chip sm" aria-pressed="${!!cm.safety}" data-callsafe="1">Safety</button>` : ""}<button class="chip sm" aria-pressed="${!g.callManual}" data-callauto="1">From my aim</button></div>` +
       `<p class="note">Tap a pocket on the table to call it too.</p></div>`;
   }
+  h += `<div class="optrow"><span class="k">Players</span><div class="chips"><button class="chip sm" aria-pressed="${!soloPlay()}" data-solo="0">Two players</button><button class="chip sm" aria-pressed="${soloPlay()}" data-solo="1">Solo: I play both sides</button></div>` +
+    (soloPlay() ? "" : `<div class="namerow">${[0, 1].map(i => `<input id="pname${i}" style="--p-col:${i ? "var(--p2)" : "var(--accent)"}" value="${esc((settings.playNames || [])[i] || "")}" placeholder="Player ${i + 1}" maxlength="16" autocomplete="off" aria-label="Player ${i + 1} name">`).join("")}</div>`) + `</div>`;
   h += `<div class="optrow"><span class="k">Paths</span><div class="chips">${PATHS.map(([k, l]) => `<button class="chip sm" aria-pressed="${pathMode() === k}" data-paths="${k}">${l}</button>`).join("")}</div></div>`;
   h += `<div class="optrow"><span class="k">Break from</span><div class="chips">${BREAK_FROM.map(([k, l]) => `<button class="chip sm" aria-pressed="${breakFrom() === k}" data-brkfrom="${k}">${l}</button>`).join("")}</div></div>`;
   const log = (g.log || []).slice(-6).reverse();
-  if (log.length) h += `<div class="glog"><span class="k">Last shots</span><ol>${log.map(e => `<li class="${e.fouls && e.fouls.length ? "bad" : ""}"><b>Rack ${e.rack}, shot ${e.shot}:</b> ${esc(e.fouls && e.fouls.length ? "Foul. " + e.fouls.join(". ") : e.text)}</li>`).join("")}</ol></div>`;
+  if (log.length) h += `<div class="glog"><span class="k">Last shots</span><ol>${log.map(e => `<li class="${e.fouls && e.fouls.length ? "bad" : ""}"><b>Rack ${e.rack}, shot ${e.shot}:</b> ${esc(e.fouls && e.fouls.length ? "Foul. " + e.fouls.join(". ") : soloText(e.text) || "Shot played")}</li>`).join("")}</ol></div>`;
   h += `<div class="tunerow"><span>${esc(GAME_NAMES[g.kind])}, rack ${g.rackNo}</span><button class="btn small" data-play="newgame">${playConfirm === "newgame" ? "Tap again to reset the score" : "New game"}</button></div>`;
   h += `<details class="tunebox"><summary>The rules</summary><ul class="rules">${rulesText(g.kind).map(t => `<li>${esc(t)}</li>`).join("")}</ul></details>`;
   el.innerHTML = h;
-  $("gameSub").textContent = `Two players on one phone, ${GAME_NAMES[g.kind]}, WPA rules`;
+  $("gameSub").textContent = `${soloPlay() ? "Solo practice" : "Two players on one phone"}, ${GAME_NAMES[g.kind]}, WPA rules`;
 }
 function rulesText(k) {
   const common = ["Break from the break box (or behind the head string, set below). Paths are hidden on the break: every rack sits a little differently.",
@@ -215,20 +246,30 @@ function renderPlayQuick(q) {
   const g = S.game;
   if (!g) { q.innerHTML = ""; return; }
   if (simAnim) { q.innerHTML = `<button class="qs plain" data-play="skip">Skip to the end<small>the shot still counts</small></button>`; return; }
-  if (g.over) { q.innerHTML = `<button class="qs good" data-play="next">Next rack<small>${esc(playerName(otherP(g.breaker)))} breaks</small></button>`; return; }
-  if (g.choice) { q.innerHTML = g.choice.options.map(([id, l]) => `<button class="qs plain" data-choice="${id}">${esc(l)}<small>${esc(playerName(g.choice.by))}</small></button>`).join(""); return; }
+  const solo = soloPlay();
+  if (g.over) { q.innerHTML = `<button class="qs good" data-play="next">Next rack<small>${solo ? "rack them up" : esc(playerName(otherP(g.breaker))) + " breaks"}</small></button>`; return; }
+  if (g.choice) { q.innerHTML = g.choice.options.map(([id, l]) => `<button class="qs plain" data-choice="${id}">${esc(l)}${solo ? "" : `<small>${esc(playerName(g.choice.by))}</small>`}</button>`).join(""); return; }
   const push = pushAvailable(g), armed = playArm === "push" && push, c = playCall();
   q.innerHTML = `<button class="qs fine" data-play="left" aria-label="Turn the aim anticlockwise a little">↺<small>0.1°</small></button>` +
-    `<button class="qs good" data-play="shoot">${g.phase === "break" ? "Break" : armed ? "Push out" : "Shoot"}<small>${needsCall(g) && !armed ? "call: " + esc(callText(c)) : esc(playerName(g.turn))}</small></button>` +
+    `<button class="qs good" data-play="shoot">${g.phase === "break" ? "Break" : armed ? "Push out" : "Shoot"}<small>${needsCall(g) && !armed ? "call: " + esc(callText(c)) : solo ? (g.phase === "break" ? "power " + S.speedPct + "%" : "play it") : esc(playerName(g.turn))}</small></button>` +
     `<button class="qs fine" data-play="right" aria-label="Turn the aim clockwise a little">↻<small>0.1°</small></button>` +
     (push ? `<button class="qs ${armed ? "warn" : "plain"} wide" data-play="push" aria-pressed="${armed}">${armed ? "Cancel push out" : "Push out"}<small>no line to the ${lowestBall(g)}: any shot, no fouls but a scratch</small></button>` : "");
 }
-function renderPlayInfo() { renderPlayBar(); renderGameCard(); renderQuick(); renderCueSide(); }
+function renderPlayInfo() {
+  renderPlayBar(); renderGameCard(); renderQuick(); renderCueSide();
+  /* the quick bar redraws while you aim; the callout announces results instead */
+  $("quickbar").setAttribute("aria-live", playMode() ? "off" : "polite");
+  const t = $("tbl"); t.tabIndex = playMode() ? 0 : -1;
+  t.setAttribute("aria-label", playMode() ? "Pool table. Drag or tap to aim; arrow keys turn the aim, Shift for 1 degree; Enter shoots." : "Pool table. Tap to place balls and markers.");
+}
 function renderPlay() { ensureGame(); if (S.game.cb == null && !S.game.over) playPrep(); renderPlayInfo(); }
 
 /* ---------- callout over the table: fouls in red, the rest in plain ---------- */
 let calloutT = 0;
 function showCallout(kind, title, body) {
+  title = soloText(title); body = soloText(body);
+  if (soloPlay() && kind === "info") return;          // solo: no "next player" messages, only fouls and results
+  if (!title) return;
   const el = $("callout"); clearTimeout(calloutT);
   el.className = "callout " + kind; el.innerHTML = `<b>${esc(title)}</b>${body ? `<span>${esc(body)}</span>` : ""}`; el.hidden = false;
   calloutT = setTimeout(() => { el.hidden = true; }, kind === "bad" ? 7000 : 3200);
@@ -245,6 +286,8 @@ function playShoot() {
 }
 function playApply(r, ctx) {
   const g = S.game, wasBreak = g.phase === "break";
+  S.gameUndo = { game: JSON.parse(JSON.stringify(g)), speedPct: S.speedPct, tip: Object.assign({}, S.tip) };
+  if ((settings.playShots || 0) < AIM_HINT_SHOTS) { settings.playShots = (settings.playShots || 0) + 1; saveSettings(); }
   const g2 = ref(g, shotFacts(r), ctx);
   g2.pct = g.pct; g2.log = (g.log || []).concat([{ rack: g.rackNo, shot: g2.shots, by: g.turn, text: g2.last.text, fouls: g2.last.fouls }]).slice(-40);
   if (wasBreak) { g2.pct = g.pct != null ? g.pct : 40; S.speedPct = g2.pct; S.speed = speedOf(S.speedPct); S.tip = { x: 0, y: 0 }; S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); }
@@ -268,6 +311,7 @@ function playAction(k) {
   const g = S.game;
   if (k === "shoot") return playShoot();
   if (k === "skip") { simStopAnim(); return; }
+  if (k === "undo") return playUndo();
   if (k === "next") { playNew(g.kind, true); renderLog(); showCallout("info", S.game.last.text, ""); return; }
   if (k === "push") { playArm = playArm === "push" ? null : "push"; renderQuick(); return; }
   if (k === "left" || k === "right") { nudgeAim(k === "left" ? 1 : -1, .1); return; }
@@ -276,6 +320,21 @@ function playAction(k) {
     playConfirm = "newgame"; clearTimeout(playConfirmT); playConfirmT = setTimeout(() => { playConfirm = null; renderGameCard(); }, 3500); renderGameCard(); return;
   }
 }
+/* Put the table back as it was before the last shot: balls, turn, fouls, score and the stroke used */
+function playUndo() {
+  const u = S.gameUndo; if (!u || simAnim) return;
+  S.game = u.game; S.gameUndo = null; S.speedPct = u.speedPct; S.speed = speedOf(u.speedPct);
+  S.tip = u.tip; S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip);
+  playArm = null; hideCallout(); saveWork(); renderLog(); toast("Shot undone");
+}
+/* Fine aim: a tap turns 0.1°; holding repeats, faster after a second */
+let fineT = 0, fineStart = 0, fineDir = 0;
+function fineHold(dir) {
+  fineStop(); fineDir = dir; fineStart = performance.now(); nudgeAim(dir, .1);
+  const step = () => { const held = performance.now() - fineStart; nudgeAim(fineDir, held > 1500 ? .5 : .1); fineT = setTimeout(step, held > 1500 ? 50 : 80); };
+  fineT = setTimeout(step, 400);
+}
+function fineStop() { clearTimeout(fineT); fineT = 0; }
 /* left = anticlockwise as you look at the screen */
 function nudgeAim(dir, deg) {
   const g = S.game; if (!g || !g.cb || simAnim) return;
