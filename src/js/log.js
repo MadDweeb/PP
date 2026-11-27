@@ -97,6 +97,7 @@ function renderCards() {
     const only = el.dataset.only;
     el.hidden = !!only && !only.split(" ").some(t => tags.includes(t));
   }
+  $("vcue").hidden = !playMode();   // the cue and its picker are only for Play
   $("vhit").hidden = !(m === "break" || (m === "sim" && (S.simKind === "break" || (S.simKind === "shot" && S.ob))));   // the hit picker under the tip; no object ball, nothing to hit
   order.forEach((k, i) => {
     const el = box.querySelector(`[data-card="${k}"]`); if (!el) return;
