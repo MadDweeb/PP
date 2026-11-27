@@ -14,7 +14,7 @@ function ghostHit() {
   const h = (a.x * v.y - a.y * v.x) / det / (2 * R_BALL);
   return Math.abs(h) > .95 ? null : Math.round(h * 100) / 100;
 }
-function simParams() { return Object.assign({}, tune, { W: settings.W, L: settings.L, wc: settings.wc, ws: settings.ws }, simBrk() ? { vmax: tune.vbreak || BREAK_VMAX } : {}); }
+function simParams() { return Object.assign({}, tune, { W: settings.W, L: settings.L, wc: settings.wc, ws: settings.ws }, simBrk() || playBreakNow() ? { vmax: tune.vbreak || BREAK_VMAX } : {}); }
 function simInputs() { return [S.simKind, S.cb, S.ob, S.target, S.pocket, S.tip, S.speedPct, S.hit, S.rack, settings.W, settings.L, settings.wc, settings.ws, tuneKey()]; }
 /* one break: optional loose rack and stroke wobble for Run 50 */
 function simBreakRun(seed, wobble) {
@@ -55,12 +55,13 @@ function simLive() {
   }
   return simRes;
 }
-function simStopAnim() { if (simAnim) { cancelAnimationFrame(simAnim.id); simAnim = null; renderQuick(); } }
+/* stopping a replay early still finishes the shot: a Play shot is then refereed as it would have ended */
+function simStopAnim() { if (simAnim) { cancelAnimationFrame(simAnim.id); const done = simAnim.done; simAnim = null; renderQuick(); if (done) done(); else renderTable(); } }
 function simStop() { simStopAnim(); runTok++; sum50 = null; clearTimeout(simT); }
-function simPlay(r) {
+function simPlay(r, done) {
   simStopAnim();
   const t0 = performance.now(), reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  simAnim = { r, pos: {}, i: {}, id: 0 };
+  simAnim = { r, pos: {}, i: {}, id: 0, done };
   const step = now => {
     if (!simAnim) return;
     const t = reduce ? r.t : (now - t0) / 1000;
@@ -70,7 +71,7 @@ function simPlay(r) {
     }
     renderTable();
     if (t < r.t) simAnim.id = requestAnimationFrame(step);
-    else { simAnim = null; renderTable(); renderQuick(); }
+    else { simAnim = null; if (done) done(); else { renderTable(); renderQuick(); } }
   };
   simAnim.id = requestAnimationFrame(step); renderQuick();
 }
@@ -104,6 +105,8 @@ function setSimKind(k) {
   S.simKind = k;
   Object.assign(S, JSON.parse(JSON.stringify(S.simStash[k] || simStart())));
   if (typeof S.hit !== "number") S.hit = k === "shot" && S.ob ? (ghostHit() || 0) : 0;
+  if (k === "play") { const g = ensureGame(); if (g.phase === "break") { S.speedPct = 90; S.tip = { x: 0, y: -.1 }; } else if (g.pct != null) S.speedPct = g.pct; }
+  hideCallout();
   S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); S.speed = speedOf(S.speedPct);
   simHitWasPot = false; saveWork(); renderLog();
 }
@@ -116,11 +119,19 @@ function loadSimPreset(i) {
 }
 $("simPreset").innerHTML = SIM_PRESETS.map((p, i) => `<option value="${i}">${esc(p.name)}</option>`).join("") + `<option value="-1" hidden>Your own layout</option>`;
 $("simPreset").addEventListener("change", e => { const i = +e.target.value; if (i >= 0) loadSimPreset(i); });
+/* the row above the table: the starting layout (Shot) or the rack (Cut break, Break, Play) */
+function renderTopRow() {
+  const bm = brkMode(), sm = simMode(), shot = sm && S.simKind === "shot";
+  $("topRow").hidden = !(bm || sm);
+  $("simPreset").hidden = !shot; $("rackTop").hidden = shot;
+  const cur = playMode() && S.game ? S.game.kind : S.rack;
+  $("rackTop").innerHTML = (playMode() ? `<span class="toplbl">Game</span>` : `<span class="toplbl">Rack</span>`) + RACKS.map(([k, l]) => `<button class="chip sm" aria-pressed="${cur === k}" data-rack="${k}">${l}</button>`).join("");
+}
 function renderSimPanel() {
   const b = simBrk();
-  $("simKShot").setAttribute("aria-selected", !b); $("simKBreak").setAttribute("aria-selected", b);
-  $("simPreset").hidden = b; $("simRack").hidden = !b;
-  $("simRack").innerHTML = RACKS.map(([k, l]) => `<button class="chip" aria-pressed="${S.rack === k}" data-rack="${k}">${l}</button>`).join("");
+  for (const [id, k] of [["simKShot", "shot"], ["simKBreak", "break"], ["simKPlay", "play"]]) $(id).setAttribute("aria-selected", S.simKind === k);
+  renderTopRow();
+  if (playMode()) { renderPlay(); return; }
   if (!b) { const i = S.simPreset || 0, p = SIM_PRESETS[i], same = p && JSON.stringify([p.cb, p.ob, p.target]) === JSON.stringify([S.cb, S.ob, S.target]); $("simPreset").value = same ? i : -1; }
   renderHit(); renderSimRes();
 }
@@ -136,6 +147,7 @@ function simBreakStats(r) {
 }
 function renderSimRes() {
   if (!simMode()) return;
+  if (playMode()) return renderPlayInfo();
   const r = simLive(), el = $("simRes");
   if (!r) { el.innerHTML = `<p class="note wide">Place the cue ball to start.</p>`; return; }
   let items;
@@ -184,6 +196,7 @@ function renderSimRes() {
 }
 const pathD = pts => pts.map((q, i) => { const v = toSvg(q); return (i ? "L" : "M") + v.x.toFixed(2) + " " + v.y.toFixed(2); }).join("");
 function dynSim() {
+  if (playMode()) return dynPlay();
   const r = simLive(), A = simAnim, paths = S.simPaths !== false; let g = "";
   const dashed = (pts, col, w, op) => `<path d="${pathD(pts)}" fill="none" stroke="${col}" stroke-width="${w}" stroke-opacity="${op}" ${A ? "" : 'stroke-dasharray="5 3"'} stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
   const ring = (p, col, op) => { const q = toSvg(p); return `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="none" stroke="${col}" stroke-opacity="${op}" stroke-width="2" vector-effect="non-scaling-stroke"/>`; };

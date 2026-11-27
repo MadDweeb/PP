@@ -8,6 +8,15 @@ document.addEventListener("click", async e => {
   if (t.dataset.simq) { simQuick(t.dataset.simq); return; }
   if (t.dataset.vside) { settings.speedSide = Object.assign({}, settings.speedSide, { [tabKey()]: t.dataset.vside }); saveSettings(); applySpeedSide(); return; }
   if (t.dataset.smode) { statsMode = t.dataset.smode; renderStats(); return; }
+  if (t.dataset.rack && playMode()) { playRack(t.dataset.rack); return; }
+  if (t.dataset.play) { playAction(t.dataset.play); return; }
+  if (t.dataset.choice) { playChoose(t.dataset.choice); return; }
+  if (t.dataset.callball) { setCall({ ball: +t.dataset.callball }); return; }
+  if (t.dataset.callpk) { setCall({ pocket: t.dataset.callpk }); return; }
+  if (t.dataset.callsafe) { setCall({ safety: true }); return; }
+  if (t.dataset.callauto) { setCall({ auto: true }); return; }
+  if (t.dataset.paths) { settings.playPaths = t.dataset.paths; saveSettings(); renderTable(); renderPlayInfo(); return; }
+  if (t.dataset.brkfrom) { settings.playBreak = t.dataset.brkfrom; saveSettings(); const g = S.game; if (g && g.inHand === "break" && g.cb) { const q = placeCb(g, g.cb); if (q) g.cb = q; g.aim = defaultAim(g); } saveWork(); renderTable(); renderPlayInfo(); return; }
   if (t.dataset.rack) { S.rack = t.dataset.rack; saveWork(); renderLog(); return; }
   if (t.dataset.bpk) { S.pocket = t.dataset.bpk; S.rail = null; saveWork(); renderLog(); return; }
   if (t.dataset.sec) {

@@ -53,6 +53,7 @@ const sectionOf = (p, Lt) => { if (!p) return null; const L = Lt || settings.L; 
 const secOf = s => s.cbSec || (s.scratch ? "scratch" : s.result ? sectionOf(s.result, s.table && s.table.L) : null);
 const brkMode = () => S.mode === "break";
 const simMode = () => S.mode === "sim";
+const playMode = () => S.mode === "sim" && S.simKind === "play";
 const simBrk = () => S.mode === "sim" && S.simKind === "break";
 const brkShape = () => brkMode() || simBrk();      // break-shaped table: rack, break box, kitchen
 const MODE_KEYS = ["tip", "vspin", "side", "speed", "speedPct", "pocket", "cb", "ob", "target", "result", "entry", "outcome", "tool", "tz", "drill", "drillId", "hit"];

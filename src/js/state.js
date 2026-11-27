@@ -10,7 +10,7 @@ if (!S.stash || typeof S.stash !== "object") S.stash = {};
 if (!S.rack) S.rack = "9";
 if (typeof S.hit !== "number") S.hit = 0;      // 1-ball hit: cue ball centre line offset from the 1-ball centre, in ball widths; + = hitting its right side
 if (S.mode !== "break" && S.mode !== "sim") S.mode = "shot";
-if (S.simKind !== "break") S.simKind = "shot";
+if (S.simKind !== "break" && S.simKind !== "play") S.simKind = "shot";
 /* Simulator starting layouts: the same starter drills as the shot log. x from the left cushion, y from the head cushion (inches). */
 const SIM_DIAG = t => ({ x: 50 * t, y: 100 * t });
 const SIM_PRESETS = [
@@ -27,7 +27,8 @@ function simPresetState(i) {
   const p = SIM_PRESETS[i];
   return { cb: { ...p.cb }, ob: p.ob ? { ...p.ob } : null, target: { ...p.target }, pocket: p.pocket, tip: { ...p.tip }, speedPct: p.speed, hit: null, tool: "cb", tz: "point", result: null, entry: null, outcome: null };
 }
-function simStart() { return S.simKind === "break" ? Object.assign({ result: null, entry: null, outcome: null, tz: "point" }, SIM_BREAK0) : simPresetState(S.simPreset || 0); }
+const PLAY_START = { cb: null, ob: null, target: null, pocket: "FR", tip: { x: 0, y: -.1 }, speedPct: 90, hit: 0, tool: "cb", result: null, entry: null, outcome: null, tz: "point" };
+function simStart() { if (S.simKind === "play") return JSON.parse(JSON.stringify(PLAY_START)); return S.simKind === "break" ? Object.assign({ result: null, entry: null, outcome: null, tz: "point" }, SIM_BREAK0) : simPresetState(S.simPreset || 0); }
 const BRK_START = { tip: { x: 0, y: -.1 }, speedPct: 90, pocket: "SR", cb: { x: 37, y: 22 }, ob: null, target: null, result: null, entry: null, outcome: null, tool: "result", tz: "point", drill: BRK_DRILL, drillId: "" };
 function setMode(m) {
   if (S.mode === m) return;

@@ -79,8 +79,8 @@ function renderSessionLine() {
 /* ---------- log sections: order per mode, rearrangeable, saved in settings ---------- */
 const CARD_ORDER = {
   shot: ["tip", "pocket", "marks", "note", "session"],
-  break: ["tip", "hit", "pred", "marks", "rail", "cbfin", "balls", "note", "session", "rack", "tune"],
-  sim: ["tip", "hit", "simres", "simset", "marks", "tune"]
+  break: ["tip", "hit", "pred", "marks", "rail", "cbfin", "balls", "note", "session", "tune"],
+  sim: ["tip", "hit", "game", "simres", "marks", "tune"]
 };
 let arranging = false;
 function cardOrder(m) {
@@ -152,7 +152,9 @@ $("cards").addEventListener("click", e => {
 function renderLog() {
   const bm = brkMode(), sm = simMode();
   $("modeShot").setAttribute("aria-selected", !bm && !sm); $("modeBreak").setAttribute("aria-selected", bm); $("modeSim").setAttribute("aria-selected", sm);
-  $("drillSel").hidden = bm || sm; $("brkTitle").hidden = !bm && !sm; $("brkTitle").textContent = sm ? "Simulator" : "Cut break";
+  $("drillSel").hidden = bm || sm; $("brkTitle").hidden = !bm; $("simKinds").hidden = !sm;
+  if (!bm && !sm) { $("topRow").hidden = true; $("playBar").hidden = true; }
+  if (!playMode()) { $("playBar").hidden = true; hideCallout(); }
   $("shotNo").hidden = sm;
   document.querySelector(".sessionline").hidden = sm; document.querySelector(".savebar").hidden = sm;
   renderCards();
@@ -189,6 +191,7 @@ function renderSaveBar() {
 let quickBusy = false;
 function renderQuick() {
   const q = $("quickbar");
+  if (playMode()) return renderPlayQuick(q);
   if (simMode()) {
     const b = simBrk(), playing = !!simAnim, running = sum50 && sum50.done < sum50.n;
     q.innerHTML = `<button class="qs good" data-simq="shoot">${playing ? "Stop" : b ? "Break" : "Shoot"}<small>${playing ? "stop the replay" : "play it in real time"}</small></button>` +
@@ -248,7 +251,7 @@ function setTip(x, y) {
   S.tip = { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
   S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); renderSpin();
   if (brkMode()) { renderTable(); renderPredText(); }
-  if (simMode()) { simStopAnim(); renderTable(); renderSimRes(); }
+  if (simMode()) { if (!playMode()) simStopAnim(); renderTable(); renderSimRes(); }
 }
 function cuePoint(e) {
   const svg = e.currentTarget && e.currentTarget.id === "cueball" ? $("cueball") : $("cueBig"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
@@ -265,5 +268,5 @@ function setSpeed(p) {
   if (p === S.speedPct) return;
   S.speedPct = p; S.speed = speedOf(p); renderSpeed(); saveWork();
   if (brkMode()) { renderTable(); renderPredText(); }
-  if (simMode()) { simStopAnim(); renderTable(); renderSimRes(); }
+  if (simMode()) { if (!playMode()) simStopAnim(); renderTable(); renderSimRes(); }
 }

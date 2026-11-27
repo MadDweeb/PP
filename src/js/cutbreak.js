@@ -4,7 +4,7 @@ const railTxt = v => v == null ? "–" : Math.abs(v) < .05 ? "dead centre" : fl(
 const RAIL_W = 340, RAIL_H = 96, RAIL_PAD = 18;
 const railX = v => RAIL_PAD + (Math.max(-RAIL_LIM, Math.min(RAIL_LIM, v)) + RAIL_LIM) / (2 * RAIL_LIM) * (RAIL_W - 2 * RAIL_PAD);
 function renderBreakPanel() {
-  $("rackChips").innerHTML = RACKS.map(([k, l]) => `<button class="chip" aria-pressed="${S.rack === k}" data-rack="${k}">${l}</button>`).join("");
+  renderTopRow();
   $("brkPocket").innerHTML = [["SL", "Side left"], ["SR", "Side right"]].map(([k, l]) => `<button class="chip sm" aria-pressed="${S.pocket === k}" data-bpk="${k}">${l} pocket</button>`).join("");
   drawRail();
   $("railRead").innerHTML = S.rail == null ? "Not marked. Drag the 1-ball along the rail." :
