@@ -407,7 +407,7 @@ details.fold[open] > summary { margin-bottom: 0; }
 .glog li.bad { color: var(--bad); }
 ul.rules { margin: 0; padding-left: 18px; font-size: 0.8125rem; display: flex; flex-direction: column; gap: 4px; }
 /* cue ball tip beside the table, on the other side from the speed bar */
-.vtip { flex: 0 0 58px; display: flex; flex-direction: column; align-items: center; gap: 6px; user-select: none; -webkit-user-select: none; }
+.vtip { flex: 0 0 62px; display: flex; flex-direction: column; align-items: center; gap: 6px; user-select: none; -webkit-user-select: none; }
 .tablewrap.vsleft .vtip { order: 2; }
 .vtip .vsread { text-align: center; min-height: 2.3em; }
 .vtip .vsread b { font-family: var(--f-body); font-size: 0.75rem; font-weight: 700; }
@@ -416,3 +416,9 @@ ul.rules { margin: 0; padding-left: 18px; font-size: 0.8125rem; display: flex; f
 .tipwarn { font-size: 0.75rem; color: var(--bad); text-align: center; line-height: 1.1; }
 .tipwarn:empty { display: none; }
 .plsc { margin-left: 8px; font-weight: 700; color: var(--ink); }
+.vhit { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 10px; }
+.vhit[hidden] { display: none; }
+.vtip #hitBall { width: 62px; height: auto; aspect-ratio: 4.8 / 2.6; flex: 0 0 auto; }
+.vhname { display: flex; flex-direction: column; align-items: center; text-align: center; font-size: 0.75rem; line-height: 1.15; min-height: 2.3em; }
+.vhname span { color: var(--muted); }
+.btn.tiny { padding: 2px 8px; min-height: 32px; font-size: 0.75rem; }

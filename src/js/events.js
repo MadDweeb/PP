@@ -191,11 +191,14 @@ tbl.addEventListener("pointermove", onTableMove);
 tbl.addEventListener("pointerup", onTableUp);
 tbl.addEventListener("pointercancel", onTableUp);
 const hitSvg = $("hitBall");
-hitSvg.addEventListener("pointerdown", e => { e.preventDefault(); hitSvg.setPointerCapture(e.pointerId); hitDrag = e.pointerId; const h = hitFromEvent(e); if (h != null) setHit(h); });
-hitSvg.addEventListener("pointermove", e => { if (hitDrag !== e.pointerId) return; const h = hitFromEvent(e); if (h != null) setHit(h); });
-const hitEnd = e => { if (hitDrag === e.pointerId) { hitDrag = null; saveWork(); renderPredText(); } };
+/* The picker is small beside the table, so a drag moves the hit by half as much as the finger (fine control) and a tap
+   without a drag puts it where you tapped. */
+let hitStart = null;
+hitSvg.addEventListener("pointerdown", e => { e.preventDefault(); hitSvg.setPointerCapture(e.pointerId); hitDrag = e.pointerId; const h = hitFromEvent(e); hitStart = h == null ? null : { x: h, h0: S.hit || 0, moved: false }; });
+hitSvg.addEventListener("pointermove", e => { if (hitDrag !== e.pointerId || !hitStart) return; const h = hitFromEvent(e); if (h == null) return; if (Math.abs(h - hitStart.x) > .03) hitStart.moved = true; if (hitStart.moved) setHit(hitStart.h0 + (h - hitStart.x) * .5); });
+const hitEnd = e => { if (hitDrag === e.pointerId) { hitDrag = null; if (hitStart && !hitStart.moved && e.type === "pointerup") { const h = hitFromEvent(e); if (h != null) setHit(h); } hitStart = null; saveWork(); renderPredText(); } };
 hitSvg.addEventListener("pointerup", hitEnd); hitSvg.addEventListener("pointercancel", hitEnd);
-hitSvg.addEventListener("keydown", e => { const d = { ArrowLeft: -.05, ArrowRight: .05 }[e.key]; if (d == null) return; e.preventDefault(); setHit((S.hit || 0) + d); saveWork(); });
+hitSvg.addEventListener("keydown", e => { const d = { ArrowLeft: -.01, ArrowRight: .01 }[e.key]; if (d == null) return; e.preventDefault(); setHit((S.hit || 0) + d); saveWork(); });
 const railSvg = $("rail");
 railSvg.addEventListener("pointerdown", e => { e.preventDefault(); railSvg.setPointerCapture(e.pointerId); railDrag = e.pointerId; const v = railFromEvent(e); if (v != null) setRail(v); });
 railSvg.addEventListener("pointermove", e => { if (railDrag !== e.pointerId) return; const v = railFromEvent(e); if (v != null) setRail(v); });

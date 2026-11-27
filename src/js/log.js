@@ -79,8 +79,8 @@ function renderSessionLine() {
 /* ---------- log sections: order per mode, rearrangeable, saved in settings ---------- */
 const CARD_ORDER = {
   shot: ["pocket", "marks", "note", "session"],
-  break: ["hit", "pred", "marks", "rail", "cbfin", "balls", "note", "session", "tune"],
-  sim: ["hit", "game", "simres", "marks", "tune"]
+  break: ["pred", "marks", "rail", "cbfin", "balls", "note", "session", "tune"],
+  sim: ["game", "simres", "marks", "tune"]
 };
 let arranging = false;
 function cardOrder(m) {
@@ -97,7 +97,7 @@ function renderCards() {
     const only = el.dataset.only;
     el.hidden = !!only && !only.split(" ").some(t => tags.includes(t));
   }
-  if (m === "sim" && S.simKind === "shot" && !S.ob) box.querySelector('[data-card="hit"]').hidden = true;   // no object ball, nothing to hit
+  $("vhit").hidden = !(m === "break" || (m === "sim" && (S.simKind === "break" || (S.simKind === "shot" && S.ob))));   // the hit picker under the tip; no object ball, nothing to hit
   order.forEach((k, i) => {
     const el = box.querySelector(`[data-card="${k}"]`); if (!el) return;
     box.appendChild(el);
