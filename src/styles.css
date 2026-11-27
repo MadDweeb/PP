@@ -422,3 +422,15 @@ ul.rules { margin: 0; padding-left: 18px; font-size: 0.8125rem; display: flex; f
 .vhname { display: flex; flex-direction: column; align-items: center; text-align: center; font-size: 0.75rem; line-height: 1.15; min-height: 2.3em; }
 .vhname span { color: var(--muted); }
 .btn.tiny { padding: 2px 8px; min-height: 32px; font-size: 0.75rem; }
+/* the shooter's cue beside the table in Play, and the cue picker */
+.vcue { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 12px; border: 0; background: none; padding: 4px 0; cursor: pointer; border-radius: 8px; }
+.vcue[hidden] { display: none; }
+.vcue:focus-visible { outline: 2px solid var(--accent); }
+#cueModel { flex: 1 1 0; min-height: 110px; width: 60px; display: block; }
+.cueprev { width: 100%; height: auto; display: block; flex: 0 0 auto; }
+#cueFull { aspect-ratio: 59 / 4.8; }
+#cueButt { aspect-ratio: 30 / 3.8; margin-bottom: 6px; }
+#cueSheet .card { max-height: 88dvh; overflow-y: auto; }
+#cueWho { margin: 6px 0 10px; }
+.chip.matl { display: inline-flex; align-items: center; gap: 6px; }
+.chip.matl i { flex: 0 0 14px; width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.35); display: inline-block; }

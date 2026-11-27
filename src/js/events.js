@@ -10,6 +10,10 @@ document.addEventListener("click", async e => {
   if (t.dataset.smode) { statsMode = t.dataset.smode; renderStats(); return; }
   if (t.dataset.rack && playMode()) { playRack(t.dataset.rack); return; }
   if (t.dataset.play) { playAction(t.dataset.play); return; }
+  if (t.id === "vcue") { openCueSheet(); return; }
+  if (t.id === "cueDone") { closeCueSheet(); return; }
+  if (t.dataset.cuefor) { cueFor = +t.dataset.cuefor; renderCueSheet(); return; }
+  if (t.dataset.cue) { setCueLook(cueFor, t.dataset.cue, t.dataset.v); renderCueSheet(); renderCueSide(); renderTable(); return; }
   if (t.dataset.choice) { playChoose(t.dataset.choice); return; }
   if (t.dataset.callball) { setCall({ ball: +t.dataset.callball }); return; }
   if (t.dataset.callpk) { setCall({ pocket: t.dataset.callpk }); return; }
@@ -101,9 +105,10 @@ document.addEventListener("click", async e => {
       return;
   }
 });
+$("cueSheet").addEventListener("click", e => { if (e.target.id === "cueSheet") closeCueSheet(); });
 $("sheet").addEventListener("click", e => { if (e.target.id === "sheet") { closeZoom(); saveWork(); renderLog(); } });
 document.addEventListener("keydown", e => {
-  if (e.key === "Enter" && e.target.id === "newDrillName") { e.preventDefault(); saveDrill(); return; } if (e.key === "Escape" && !$("sheet").hidden) { closeZoom(); renderLog(); } if (e.key === "Escape" && !$("spinSheet").hidden) { $("spinSheet").hidden = true; saveWork(); } });
+  if (e.key === "Enter" && e.target.id === "newDrillName") { e.preventDefault(); saveDrill(); return; } if (e.key === "Escape" && !$("sheet").hidden) { closeZoom(); renderLog(); } if (e.key === "Escape" && !$("spinSheet").hidden) { $("spinSheet").hidden = true; saveWork(); } if (e.key === "Escape" && !$("cueSheet").hidden) closeCueSheet(); });
 document.addEventListener("change", e => {
   if (e.target.id === "drillSel") {
     const d = findDrill(e.target.value);

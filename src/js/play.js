@@ -117,20 +117,6 @@ function kitchenSvg(g) {
   const t = toSvg({ x: 0, y: settings.L / 4 });
   return `<rect x="0" y="${t.y}" width="${settings.W}" height="${settings.L / 4}" fill="#ffffff" fill-opacity=".07" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.2" stroke-dasharray="5 3" vector-effect="non-scaling-stroke"/>`;
 }
-/* The cue behind the cue ball, about 30 in of it: chalked blue tip, white ferrule, a maple shaft that tapers up to the
-   joint, a steel joint ring and the start of a dark wood butt. Drawn in table inches (a touch wider than life so it reads). */
-const CUE_PARTS = [[.45, .62, .62, "#2f6db5"], [1.2, .64, .66, "#f4f1e8"], [19.6, .66, .98, "#e6c995"], [.7, 1, 1, "#b9bec4"], [8.3, 1.02, 1.3, "#5a2f1a"]];
-function cueStickSvg(cb, aim) {
-  const u = { x: Math.cos(aim), y: Math.sin(aim) }, n = { x: -u.y, y: u.x };
-  let d = R_BALL + .9, out = "";
-  for (const [l, w0, w1, col] of CUE_PARTS) {
-    const p0 = sub(cb, mul(u, d)), p1 = sub(cb, mul(u, d + l));
-    const pts = [add(p0, mul(n, w0 / 2)), add(p1, mul(n, w1 / 2)), sub(p1, mul(n, w1 / 2)), sub(p0, mul(n, w0 / 2))].map(toSvg);
-    out += `<polygon points="${pts.map(q => q.x.toFixed(3) + "," + q.y.toFixed(3)).join(" ")}" fill="${col}" stroke="#1b1b1b" stroke-opacity=".4" stroke-width=".6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
-    d += l;
-  }
-  return out;
-}
 const playCol = n => n ? BALL_COL[n] : "#ffffff";
 function dynPlay() {
   const g = ensureGame(), A = simAnim, mode = pathMode(); let s = kitchenSvg(g);
@@ -237,7 +223,7 @@ function renderPlayQuick(q) {
     `<button class="qs fine" data-play="right" aria-label="Turn the aim clockwise a little">↻<small>0.1°</small></button>` +
     (push ? `<button class="qs ${armed ? "warn" : "plain"} wide" data-play="push" aria-pressed="${armed}">${armed ? "Cancel push out" : "Push out"}<small>no line to the ${lowestBall(g)}: any shot, no fouls but a scratch</small></button>` : "");
 }
-function renderPlayInfo() { renderPlayBar(); renderGameCard(); renderQuick(); }
+function renderPlayInfo() { renderPlayBar(); renderGameCard(); renderQuick(); renderCueSide(); }
 function renderPlay() { ensureGame(); if (S.game.cb == null && !S.game.over) playPrep(); renderPlayInfo(); }
 
 /* ---------- callout over the table: fouls in red, the rest in plain ---------- */
