@@ -160,8 +160,12 @@ function dynPlay() {
     } else if (r) {
       if (mode === "all") for (const b of r.balls.slice(1)) if (b.path.length > 1) s += dash(b.path, playCol(+b.id.slice(1)), 1.6, .85);
       if (mode === "all" || mode === "cue") s += dash(r.balls[0].path, "#ffffff", 2.2, .9);
-      if (mode === "ghost") { const end = c ? c.ghost : (r.balls[0].events.find(e => e.type === "cushion" || e.type === "jaw" || e.type === "pocket") || r.balls[0].path[r.balls[0].path.length - 1]); s += line(g.cb, end, "#ffffff", "4 3", .75); }
-      if (c && mode !== "none") s += ring(c.ghost, "#ffffff", .85, 1.4);
+      /* the ghost ball: where the cue ball meets the first ball, or else the first rail (or where it stops) */
+      const firstStop = () => { const cb = r.balls[0], e = cb.events.find(e => (e.type === "cushion" || e.type === "jaw" || e.type === "pocket") && e.x != null); return e ? { x: e.x, y: e.y, t: e.t } : cb.path[cb.path.length - 1]; };
+      const ghost = c ? Object.assign({ t: c.t }, c.ghost) : firstStop();
+      /* Ghost ball paths: the cue ball's own route up to the ghost ball, rails and all */
+      if (mode === "ghost" && ghost) s += dash(r.balls[0].path.filter(q => q.t == null || ghost.t == null || q.t < ghost.t).concat([ghost]), "#ffffff", 1.6, .8);
+      if (ghost && mode !== "none") s += ring(ghost, "#ffffff", .85, 1.4);
       if (mode === "all") { for (const b of r.balls.slice(1)) if (b.path.length > 1 && !b.potted) s += ring(b.path[b.path.length - 1], playCol(+b.id.slice(1)), .9); if (!r.balls[0].potted) s += ring(r.balls[0].path[r.balls[0].path.length - 1], "#ffffff", .8); }
     }
   }
