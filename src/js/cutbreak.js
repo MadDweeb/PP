@@ -4,7 +4,7 @@ const railTxt = v => v == null ? "–" : Math.abs(v) < .05 ? "dead centre" : fl(
 const RAIL_W = 340, RAIL_H = 96, RAIL_PAD = 18;
 const railX = v => RAIL_PAD + (Math.max(-RAIL_LIM, Math.min(RAIL_LIM, v)) + RAIL_LIM) / (2 * RAIL_LIM) * (RAIL_W - 2 * RAIL_PAD);
 function renderBreakPanel() {
-  $("rackChips").innerHTML = RACKS.map(([k, l]) => `<button class="chip" aria-pressed="${S.rack === k}" data-rack="${k}">${l}</button>`).join("");
+  renderTopRow();
   $("brkPocket").innerHTML = [["SL", "Side left"], ["SR", "Side right"]].map(([k, l]) => `<button class="chip sm" aria-pressed="${S.pocket === k}" data-bpk="${k}">${l} pocket</button>`).join("");
   drawRail();
   $("railRead").innerHTML = S.rail == null ? "Not marked. Drag the 1-ball along the rail." :
@@ -63,20 +63,20 @@ function hitName(h) {
   for (const n of FULL_NAMES) if (Math.abs(n[0] - f) < Math.abs(best[0] - f)) best = n;
   return Math.abs(h) < .03 || best[0] === 1 ? "Full ball" : best[1] + (h > 0 ? ", right side" : ", left side");
 }
+/* the hit picker sits under the cue ball tip, beside the table */
 function renderHit() {
   const h = S.hit || 0, x = h * 2;
   const obj = simMode() && !simBrk();
-  $("h-hit").textContent = obj ? "Hit on the object ball" : "Hit on the 1-ball";
-  $("hitSub").textContent = obj ? "Slide the cue ball across the object ball: full, 3/4, 1/2 or 1/4, left or right" : "Slide the cue ball across the 1-ball: full, 3/4, 1/2 or 1/4, left or right";
+  $("hitLbl").textContent = obj ? "Hit" : "1-ball";
   $("hitPot").hidden = !(obj && S.ob);
   const need = obj && S.ob && S.cb ? ghostHit() : null;
-  $("hitNeed").innerHTML = !obj || !S.ob ? "" : need == null ? `Too thin to pot in the ${POCKET_NAMES[S.pocket].toLowerCase()}` : `To pot in the ${POCKET_NAMES[S.pocket].toLowerCase()}: <b>${hitName(need).toLowerCase()}</b>`;
+  $("hitPot").title = !obj || !S.ob ? "" : need == null ? `Too thin to pot in the ${POCKET_NAMES[S.pocket].toLowerCase()}` : `To pot in the ${POCKET_NAMES[S.pocket].toLowerCase()}: ${hitName(need).toLowerCase()}`;
   $("hitBall").innerHTML = `<circle r="1" fill="#f2c300" stroke="#5c4300" stroke-width=".04"/>` + (obj ? "" : `<circle r=".45" fill="#fffdf4"/><text y=".03" font-size=".6" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="#1b1b1b" font-family="var(--f-body)">1</text>`) + `
     <circle cx="${x}" r="1" fill="#fbfaf4" fill-opacity=".55" stroke="#1b1b1b" stroke-width=".04" stroke-dasharray=".12 .08"/>
     <line x1="${x}" y1="-1.25" x2="${x}" y2="1.25" stroke="var(--accent)" stroke-width=".04"/>`;
-  $("hitName").textContent = hitName(h);
-  $("hitOff").innerHTML = Math.abs(h) < .03 ? `Cue ball aimed at the ${obj ? "object ball" : "1-ball"} centre` : `Aimed <b>${isMetric() ? Math.round(Math.abs(h) * 2 * R_BALL * 25.4) + " mm" : fmt(Math.abs(h) * 2 * R_BALL, 2) + " in"}</b> ${h > 0 ? "right" : "left"} of centre`;
-  $("hitBall").setAttribute("aria-valuetext", hitName(h));
+  const nm = hitName(h), cut = nm.indexOf(", ");
+  $("hitName").innerHTML = cut < 0 ? `<b>${esc(nm)}</b>` : `<b>${esc(nm.slice(0, cut))}</b><span>${esc(nm.slice(cut + 2))}</span>`;
+  $("hitBall").setAttribute("aria-valuetext", nm);
 }
 function setHit(h, pot) {
   h = Math.max(-.95, Math.min(.95, h)); S.hit = Math.abs(h) < .03 ? 0 : Math.round(h * 100) / 100; simHitWasPot = !!pot;

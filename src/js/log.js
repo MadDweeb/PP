@@ -78,9 +78,9 @@ function renderSessionLine() {
 }
 /* ---------- log sections: order per mode, rearrangeable, saved in settings ---------- */
 const CARD_ORDER = {
-  shot: ["tip", "pocket", "marks", "note", "session"],
-  break: ["tip", "hit", "pred", "marks", "rail", "cbfin", "balls", "note", "session", "rack", "tune"],
-  sim: ["tip", "hit", "simres", "simset", "marks", "tune"]
+  shot: ["pocket", "marks", "note", "session"],
+  break: ["pred", "marks", "rail", "cbfin", "balls", "note", "session", "tune"],
+  sim: ["game", "simres", "marks", "tune"]
 };
 let arranging = false;
 function cardOrder(m) {
@@ -97,7 +97,8 @@ function renderCards() {
     const only = el.dataset.only;
     el.hidden = !!only && !only.split(" ").some(t => tags.includes(t));
   }
-  if (m === "sim" && S.simKind === "shot" && !S.ob) box.querySelector('[data-card="hit"]').hidden = true;   // no object ball, nothing to hit
+  $("vcue").hidden = !playMode();   // the cue and its picker are only for Play
+  $("vhit").hidden = !(m === "break" || (m === "sim" && (S.simKind === "break" || (S.simKind === "shot" && S.ob))));   // the hit picker under the tip; no object ball, nothing to hit
   order.forEach((k, i) => {
     const el = box.querySelector(`[data-card="${k}"]`); if (!el) return;
     box.appendChild(el);
@@ -152,7 +153,9 @@ $("cards").addEventListener("click", e => {
 function renderLog() {
   const bm = brkMode(), sm = simMode();
   $("modeShot").setAttribute("aria-selected", !bm && !sm); $("modeBreak").setAttribute("aria-selected", bm); $("modeSim").setAttribute("aria-selected", sm);
-  $("drillSel").hidden = bm || sm; $("brkTitle").hidden = !bm && !sm; $("brkTitle").textContent = sm ? "Simulator" : "Cut break";
+  $("drillSel").hidden = bm || sm; $("brkTitle").hidden = !bm; $("simKinds").hidden = !sm;
+  if (!bm && !sm) { $("topRow").hidden = true; $("playBar").hidden = true; }
+  if (!playMode()) { $("playBar").hidden = true; hideCallout(); }
   $("shotNo").hidden = sm;
   document.querySelector(".sessionline").hidden = sm; document.querySelector(".savebar").hidden = sm;
   renderCards();
@@ -189,6 +192,7 @@ function renderSaveBar() {
 let quickBusy = false;
 function renderQuick() {
   const q = $("quickbar");
+  if (playMode()) return renderPlayQuick(q);
   if (simMode()) {
     const b = simBrk(), playing = !!simAnim, running = sum50 && sum50.done < sum50.n;
     q.innerHTML = `<button class="qs good" data-simq="shoot">${playing ? "Stop" : b ? "Break" : "Shoot"}<small>${playing ? "stop the replay" : "play it in real time"}</small></button>` +
@@ -234,12 +238,13 @@ function renderSpin() {
   const r = Math.hypot(t.x, t.y);
   $("cbDyn").innerHTML = $("cbDynBig").innerHTML = (r > .02 ? `<line x1="0" y1="0" x2="${t.x}" y2="${-t.y}" stroke="var(--accent)" stroke-width=".02" stroke-opacity=".8"/>` : "") +
     `<circle cx="${t.x}" cy="${-t.y}" r=".23" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width=".03"/><circle cx="${t.x}" cy="${-t.y}" r=".045" fill="var(--accent)"/>`;
-  $("spinName").textContent = label(VSPIN, S.vspin) + " · " + (S.side === "C" ? "no side" : label(SIDE, S.side).toLowerCase());
+  const sideTxt = S.side === "C" ? "no side" : label(SIDE, S.side).toLowerCase() + " side";
+  $("spinName").textContent = label(VSPIN, S.vspin); $("spinSide").textContent = sideTxt;
   const up = t.y, rt = t.x;
   $("spinOff").innerHTML = r < .005 ? "Dead centre" : `<b>${tipLen(r)}</b> from centre<br>${Math.abs(up) >= .005 ? tipLen(Math.abs(up)) + (up > 0 ? " up" : " down") : ""}${Math.abs(up) >= .005 && Math.abs(rt) >= .005 ? ", " : ""}${Math.abs(rt) >= .005 ? tipLen(Math.abs(rt)) + (rt > 0 ? " right" : " left") : ""}`;
-  $("spinWarn").textContent = r > TIP_MISCUE ? "Past the miscue limit (red ring)" : "";
-  $("bigName").textContent = $("spinName").textContent; $("bigOff").innerHTML = $("spinOff").innerHTML; $("bigWarn").textContent = $("spinWarn").textContent;
-  svg.setAttribute("aria-valuetext", $("spinName").textContent + ", " + tipLen(r) + " from centre");
+  $("spinWarn").textContent = r > TIP_MISCUE ? "Miscue risk" : "";
+  $("bigName").textContent = label(VSPIN, S.vspin) + " · " + sideTxt; $("bigOff").innerHTML = $("spinOff").innerHTML; $("bigWarn").textContent = r > TIP_MISCUE ? "Past the miscue limit (red ring)" : "";
+  svg.setAttribute("aria-valuetext", $("bigName").textContent + ", " + tipLen(r) + " from centre");
 }
 function setTip(x, y) {
   const snap = v => Math.abs(v) < .03 ? 0 : v;
@@ -248,7 +253,7 @@ function setTip(x, y) {
   S.tip = { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
   S.vspin = vspinOf(S.tip); S.side = sideOf(S.tip); renderSpin();
   if (brkMode()) { renderTable(); renderPredText(); }
-  if (simMode()) { simStopAnim(); renderTable(); renderSimRes(); }
+  if (simMode()) { if (!playMode()) simStopAnim(); renderTable(); renderSimRes(); }
 }
 function cuePoint(e) {
   const svg = e.currentTarget && e.currentTarget.id === "cueball" ? $("cueball") : $("cueBig"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
@@ -265,5 +270,5 @@ function setSpeed(p) {
   if (p === S.speedPct) return;
   S.speedPct = p; S.speed = speedOf(p); renderSpeed(); saveWork();
   if (brkMode()) { renderTable(); renderPredText(); }
-  if (simMode()) { simStopAnim(); renderTable(); renderSimRes(); }
+  if (simMode()) { if (!playMode()) simStopAnim(); renderTable(); renderSimRes(); }
 }

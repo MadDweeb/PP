@@ -5,11 +5,12 @@ const fs = require("fs");
 const path = require("path");
 
 const SRC = path.join(__dirname, "..", "src");
-const CORE = ["constants.js", "util.js", "geometry.js", "csv.js", "backup.js", "stats.js", "stats-breaks.js"];
+const CORE = ["constants.js", "util.js", "geometry.js", "rules.js", "csv.js", "backup.js", "stats.js", "stats-breaks.js"];
 const EXPORTS = [
   "R_BALL", "vspinOf", "sideOf", "speedOf", "tipFromLabels", "isBrk", "sectionOf", "secOf",
   "clean", "r2", "fmt", "esc", "len", "sub", "unit", "clampBall", "toU", "fromU", "fls",
   "pockets", "zoneShape", "inZone", "zone", "sessionOf", "aimDir", "pocketOffset", "aimErrorDeg", "cutAngle",
+  "rackLayout", "spotBall", "newRack", "lowestBall", "legalFirst", "callable", "needsCall", "shotFacts", "ref", "choose", "canSee", "pushAvailable", "groupOf",
   "CSV_COLS", "toCsv",
   "BACKUP_KIND", "BACKUP_VERSION", "parseBackup", "cleanRecord", "cleanSettings",
   "mean", "sd", "summarize", "missLR", "cutBand", "brkSummary", "spotBand",

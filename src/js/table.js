@@ -179,6 +179,7 @@ function placeFor(p) {
   return q;
 }
 function onTableDown(e) {
+  if (playMode()) return playDown(e);
   const svg = $("tbl"); const p = svgPt(svg, e, $("tblContent")); if (!p) return;
   if (simMode()) {
     simStopAnim();
@@ -209,6 +210,7 @@ function onTableDown(e) {
   renderTable(); renderTools();
 }
 function onTableMove(e) {
+  if (playMode()) return playMove(e);
   if (!drag || e.pointerId !== drag.id) return;
   const p = svgPt($("tbl"), e, $("tblContent")); if (!p) return;
   S[S.tool] = placeFor(p);
@@ -217,12 +219,13 @@ function onTableMove(e) {
   renderTable(); if (simMode()) renderSimRes();
 }
 function onTableUp(e) {
+  if (playMode()) return playUp(e);
   if (!drag || e.pointerId !== drag.id) return;
   drag = null; $("loupe").hidden = true; saveWork(); renderLog();
 }
-function showLoupe(p, e) {
+function showLoupe(p, e, at) {
   const l = $("loupe"), wrap = $("tablewrap").getBoundingClientRect();
-  const q = disp(toSvg(S[S.tool] || p)); const half = 6;
+  const q = disp(toSvg(at || (playMode() ? p : S[S.tool] || p))); const half = 6;
   const sv = $("loupeSvg"); sv.setAttribute("viewBox", `${q.x - half} ${q.y - half} ${half * 2} ${half * 2}`);
   $("loupeX").innerHTML = `<path d="M${q.x - 2.4} ${q.y}h1.6M${q.x + .8} ${q.y}h1.6M${q.x} ${q.y - 2.4}v1.6M${q.x} ${q.y + .8}v1.6" stroke="#ff4d3d" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
   const leftSide = e.clientX - wrap.left > wrap.width / 2;

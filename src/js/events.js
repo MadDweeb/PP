@@ -8,6 +8,19 @@ document.addEventListener("click", async e => {
   if (t.dataset.simq) { simQuick(t.dataset.simq); return; }
   if (t.dataset.vside) { settings.speedSide = Object.assign({}, settings.speedSide, { [tabKey()]: t.dataset.vside }); saveSettings(); applySpeedSide(); return; }
   if (t.dataset.smode) { statsMode = t.dataset.smode; renderStats(); return; }
+  if (t.dataset.rack && playMode()) { playRack(t.dataset.rack); return; }
+  if (t.dataset.play) { playAction(t.dataset.play); return; }
+  if (t.id === "vcue") { openCueSheet(); return; }
+  if (t.id === "cueDone") { closeCueSheet(); return; }
+  if (t.dataset.cuefor) { cueFor = +t.dataset.cuefor; renderCueSheet(); return; }
+  if (t.dataset.cue) { setCueLook(cueFor, t.dataset.cue, t.dataset.v); renderCueSheet(); renderCueSide(); renderTable(); return; }
+  if (t.dataset.choice) { playChoose(t.dataset.choice); return; }
+  if (t.dataset.callball) { setCall({ ball: +t.dataset.callball }); return; }
+  if (t.dataset.callpk) { setCall({ pocket: t.dataset.callpk }); return; }
+  if (t.dataset.callsafe) { setCall({ safety: true }); return; }
+  if (t.dataset.callauto) { setCall({ auto: true }); return; }
+  if (t.dataset.paths) { settings.playPaths = t.dataset.paths; saveSettings(); renderTable(); renderPlayInfo(); return; }
+  if (t.dataset.brkfrom) { settings.playBreak = t.dataset.brkfrom; saveSettings(); const g = S.game; if (g && g.inHand === "break" && g.cb) { const q = placeCb(g, g.cb); if (q) g.cb = q; g.aim = defaultAim(g); } saveWork(); renderTable(); renderPlayInfo(); return; }
   if (t.dataset.rack) { S.rack = t.dataset.rack; saveWork(); renderLog(); return; }
   if (t.dataset.bpk) { S.pocket = t.dataset.bpk; S.rail = null; saveWork(); renderLog(); return; }
   if (t.dataset.sec) {
@@ -92,9 +105,10 @@ document.addEventListener("click", async e => {
       return;
   }
 });
+$("cueSheet").addEventListener("click", e => { if (e.target.id === "cueSheet") closeCueSheet(); });
 $("sheet").addEventListener("click", e => { if (e.target.id === "sheet") { closeZoom(); saveWork(); renderLog(); } });
 document.addEventListener("keydown", e => {
-  if (e.key === "Enter" && e.target.id === "newDrillName") { e.preventDefault(); saveDrill(); return; } if (e.key === "Escape" && !$("sheet").hidden) { closeZoom(); renderLog(); } if (e.key === "Escape" && !$("spinSheet").hidden) { $("spinSheet").hidden = true; saveWork(); } });
+  if (e.key === "Enter" && e.target.id === "newDrillName") { e.preventDefault(); saveDrill(); return; } if (e.key === "Escape" && !$("sheet").hidden) { closeZoom(); renderLog(); } if (e.key === "Escape" && !$("spinSheet").hidden) { $("spinSheet").hidden = true; saveWork(); } if (e.key === "Escape" && !$("cueSheet").hidden) closeCueSheet(); });
 document.addEventListener("change", e => {
   if (e.target.id === "drillSel") {
     const d = findDrill(e.target.value);
@@ -182,11 +196,14 @@ tbl.addEventListener("pointermove", onTableMove);
 tbl.addEventListener("pointerup", onTableUp);
 tbl.addEventListener("pointercancel", onTableUp);
 const hitSvg = $("hitBall");
-hitSvg.addEventListener("pointerdown", e => { e.preventDefault(); hitSvg.setPointerCapture(e.pointerId); hitDrag = e.pointerId; const h = hitFromEvent(e); if (h != null) setHit(h); });
-hitSvg.addEventListener("pointermove", e => { if (hitDrag !== e.pointerId) return; const h = hitFromEvent(e); if (h != null) setHit(h); });
-const hitEnd = e => { if (hitDrag === e.pointerId) { hitDrag = null; saveWork(); renderPredText(); } };
+/* The picker is small beside the table, so a drag moves the hit by half as much as the finger (fine control) and a tap
+   without a drag puts it where you tapped. */
+let hitStart = null;
+hitSvg.addEventListener("pointerdown", e => { e.preventDefault(); hitSvg.setPointerCapture(e.pointerId); hitDrag = e.pointerId; const h = hitFromEvent(e); hitStart = h == null ? null : { x: h, h0: S.hit || 0, moved: false }; });
+hitSvg.addEventListener("pointermove", e => { if (hitDrag !== e.pointerId || !hitStart) return; const h = hitFromEvent(e); if (h == null) return; if (Math.abs(h - hitStart.x) > .03) hitStart.moved = true; if (hitStart.moved) setHit(hitStart.h0 + (h - hitStart.x) * .5); });
+const hitEnd = e => { if (hitDrag === e.pointerId) { hitDrag = null; if (hitStart && !hitStart.moved && e.type === "pointerup") { const h = hitFromEvent(e); if (h != null) setHit(h); } hitStart = null; saveWork(); renderPredText(); } };
 hitSvg.addEventListener("pointerup", hitEnd); hitSvg.addEventListener("pointercancel", hitEnd);
-hitSvg.addEventListener("keydown", e => { const d = { ArrowLeft: -.05, ArrowRight: .05 }[e.key]; if (d == null) return; e.preventDefault(); setHit((S.hit || 0) + d); saveWork(); });
+hitSvg.addEventListener("keydown", e => { const d = { ArrowLeft: -.01, ArrowRight: .01 }[e.key]; if (d == null) return; e.preventDefault(); setHit((S.hit || 0) + d); saveWork(); });
 const railSvg = $("rail");
 railSvg.addEventListener("pointerdown", e => { e.preventDefault(); railSvg.setPointerCapture(e.pointerId); railDrag = e.pointerId; const v = railFromEvent(e); if (v != null) setRail(v); });
 railSvg.addEventListener("pointermove", e => { if (railDrag !== e.pointerId) return; const v = railFromEvent(e); if (v != null) setRail(v); });
