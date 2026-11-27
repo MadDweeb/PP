@@ -86,24 +86,27 @@ function drawCue(look, shaftLen, butt, k) {
 }
 
 /* ---------- the cue on the table and beside it ---------- */
+/* whose cue is in use: the shooter's, or always the first one when you play both sides yourself */
+const cuePlayer = () => !S.game || soloPlay() ? 0 : S.game.turn;
 /* Behind the cue ball along the aim: the shaft (26.55 in, a little shorter than life so it fits) and the first 15.85 in of the butt */
 function cueStickSvg(cb, aim) {
   const g = S.game, q = toSvg(cb), deg = -(aim + Math.PI) * 180 / Math.PI;
-  return `<g transform="translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)">${drawCue(cueLook(g ? g.turn : 0), 26.55, 15.85, 1)}</g>`;
+  return `<g transform="translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)">${drawCue(cueLook(g ? cuePlayer() : 0), 26.55, 15.85, 1)}</g>`;
 }
 /* the shooter's whole cue standing upright beside the table (tip at the top); tap it to change it */
 function renderCueSide() {
   const el = $("vcue"); el.hidden = !playMode(); if (!playMode()) return;
-  const p = S.game ? S.game.turn : 0;
+  const p = cuePlayer();
   $("cueModel").innerHTML = `<g transform="rotate(90)">${drawCue(cueLook(p), 29, null, 2)}</g>`;
-  $("cueModel").setAttribute("aria-label", `${playerName(p)}'s cue. Tap to change it.`);
+  $("cueModel").setAttribute("aria-label", soloPlay() ? "Your cue. Tap to change it." : `${playerName(p)}'s cue. Tap to change it.`);
 }
 let cueFor = 0;
-function openCueSheet() { cueFor = S.game ? S.game.turn : 0; $("cueSheet").hidden = false; renderCueSheet(); }
+function openCueSheet() { cueFor = cuePlayer(); $("cueSheet").hidden = false; renderCueSheet(); }
 function closeCueSheet() { $("cueSheet").hidden = true; renderCueSide(); renderTable(); }
 function renderCueSheet() {
   const look = cueLook(cueFor);
   const row = (part, list, title) => `<div class="optrow"><span class="k">${title}</span><div class="chips">${list.map(([k, l, c]) => `<button class="chip sm ${c ? "matl" : ""}" aria-pressed="${look[part] === k}" data-cue="${part}" data-v="${k}">${c ? `<i style="background:${c}"></i>` : ""}${esc(l)}</button>`).join("")}</div></div>`;
+  $("cueWho").hidden = soloPlay();
   $("cueWho").innerHTML = [0, 1].map(p => `<button class="chip sm" aria-pressed="${cueFor === p}" data-cuefor="${p}">${esc(playerName(p))}</button>`).join("");
   $("cueFull").innerHTML = drawCue(look, 29, null, 3.2);
   $("cueButt").innerHTML = drawCue(look, 29, null, 2.4);
