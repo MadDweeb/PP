@@ -86,10 +86,10 @@ function drawCue(look, shaftLen, butt, k) {
 }
 
 /* ---------- the cue on the table and beside it ---------- */
-/* Behind the cue ball along the aim: the shaft (shortened from life so it fits) and the first 15.85 in of the butt */
+/* Behind the cue ball along the aim: the shaft (26.55 in, a little shorter than life so it fits) and the first 15.85 in of the butt */
 function cueStickSvg(cb, aim) {
   const g = S.game, q = toSvg(cb), deg = -(aim + Math.PI) * 180 / Math.PI;
-  return `<g transform="translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)">${drawCue(cueLook(g ? g.turn : 0), 21.25, 15.85, 1)}</g>`;
+  return `<g transform="translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)">${drawCue(cueLook(g ? g.turn : 0), 26.55, 15.85, 1)}</g>`;
 }
 /* the shooter's whole cue standing upright beside the table (tip at the top); tap it to change it */
 function renderCueSide() {
