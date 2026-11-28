@@ -183,10 +183,18 @@ function dynPlay() {
   if (g.cb) s += cueBallSvg(g.cb, !!g.inHand && !g.over);
   return s;
 }
-/* a ring that swells and fades round the ball to hit (or the called ball) and the called pocket.
-   The rings are HTML circles laid over the table, not part of the SVG: anything that moves inside the SVG makes the phone
-   repaint the whole table every frame (worst in landscape, where the table is biggest), while these move on the graphics chip
-   alone. They are kept from one redraw to the next, so the beat runs on smoothly while you aim. */
+/* a ring round the ball to hit (or the called ball) and the called pocket that blinks: bright, then faint, twice a second.
+   As light as it can be: the rings are plain HTML circles over the table (never part of the SVG, which would repaint the
+   whole table), there is no animation, only a class switched every half second while a ring shows, and it holds still
+   while you drag, a shot runs or the phone asks for less motion. */
+const BLINK_MS = 500;
+let blinkT = 0;
+function blinkSet(on) {
+  const o = $("pulses"); if (!o) return;
+  if (on && !blinkT && !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches))
+    blinkT = setInterval(() => { if (!playDrag && !document.hidden) o.classList.toggle("dim"); else o.classList.remove("dim"); }, BLINK_MS);
+  if (!on && blinkT) { clearInterval(blinkT); blinkT = 0; o.classList.remove("dim"); }
+}
 const pulseOn = () => settings.playPulse !== false;
 function pulseRing(c, r, col = "var(--marker)") { if (pulseOn()) pulseList.push({ c, r, col }); return ""; }
 /* where the table's drawing sits in the overlay, measured only when the layout has settled (never straight after a redraw) */
@@ -213,6 +221,7 @@ function pulseDraw() {
     if (el._css !== css) { el.style.cssText = css; el._css = css; }
     if (el.hidden) el.hidden = false;
   });
+  blinkSet(list.length > 0);
 }
 /* straight-line first contact (used only to show the aim at the break, where paths are hidden) */
 function rayFirst(cb, aim, balls) {
