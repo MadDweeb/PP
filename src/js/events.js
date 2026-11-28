@@ -156,7 +156,10 @@ vsTrack.addEventListener("keydown", e => {
   e.preventDefault(); setSpeed(S.speedPct + d * (e.shiftKey ? 5 : 1));
 });
 const cueSvg = $("cueball"), cueBig = $("cueBig");
-const openSpin = () => { $("spinSheet").hidden = false; renderSpin(); };
+/* opened on pointerup, so the click that a phone sends right after the tap lands on the sheet. Where the small ball sits
+   outside the card (full screen, landscape) that click hit the dark backdrop and closed the sheet at once: ignore it. */
+let spinOpenAt = 0;
+const openSpin = () => { $("spinSheet").hidden = false; spinOpenAt = performance.now(); renderSpin(); };
 /* Small ball: press on the blue point and drag to move it here; a tap anywhere on the ball (the point too) enlarges it. */
 let smallTouch = null;
 cueSvg.addEventListener("pointerdown", e => {
@@ -176,7 +179,7 @@ const smallEnd = e => {
   if (st.onPoint) saveWork();                               // a drag that started on the point moved it here
 };
 cueSvg.addEventListener("pointerup", smallEnd); cueSvg.addEventListener("pointercancel", smallEnd);
-$("spinSheet").addEventListener("click", e => { if (e.target.id === "spinSheet") { $("spinSheet").hidden = true; saveWork(); } });
+$("spinSheet").addEventListener("click", e => { if (e.target.id === "spinSheet" && performance.now() - spinOpenAt > 500) { $("spinSheet").hidden = true; saveWork(); } });
 /* Drag is relative: the point moves with the finger from wherever it lands, so the finger never hides it. */
 let tipStart = null;
 cueBig.addEventListener("pointerdown", e => { e.preventDefault(); cueBig.setPointerCapture(e.pointerId); tipDrag = e.pointerId; const p = cuePoint(e); if (p) tipStart = { p, t: { x: S.tip.x, y: S.tip.y } }; });
