@@ -63,9 +63,9 @@ test("the at-the-table switches come back from a backup as true or false", () =>
 
 test("a backup keeps the Play settings and each player's cue, and drops anything else in them", () => {
   const { cleanSettings } = require("./core.js").loadCore();
-  const out = cleanSettings({ playPaths: "cue", playBreak: "kitchen", cues: [{ shaft: "carbon", butt: "ebony", inlay: "rings", wrap: "linen", junk: 1 }, { shaft: 5 }, { butt: "x" }] });
+  const out = cleanSettings({ playPaths: "cue", playBreak: "kitchen", cues: [{ shaft: "carbon", butt: "ebony", inlay: "rings", wrap: "linen", tip: "phenolic", chalk: "red", junk: 1 }, { shaft: 5 }, { butt: "x" }] });
   assert.equal(out.playPaths, "cue"); assert.equal(out.playBreak, "kitchen");
-  assert.deepEqual(out.cues, [{ shaft: "carbon", butt: "ebony", inlay: "rings", wrap: "linen" }, {}]);
+  assert.deepEqual(out.cues, [{ shaft: "carbon", butt: "ebony", inlay: "rings", wrap: "linen", tip: "phenolic", chalk: "red" }, {}]);
 });
 
 test("Play settings from a backup: solo is true or false, names are short text", () => {
