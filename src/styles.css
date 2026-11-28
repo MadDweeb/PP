@@ -395,6 +395,10 @@ details.fold[open] > summary { margin-bottom: 0; }
 .callout .cox svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .callout .cox circle { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-opacity: .85; stroke-dasharray: 100; stroke-dashoffset: 0; animation: cdring var(--cd, 7s) linear forwards; }
 @keyframes cdring { to { stroke-dashoffset: 100; } }
+/* Play: the called ball and pocket pulse */
+#tbl .pulse { transform-box: fill-box; transform-origin: center; opacity: 0; pointer-events: none; animation: callpulse 1.4s ease-out infinite; }
+@keyframes callpulse { 0% { transform: scale(1); opacity: .95; } 100% { transform: scale(1.9); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #tbl .pulse { animation: none; opacity: .6; transform: scale(1.35); } }
 .callout .cdn { flex: 0 0 auto; font-size: 0.75rem; opacity: .85; font-variant-numeric: tabular-nums; }
 .quickbar .qs.fine.undo { flex: 0 0 64px; font-size: 0.9375rem; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .callout .cox circle { animation: none; } }
@@ -449,10 +453,10 @@ body.land .vspeed { contain: size; }
 body.land .vstrack { min-height: 100px; }   /* the column takes the table's height instead of making the row taller */
 body.land #cueModel { min-height: 40px; }
 .cueprev { width: 100%; height: auto; display: block; flex: 0 0 auto; }
-#cueFull { aspect-ratio: 62 / 4.8; }
+#cueFull { aspect-ratio: 64 / 4.8; }
 .cuezoom { display: grid; grid-template-columns: 1fr 3fr; gap: 10px; align-items: center; margin-bottom: 6px; }
 #cueTip { aspect-ratio: 4.2 / 2.1; background: var(--panel); border-radius: 8px; }
-#cueButt { aspect-ratio: 30 / 3.8; }
+#cueButt { aspect-ratio: 34 / 3.8; }
 #cueSheet .card { max-height: 88dvh; overflow-y: auto; }
 #cueWho { margin: 6px 0 10px; }
 .chip.matl { display: inline-flex; align-items: center; gap: 6px; }
