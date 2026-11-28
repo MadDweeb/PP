@@ -157,12 +157,9 @@ function buildTable() {
   svg.style.aspectRatio = aspect();
   svg.innerHTML = `<g transform="${rotAttr()}"><g id="tblContent"><g>${staticTable()}</g><g id="tDyn"></g></g></g>`;
   $("loupeRot").setAttribute("transform", rotAttr());
-  pulseReset(); pulseWatch();
   renderTable();
 }
-/* the pulse rings that the drawing asks for go on an HTML layer over the table (see pulseRing in play.js) */
-let pulseList = [], pulseGeo = null, pulseRO = null;
-function renderTable() { const d = $("tDyn"); if (!d) return; pulseList = []; d.innerHTML = dynTable(); pulseDraw(); }
+function renderTable() { const d = $("tDyn"); if (d) d.innerHTML = dynTable(); }
 
 /* ---------- pointer handling on the table ---------- */
 function svgPt(svg, e, el) {

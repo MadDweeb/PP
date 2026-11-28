@@ -156,7 +156,7 @@ function dynPlay() {
     return s;
   }
   const call = playCall(), P = pockets();
-  if (call && call.pocket && P[call.pocket]) { const pk = P[call.pocket], pc = toSvg(pk.c); s += `<circle cx="${pc.x}" cy="${pc.y}" r="${pk.w / 2 + 1}" fill="none" stroke="var(--marker)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>` + pulseRing(pc, pk.w / 2 + 1); }
+  if (call && call.pocket && P[call.pocket]) { const pk = P[call.pocket], pc = toSvg(pk.c); s += `<circle cx="${pc.x}" cy="${pc.y}" r="${pk.w / 2 + 1}" fill="none" stroke="var(--marker)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>` }
   const r = g.cb && !g.over && !g.choice ? (g.phase === "break" ? null : playLive()) : null, c = playContact(r);
   if (g.cb && !g.over) {
     // the cue stick behind the ball, along the aim
@@ -176,52 +176,12 @@ function dynPlay() {
     }
   }
   for (const b of g.balls) s += numBall(b, b.n);
-  /* 9- and 10-ball: the lowest ball, which must be hit first, pulses. 8-ball: the called ball does. */
+  /* 9- and 10-ball: a white ring round the lowest ball, which must be hit first. The called ball gets the marker colour. */
   const low = g.kind !== "8" && !g.over ? g.balls.find(b => b.n === lowestBall(g)) : null;
-  if (low) s += ring(low, "#ffffff", .95, 2.4).replace(`r="${R_BALL}"`, `r="${R_BALL + .7}"`) + pulseRing(toSvg(low), R_BALL + .7, "#ffffff");
-  if (call && call.ball != null) { const b = g.balls.find(x => x.n === call.ball); if (b) s += ring(b, "var(--marker)", .95, 2.6).replace(`r="${R_BALL}"`, `r="${R_BALL + (b === low ? 1.3 : .7)}"`) + (low ? "" : pulseRing(toSvg(b), R_BALL + .7)); }
+  if (low) s += ring(low, "#ffffff", .95, 2.4).replace(`r="${R_BALL}"`, `r="${R_BALL + .7}"`);
+  if (call && call.ball != null) { const b = g.balls.find(x => x.n === call.ball); if (b) s += ring(b, "var(--marker)", .95, 2.6).replace(`r="${R_BALL}"`, `r="${R_BALL + (b === low ? 1.3 : .7)}"`); }
   if (g.cb) s += cueBallSvg(g.cb, !!g.inHand && !g.over);
   return s;
-}
-/* a ring round the ball to hit (or the called ball) and the called pocket that blinks: bright, then faint, twice a second.
-   As light as it can be: the rings are plain HTML circles over the table (never part of the SVG, which would repaint the
-   whole table), there is no animation, only a class switched every half second while a ring shows, and it holds still
-   while you drag, a shot runs or the phone asks for less motion. */
-const BLINK_MS = 500;
-let blinkT = 0;
-function blinkSet(on) {
-  const o = $("pulses"); if (!o) return;
-  if (on && !blinkT && !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches))
-    blinkT = setInterval(() => { if (!playDrag && !document.hidden) o.classList.toggle("dim"); else o.classList.remove("dim"); }, BLINK_MS);
-  if (!on && blinkT) { clearInterval(blinkT); blinkT = 0; o.classList.remove("dim"); }
-}
-const pulseOn = () => settings.playPulse !== false;
-function pulseRing(c, r, col = "var(--marker)") { if (pulseOn()) pulseList.push({ c, r, col }); return ""; }
-/* where the table's drawing sits in the overlay, measured only when the layout has settled (never straight after a redraw) */
-function pulseMeasure() {
-  const o = $("pulses"), t = $("tblContent"), m = t && t.getScreenCTM(); if (!o || !m) return null;
-  const b = o.getBoundingClientRect();
-  return pulseGeo = { a: m.a, b: m.b, c: m.c, d: m.d, e: m.e - b.left, f: m.f - b.top, k: Math.hypot(m.a, m.b) };
-}
-function pulseWatch() {
-  if (pulseRO || !window.ResizeObserver) return;
-  pulseRO = new ResizeObserver(() => { pulseMeasure(); pulseDraw(); });
-  for (const id of ["tablewrap", "tbl", "vtip", "vspeed"]) if ($(id)) pulseRO.observe($(id));
-}
-function pulseReset() { pulseGeo = null; }
-function pulseDraw() {
-  const o = $("pulses"); if (!o) return;
-  const list = playMode() && !simAnim ? pulseList : [];
-  if (list.length && !pulseGeo) { requestAnimationFrame(() => { pulseMeasure(); pulseDraw(); }); return; }
-  while (o.children.length < list.length) { const el = document.createElement("i"); el.className = "pulsedot"; o.appendChild(el); }
-  [...o.children].forEach((el, i) => {
-    const p = list[i]; if (!p) { if (!el.hidden) el.hidden = true; return; }
-    const G = pulseGeo, x = G.a * p.c.x + G.c * p.c.y + G.e, y = G.b * p.c.x + G.d * p.c.y + G.f, r = p.r * G.k;
-    const css = `left:${(x - r).toFixed(1)}px;top:${(y - r).toFixed(1)}px;width:${(2 * r).toFixed(1)}px;height:${(2 * r).toFixed(1)}px;border-color:${p.col}`;
-    if (el._css !== css) { el.style.cssText = css; el._css = css; }
-    if (el.hidden) el.hidden = false;
-  });
-  blinkSet(list.length > 0);
 }
 /* straight-line first contact (used only to show the aim at the break, where paths are hidden) */
 function rayFirst(cb, aim, balls) {
@@ -274,7 +234,6 @@ function renderGameCard() {
   h += `<div class="optrow"><span class="k">Players</span><div class="chips"><button class="chip sm" aria-pressed="${!soloPlay()}" data-solo="0">Two players</button><button class="chip sm" aria-pressed="${soloPlay()}" data-solo="1">Solo: I play both sides</button></div>` +
     (soloPlay() ? "" : `<div class="namerow">${[0, 1].map(i => `<input id="pname${i}" style="--p-col:${i ? "var(--p2)" : "var(--accent)"}" value="${esc((settings.playNames || [])[i] || "")}" placeholder="Player ${i + 1}" maxlength="16" autocomplete="off" aria-label="Player ${i + 1} name">`).join("")}</div>`) + `</div>`;
   h += `<div class="optrow"><span class="k">Paths</span><div class="chips">${PATHS.map(([k, l]) => `<button class="chip sm" aria-pressed="${pathMode() === k}" data-paths="${k}">${l}</button>`).join("")}</div></div>`;
-  h += `<div class="optrow"><span class="k">Pulse</span><div class="chips"><button class="chip sm" aria-pressed="${pulseOn()}" data-pulse="1">On</button><button class="chip sm" aria-pressed="${!pulseOn()}" data-pulse="0">Off</button></div></div>`;
   h += `<div class="optrow"><span class="k">Break from</span><div class="chips">${BREAK_FROM.map(([k, l]) => `<button class="chip sm" aria-pressed="${breakFrom() === k}" data-brkfrom="${k}">${l}</button>`).join("")}</div></div>`;
   const log = (g.log || []).slice(-6).reverse();
   if (log.length) h += `<div class="glog"><span class="k">Last shots</span><ol>${log.map(e => `<li class="${e.fouls && e.fouls.length ? "bad" : ""}"><b>Rack ${e.rack}, shot ${e.shot}:</b> ${esc(e.fouls && e.fouls.length ? "Foul. " + e.fouls.join(". ") : soloText(e.text) || "Shot played")}</li>`).join("")}</ol></div>`;
