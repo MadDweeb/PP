@@ -256,7 +256,7 @@ function renderPlayBar() {
   if (two) detail.push("on two fouls");
   const sc = solo ? "" : `<span class="score num" aria-label="Score ${g.score[0]} to ${g.score[1]}">${g.score[0]}<i style="background:var(--accent)"></i>–<i style="background:var(--p2)"></i>${g.score[1]}</span>`;
   const hint = (settings.playShots || 0) < AIM_HINT_SHOTS && !g.over && !g.choice
-    ? `<div class="plhint">${g.inHand ? "Drag the cue ball to place it. " : ""}Drag the cue to aim, or tap a spot ahead of the cue ball to aim at it. ↺ ↻ fine-tune.</div>` : "";
+    ? `<div class="plhint">${g.inHand ? "Drag the cue ball to place it. " : ""}Drag ahead of the cue ball and the shot follows your finger; drag on the cue and it swings the other way. ↺ ↻ fine-tune.</div>` : "";
   const ps = $("playStatus"), h = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><div class="who"><b>${head}</b>${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</div>${sc}<button class="btn small fsbtn" data-play="fs" aria-label="Full screen" title="Full screen">⛶</button></div>${hint}`;
   if (ps._h !== h) { ps.innerHTML = h; ps._h = h; }
 }
@@ -331,7 +331,7 @@ function renderPlayInfo() {
   /* the quick bar redraws while you aim; the callout announces results instead */
   $("quickbar").setAttribute("aria-live", playMode() ? "off" : "polite");
   const t = $("tbl"); t.tabIndex = playMode() ? 0 : -1;
-  t.setAttribute("aria-label", playMode() ? "Pool table. Drag the cue to aim, or tap ahead of the cue ball to aim at that spot; arrow keys turn the aim, Shift for 1 degree; Enter shoots." : "Pool table. Tap to place balls and markers.");
+  t.setAttribute("aria-label", playMode() ? "Pool table. Drag ahead of the cue ball to point the shot at your finger, or drag on the cue to swing it; a tap ahead of the cue ball aims at that spot; arrow keys turn the aim, Shift for 1 degree; Enter shoots." : "Pool table. Tap to place balls and markers.");
 }
 function renderPlay() { ensureGame(); if (S.game.cb == null && !S.game.over) playPrep(); renderPlayInfo(); }
 
@@ -477,8 +477,9 @@ function setCall(o) {
 }
 
 /* ---------- touch on the table ----------
-   With ball in hand, press on or near the cue ball to move it; the aim stays on the ball it was on. Anywhere else, the
-   drag moves the cue: the cue lies under your finger and the cue ball goes the other way (further from the ball is finer).
+   With ball in hand, press on or near the cue ball to move it; the aim stays on the ball it was on. Anywhere else, where
+   the finger lands decides: ahead of the cue ball the shot follows the finger exactly (it points at it); behind it, on the
+   cue's side, the drag moves the cue: the cue lies under your finger and the shot goes the other way (further is finer).
    A tap in front of the cue ball aims straight at that spot; a tap behind it puts the cue there. */
 /* inches on the table that a distance of px screen pixels covers here */
 function playInches(e, px) {
@@ -501,7 +502,9 @@ function playDown(e) {
     const c = playContact(playLive()), on = c && g.balls.some(b => b.n === c.n) ? c.n : null;
     playDrag = { id: e.pointerId, kind: "cb", off: sub(g.cb, p), target: on, wrap: $("tablewrap").getBoundingClientRect() }; showLoupe(p, e, g.cb, playDrag.wrap); return;
   }
-  playDrag = { id: e.pointerId, kind: "aim", p0: p, moved: false, wrap: $("tablewrap").getBoundingClientRect() };
+  /* where the finger lands picks the feel: ahead of the cue ball it is the target, on the cue side it holds the cue */
+  const ahead = (p.x - g.cb.x) * Math.cos(g.aim) + (p.y - g.cb.y) * Math.sin(g.aim) > 0;
+  playDrag = { id: e.pointerId, kind: "aim", point: ahead, p0: p, moved: false, wrap: $("tablewrap").getBoundingClientRect() };
 }
 /* while aiming, the magnifier shows where the cue ball meets the first ball, or the point under your finger when it meets none */
 function playLoupe() {
@@ -523,7 +526,7 @@ function playMove(e) {
   else {
     if (!d.moved && len(sub(p, d.p0)) < .6) return;
     d.moved = true;
-    if (len(sub(p, g.cb)) >= AIM_DEAD) g.aim = Math.atan2(g.cb.y - p.y, g.cb.x - p.x);
+    if (len(sub(p, g.cb)) >= AIM_DEAD) g.aim = d.point ? Math.atan2(p.y - g.cb.y, p.x - g.cb.x) : Math.atan2(g.cb.y - p.y, g.cb.x - p.x);
   }
   d.p = p; d.at = { clientX: e.clientX, clientY: e.clientY };
   if (!playFrameReq) playFrameReq = requestAnimationFrame(playFrame);
