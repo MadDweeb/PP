@@ -1,8 +1,8 @@
-// The Simulator: live paths, playback, Run 50 and results.
+// The Simulator: live paths, playback and results.
 /* ---------- Simulator tab ----------
    Shot: cue ball aimed at the object ball with the chosen hit (or at the target when there is no object ball).
    Break: the rack from the Cut break tab, broken from the break spot. Paths are worked out live while you drag. */
-let simRes = null, simKey = "", simT = 0, simLast = 0, simAnim = null, sum50 = null, runTok = 0, simHitWasPot = false;
+let simRes = null, simKey = "", simT = 0, simLast = 0, simAnim = null, simHitWasPot = false;
 /* the hit that sends the object ball straight at the pocket (ghost ball), in the same units as S.hit, or null when too thin */
 function ghostHit() {
   if (!S.cb || !S.ob) return null;
@@ -16,26 +16,18 @@ function ghostHit() {
 }
 function simParams() { return Object.assign({}, tune, { W: settings.W, L: settings.L, wc: settings.wc, ws: settings.ws }, simBrk() || playBreakNow() ? { vmax: tune.vbreak || BREAK_VMAX } : {}); }
 function simInputs() { return [S.simKind, S.cb, S.ob, S.target, S.pocket, S.tip, S.speedPct, S.hit, S.rack, settings.W, settings.L, settings.wc, settings.ws, tuneKey()]; }
-/* one break: optional loose rack and stroke wobble for Run 50 */
-function simBreakJob(seed, wobble) {
-  const rnd = seededRnd(seed), rack = rackBalls(S.rack), head = rack[0];
-  if (wobble) {   // gaps of up to 0.08 in between balls, and a small random shift, so no two racks are the same
-    const gap = .02 + rnd() * .06, k = (2 * R_BALL + gap) / (2 * R_BALL);
-    for (const b of rack) { b.x = head.x + (b.x - head.x) * k + (rnd() - .5) * gap * .7; b.y = head.y + (b.y - head.y) * k + (rnd() - .5) * gap * .7; }
-  }
-  const j = () => wobble ? rnd() * 2 - 1 : 0;
-  const aim = breakAimAngle(S.cb, rackBalls(S.rack)[0], S.hit || 0) + j() * .15 * Math.PI / 180;
-  const speed = Math.max(0, Math.min(1, S.speedPct / 100 * (1 + j() * .02)));
-  const tip = { x: S.tip.x + j() * .02, y: S.tip.y + j() * .02 };
-  const spec = { balls: [{ id: "cb", x: S.cb.x, y: S.cb.y }].concat(rack.map(b => ({ id: "b" + b.n, x: b.x, y: b.y }))), cue: 0, aim, tip, speed, tMax: 25, sample: 1 / 60, seed };
+/* one break, racked exactly as drawn */
+function simBreakJob(seed) {
+  const rack = rackBalls(S.rack);
+  const aim = breakAimAngle(S.cb, rack[0], S.hit || 0), speed = Math.max(0, Math.min(1, S.speedPct / 100));
+  const spec = { balls: [{ id: "cb", x: S.cb.x, y: S.cb.y }].concat(rack.map(b => ({ id: "b" + b.n, x: b.x, y: b.y }))), cue: 0, aim, tip: S.tip, speed, tMax: 25, sample: 1 / 60, seed };
   const finish = r => { r.balls.forEach((b, i) => { b.n = i ? rack[i - 1].n : 0; }); r.kind = "break"; r.rack = rack; return r; };
   return { spec, params: simParams(), finish };
 }
-function simBreakRun(seed, wobble) { const j = simBreakJob(seed, wobble); return j.finish(window.PoolPhysics.simulate(j.spec, j.params)); }
-function seededRnd(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function simBreakRun(seed) { const j = simBreakJob(seed); return j.finish(window.PoolPhysics.simulate(j.spec, j.params)); }
 function simRun() {
   if (!S.cb || !window.PoolPhysics) return null;
-  if (simBrk()) return simBreakRun(1, false);
+  if (simBrk()) return simBreakRun(1);
   const balls = [{ id: "cb", x: S.cb.x, y: S.cb.y }]; if (S.ob) balls.push({ id: "ob", x: S.ob.x, y: S.ob.y });
   const aim = S.ob ? breakAimAngle(S.cb, S.ob, S.hit || 0) : S.target ? Math.atan2(S.target.y - S.cb.y, S.target.x - S.cb.x) : Math.PI / 2;
   const r = window.PoolPhysics.simulate({ balls, cue: 0, aim, tip: S.tip, speed: S.speedPct / 100, tMax: 20, sample: 1 / 60, seed: 1 }, simParams());
@@ -48,11 +40,10 @@ let simWant = null, simRedraw = 0;
 function simLive() {
   const key = JSON.stringify(simInputs()), kind = simBrk() ? "break" : "shot";
   if (key === simKey && simRes) return simRes;
-  if (sum50) { runTok++; sum50 = null; renderQuick(); }
   const keep = () => simRes && simRes.kind === kind ? simRes : null;
   if (kind === "break") {
     if (key === simWant) return keep();
-    const j = simBreakJob(1, false);
+    const j = simBreakJob(1);
     if (physAsk("sim", j.spec, j.params, r => simGot(key, j.finish(r)))) { simWant = key; return keep(); }
   }
   const now = performance.now();
@@ -82,7 +73,7 @@ function simNow() {
 function simStopAnim() { if (simAnim) { cancelAnimationFrame(simAnim.id); const done = simAnim.done; simAnim = null; renderQuick(); if (done) done(); else renderTable(); } }
 /* stop the playback without finishing the shot: Play's Undo during a shot */
 function simCancelAnim() { if (simAnim) { cancelAnimationFrame(simAnim.id); simAnim = null; renderQuick(); renderTable(); } }
-function simStop() { simStopAnim(); runTok++; sum50 = null; clearTimeout(simT); }
+function simStop() { simStopAnim(); clearTimeout(simT); }
 function simPlay(r, done) {
   simStopAnim();
   const t0 = performance.now(), reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -103,29 +94,6 @@ function simPlay(r, done) {
 function simQuick(k) {
   if (k === "paths") { S.simPaths = S.simPaths === false; saveWork(); renderTable(); renderQuick(); return; }
   if (k === "shoot") { if (simAnim) { simStopAnim(); renderTable(); return; } const r = simNow(); if (r) simPlay(r); return; }
-  if (k === "run50") {
-    if (sum50 && sum50.done < sum50.n) { runTok++; sum50 = null; renderQuick(); renderSimRes(); renderTable(); return; }
-    simStopAnim();
-    const tok = ++runTok;
-    sum50 = { n: 50, done: 0, made: 0, some: 0, game: 0, scratch: 0, legal: 0, oneMade: 0, pockets: {}, ends: [], key: simKey };
-    /* each break runs off the page when it can, so the page stays responsive while the 50 run */
-    const one = () => {
-      if (tok !== runTok || !sum50) return;
-      const j = simBreakJob((Math.random() * 2 ** 31) >>> 0, true);
-      if (!physAsk("run50", j.spec, j.params, r => tally(j.finish(r)))) tally(j.finish(window.PoolPhysics.simulate(j.spec, j.params)));
-    };
-    const tally = r => {
-      if (tok !== runTok || !sum50) return;
-      const st = simBreakStats(r), m = sum50;
-      m.done++; m.made += st.made.length; if (st.made.length) m.some++; if (st.game) m.game++; if (st.scratch) m.scratch++; if (st.legal) m.legal++; if (st.oneMade) m.oneMade++;
-      for (const b of st.made) m.pockets[b.potted] = (m.pockets[b.potted] || 0) + 1;
-      const last = st.cb.path[st.cb.path.length - 1];
-      m.ends.push({ x: st.scratch ? last.x : st.cb.x, y: st.scratch ? last.y : st.cb.y, scratch: st.scratch });
-      renderSimRes(); renderTable(); renderQuick();
-      if (m.done < m.n) setTimeout(one, 0);
-    };
-    renderQuick(); setTimeout(one, 30);
-  }
 }
 function setSimKind(k) {
   if (S.simKind === k) return;
@@ -214,16 +182,6 @@ function renderSimRes() {
     items.push(["Time to rest", fmt(r.t, 1) + " s"]);
   }
   el.innerHTML = items.map(cellHtml).join("");
-  const m = sum50, sm = $("simSum");
-  if (!m || !simBrk()) { sm.innerHTML = ""; return; }
-  const d = Math.max(1, m.done), pc = v => Math.round(v / d * 100) + "%";
-  const top = Object.entries(m.pockets).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${POCKET_NAMES[k].toLowerCase()} ${Math.round(v / Math.max(1, m.made) * 100)}%`).join(", ");
-  sm.innerHTML = `<h3>${m.done < m.n ? `Running breaks… ${m.done} of ${m.n}` : `${m.n} breaks`}</h3><div class="res">` + [
-    ["1-ball made", pc(m.oneMade), "good"], ["Balls made per break", fmt(m.made / d, 2)],
-    ["Made at least one", pc(m.some)], [`${S.rack === "8" ? 8 : S.rack === "10" ? 10 : 9} on the break`, pc(m.game)],
-    ["Scratches", pc(m.scratch), m.scratch ? "bad" : ""], ["Legal breaks", pc(m.legal)],
-    ["Pockets that take the most", top || "–", "", true]
-  ].map(cellHtml).join("") + `</div><p class="note" style="margin:6px 0 0">Each break gets a slightly loose rack and a real stroke's wobble (aim ±0.15°, speed ±2 %). Dots on the table show where the cue ball finished; red ones are scratches.</p>`;
 }
 /* A path is sampled 60 times a second, so a long roll has hundreds of points, most on a straight line. Keep only the ones
    that bend it by more than a few hundredths of an inch (Douglas-Peucker): it looks the same and is far cheaper to draw. */
@@ -248,7 +206,6 @@ function dynSim() {
   const ring = (p, col, op) => { const q = toSvg(p); return `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="none" stroke="${col}" stroke-opacity="${op}" stroke-width="2" vector-effect="non-scaling-stroke"/>`; };
   if (simBrk()) {
     g += breakBoxSvg();
-    if (sum50 && !A) for (const e of sum50.ends) { const q = toSvg(e); g += `<circle cx="${q.x}" cy="${q.y}" r=".7" fill="${e.scratch ? "var(--bad)" : "#ffffff"}" fill-opacity=".85"/>`; }
     const rack = rackBalls(S.rack);
     if (r && paths) for (const b of r.balls.slice().reverse()) {
       const pts = A ? b.path.slice(0, (A.i[b.id] || 0) + 1) : b.path;
