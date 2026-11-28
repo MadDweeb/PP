@@ -324,7 +324,7 @@ function renderGameCard() {
   h += `<div class="optrow"><span class="k">Break from</span><div class="chips">${BREAK_FROM.map(([k, l]) => `<button class="chip sm" aria-pressed="${breakFrom() === k}" data-brkfrom="${k}">${l}</button>`).join("")}</div></div>`;
   const log = (g.log || []).slice(-6).reverse();
   if (log.length) h += `<div class="glog"><span class="k">Last shots</span><ol>${log.map(e => `<li class="${e.fouls && e.fouls.length ? "bad" : ""}"><b>Rack ${e.rack}, shot ${e.shot}:</b> ${esc(e.fouls && e.fouls.length ? "Foul. " + e.fouls.join(". ") : soloText(e.text) || "Shot played")}</li>`).join("")}</ol></div>`;
-  h += `<div class="tunerow"><span>${esc(GAME_NAMES[g.kind])}, rack ${g.rackNo}</span><button class="btn newgame${playConfirm === "newgame" ? " armed" : ""}" data-play="newgame">${playConfirm === "newgame" ? "Tap again to reset the score" : "New game"}</button></div>`;
+  h += `<div class="tunerow"><button class="btn newgame${playConfirm === "newgame" ? " armed" : ""}" data-play="newgame">${playConfirm === "newgame" ? "Tap again to reset the score" : "New game"}</button></div>`;
   h += `<details class="tunebox"><summary>The rules</summary><ul class="rules">${rulesText(g.kind).map(t => `<li>${esc(t)}</li>`).join("")}</ul></details>`;
   /* rebuilt only when it changes: it is asked for on every aim update, and a rebuild would close The rules and drop a name being typed */
   if (el._h !== h) { el._h = h; el.innerHTML = h; }
