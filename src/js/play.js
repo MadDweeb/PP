@@ -366,7 +366,7 @@ function renderFsStatus() {
       const two = g.kind !== "8" && g.fouls[g.turn] === 2, inHand = g.inHand && g.phase !== "break";
       const push = fsLand() && pushAvailable(g), armed = push && playArm === "push";
       const bits = [g.phase === "break" ? "break" : "", inHand ? "ball in hand" : "", two ? "on two fouls" : "",
-        push ? (armed ? "push out: any shot, no fouls but a scratch" : `no line to the ${lowestBall(g)}, push out allowed`) : ""].filter(Boolean);
+        push ? "push out available" : ""].filter(Boolean);
       h = msg([solo ? "" : playerName(g.turn), bits.join(", ")].filter(Boolean).join(": "), inHand || two || push);
       if (push) h += `<button class="btn small${armed ? " warnbtn" : ""}" data-play="push" aria-pressed="${armed}">${armed ? "Cancel push out" : "Push out"}</button>`;
     }
