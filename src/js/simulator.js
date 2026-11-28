@@ -57,6 +57,8 @@ function simLive() {
 }
 /* stopping a replay early still finishes the shot: a Play shot is then refereed as it would have ended */
 function simStopAnim() { if (simAnim) { cancelAnimationFrame(simAnim.id); const done = simAnim.done; simAnim = null; renderQuick(); if (done) done(); else renderTable(); } }
+/* stop the playback without finishing the shot: Play's Undo during a shot */
+function simCancelAnim() { if (simAnim) { cancelAnimationFrame(simAnim.id); simAnim = null; renderQuick(); renderTable(); } }
 function simStop() { simStopAnim(); runTok++; sum50 = null; clearTimeout(simT); }
 function simPlay(r, done) {
   simStopAnim();
