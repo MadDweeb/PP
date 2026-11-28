@@ -350,28 +350,44 @@ function renderPlayQuick(q) {
   renderFsStatus();
 }
 /* full screen: whose turn it is, under the table */
+/* full screen in landscape: game messages and their buttons (push out, the choice after a push out or foul) go here too,
+   so the button column stays narrow */
+const fsLand = () => fsOn && land;
+const WARN_ICON = `<svg class="warnic" viewBox="0 0 24 22" aria-hidden="true"><path d="M12 1.6 22.8 20.4H1.2z" fill="#f5c400" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 8.2v5.6" stroke="#111" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17" r="1.35" fill="#111"/></svg>`;
+const capFirst = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 function renderFsStatus() {
-  const el = $("fsStatus"), g = S.game; let t = "";
-  if (fsOn && g && !g.over && !g.choice && !simAnim) {
-    const who = soloPlay() ? "" : playerName(g.turn), bits = [g.phase === "break" ? "break" : "", g.inHand && g.phase !== "break" ? "ball in hand" : "", g.kind !== "8" && g.fouls[g.turn] === 2 ? "on two fouls" : ""].filter(Boolean);
-    t = [who, bits.join(", ")].filter(Boolean).join(": ");
+  const el = $("fsStatus"), g = S.game, solo = soloPlay(); let h = "", p = g ? g.turn : 0;
+  if (fsOn && g && !g.over && !simAnim) {
+    const msg = (t, warn) => t ? `<span class="fsmsg">${warn ? WARN_ICON : ""}<span>${esc(capFirst(t))}</span></span>` : "";
+    if (g.choice) {
+      p = g.choice.by;
+      if (fsLand()) h = msg(solo ? "your choice" : playerName(p) + " to choose", true) + g.choice.options.map(([id, l]) => `<button class="btn small" data-choice="${id}">${esc(l)}</button>`).join("");
+    } else {
+      const two = g.kind !== "8" && g.fouls[g.turn] === 2, inHand = g.inHand && g.phase !== "break";
+      const push = fsLand() && pushAvailable(g), armed = push && playArm === "push";
+      const bits = [g.phase === "break" ? "break" : "", inHand ? "ball in hand" : "", two ? "on two fouls" : "",
+        push ? (armed ? "push out: any shot, no fouls but a scratch" : `no line to the ${lowestBall(g)}, push out allowed`) : ""].filter(Boolean);
+      h = msg([solo ? "" : playerName(g.turn), bits.join(", ")].filter(Boolean).join(": "), inHand || two || push);
+      if (push) h += `<button class="btn small${armed ? " warnbtn" : ""}" data-play="push" aria-pressed="${armed}">${armed ? "Cancel push out" : "Push out"}</button>`;
+    }
   }
-  const cls = "fsstatus " + (soloPlay() || !g ? "" : g.turn ? "p2" : "p1");
-  if (el.textContent !== t) el.textContent = t; if (el.className !== cls) el.className = cls;
+  const cls = "fsstatus " + (solo || !g ? "" : p ? "p2" : "p1");
+  if (el._h !== h) { el.innerHTML = h; el._h = h; } if (el.className !== cls) el.className = cls;
 }
 function playQuickBody() {
   const g = S.game;
   if (!g) return "";
   const undo = `<button class="qs fine undo" data-play="undo" aria-label="Undo the last shot">Undo</button>`;
-  if (simAnim) return undo + `<button class="qs plain" data-play="skip">Skip animation</button>`;
+  if (simAnim) return undo + `<button class="qs plain" data-play="skip">${fsLand() ? "Skip" : "Skip animation"}</button>`;
   const solo = soloPlay(), canUndo = undoList().length > 0;
   if (g.over) return `<button class="qs good" data-play="next">Next rack<small>${solo ? "rack them up" : esc(playerName(otherP(g.breaker))) + " breaks"}</small></button>` + (canUndo ? undo : "");
+  if (g.choice && fsLand()) return canUndo ? undo : "";   // full screen, landscape: the choice is under the table
   if (g.choice) return g.choice.options.map(([id, l]) => `<button class="qs plain" data-choice="${id}">${esc(l)}${solo ? "" : `<small>${esc(playerName(g.choice.by))}</small>`}</button>`).join("") + (canUndo ? undo : "");
   const push = pushAvailable(g), armed = playArm === "push" && push, c = playCall();
   return `<button class="qs fine" data-play="left" aria-label="Turn the aim anticlockwise a little">↺<small>0.1°</small></button>` +
     `<button class="qs good" data-play="shoot">${g.phase === "break" ? "Break" : armed ? "Push out" : "Shoot"}${needsCall(g) && !armed ? "<small>call: " + esc(callText(c)) + "</small>" : ""}</button>` +
     `<button class="qs fine" data-play="right" aria-label="Turn the aim clockwise a little">↻<small>0.1°</small></button>` + (canUndo ? undo : "") +
-    (push ? `<button class="qs ${armed ? "warn" : "plain"} wide" data-play="push" aria-pressed="${armed}">${armed ? "Cancel push out" : "Push out"}<small>no line to the ${lowestBall(g)}: any shot, no fouls but a scratch</small></button>` : "");
+    (push && !fsLand() ? `<button class="qs ${armed ? "warn" : "plain"} wide" data-play="push" aria-pressed="${armed}">${armed ? "Cancel push out" : "Push out"}<small>no line to the ${lowestBall(g)}: any shot, no fouls but a scratch</small></button>` : "");
 }
 function renderPlayInfo() {
   renderPlayBar(); renderGameCard(); renderQuick(); renderCueSide();
