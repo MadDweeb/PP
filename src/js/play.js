@@ -265,16 +265,17 @@ function rulesText(k) {
 }
 function renderPlayQuick(q) {
   playQuickBody(q);
-  if (fsOn) q.insertAdjacentHTML("afterbegin", fsHead());
+  if (fsOn) q.insertAdjacentHTML("afterbegin", `<button class="qs fine fsx" data-play="fsexit" aria-label="Exit full screen">Exit</button>`);
+  renderFsStatus();
 }
-/* full screen: an Exit button and a short line on whose turn it is, above the usual buttons */
-function fsHead() {
-  const g = S.game; let t = "";
-  if (g && !g.over && !g.choice && !simAnim) {
+/* full screen: whose turn it is, under the table */
+function renderFsStatus() {
+  const el = $("fsStatus"), g = S.game; let t = "";
+  if (fsOn && g && !g.over && !g.choice && !simAnim) {
     const who = soloPlay() ? "" : playerName(g.turn), bits = [g.phase === "break" ? "break" : "", g.inHand && g.phase !== "break" ? "ball in hand" : "", g.kind !== "8" && g.fouls[g.turn] === 2 ? "on two fouls" : ""].filter(Boolean);
     t = [who, bits.join(", ")].filter(Boolean).join(": ");
   }
-  return `<button class="qs fine fsx" data-play="fsexit" aria-label="Exit full screen">Exit</button>` + (t ? `<div class="fsturn ${soloPlay() ? "" : g.turn ? "p2" : "p1"}">${esc(t)}</div>` : "") + `<div class="fsgrow"></div>`;
+  el.textContent = t; el.className = "fsstatus " + (soloPlay() || !g ? "" : g.turn ? "p2" : "p1");
 }
 function playQuickBody(q) {
   const g = S.game;
