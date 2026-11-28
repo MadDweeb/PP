@@ -91,13 +91,18 @@ function rackIcon(kind) {
   const rack = rackBalls(kind), h = rack[0];
   return `<svg class="rackico" viewBox="-5.4 -1.4 10.8 10.3" aria-hidden="true">` + rack.map(b => {
     const x = +((b.x - h.x) / R_BALL).toFixed(2), y = +((b.y - h.y) / R_BALL).toFixed(2), c = BALL_COL[b.n];
-    return (b.n > 8 ? `<circle cx="${x}" cy="${y}" r=".97" fill="#fbfaf4"/><rect x="${x - .82}" y="${y - .42}" width="1.64" height=".84" fill="${c}"/>` : `<circle cx="${x}" cy="${y}" r=".97" fill="${c}"/>`) +
+    return (b.n > 8 ? `<circle cx="${x}" cy="${y}" r=".97" fill="#fbfaf4"/>${stripeBand(x, y, .97, c)}` : `<circle cx="${x}" cy="${y}" r=".97" fill="${c}"/>`) +
       `<circle cx="${x}" cy="${y}" r=".97" fill="none" stroke="#000" stroke-opacity=".35" stroke-width=".12"/><circle cx="${x}" cy="${y}" r=".36" fill="#fffdf4"/>`;
   }).join("") + `</svg>`;
 }
+/* a stripe's coloured band: the part of the ball within 0.55 of its radius of the middle, so it follows the ball's edge */
+function stripeBand(x, y, r, col) {
+  const h = r * .55, w = Math.sqrt(r * r - h * h), f = v => +v.toFixed(3);
+  return `<path d="M${f(x - w)} ${f(y - h)}H${f(x + w)}A${r} ${r} 0 0 1 ${f(x + w)} ${f(y + h)}H${f(x - w)}A${r} ${r} 0 0 1 ${f(x - w)} ${f(y - h)}Z" fill="${col}"/>`;
+}
 function numBall(p, n) {
   const q = toSvg(p), stripe = n > 8;
-  return (stripe ? `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="#fbfaf4" stroke="#1b1b1b" stroke-opacity=".5" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${q.x - R_BALL * .98}" y="${q.y - R_BALL * .55}" width="${R_BALL * 1.96}" height="${R_BALL * 1.1}" fill="${BALL_COL[n]}"/>`
+  return (stripe ? `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="#fbfaf4"/>${stripeBand(q.x, q.y, R_BALL, BALL_COL[n])}<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="none" stroke="#1b1b1b" stroke-opacity=".5" stroke-width="1" vector-effect="non-scaling-stroke"/>`
     : `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="${BALL_COL[n]}" stroke="#1b1b1b" stroke-opacity=".5" stroke-width="1" vector-effect="non-scaling-stroke"/>`) +
     `<circle cx="${q.x}" cy="${q.y}" r=".5" fill="#fffdf4"/><text x="${q.x}" y="${q.y + .02}" font-size="${n > 9 ? .55 : .7}" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="#1b1b1b" font-family="var(--f-body)">${n}</text>`;
 }
@@ -246,16 +251,45 @@ function showLoupe(p, e, at, wrapBox) {
   const q = disp(toSvg(at || (playMode() ? p : S[S.tool] || p))); const half = 6;
   const sv = $("loupeSvg"); sv.setAttribute("viewBox", `${q.x - half} ${q.y - half} ${half * 2} ${half * 2}`);
   $("loupeX").innerHTML = `<path d="M${q.x - 2.4} ${q.y}h1.6M${q.x + .8} ${q.y}h1.6M${q.x} ${q.y - 2.4}v1.6M${q.x} ${q.y + .8}v1.6" stroke="#ff4d3d" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
-  const leftSide = e.clientX - wrap.left > wrap.width / 2;
-  l.style.left = leftSide ? "6px" : "auto"; l.style.right = leftSide ? "auto" : "6px";
-  l.style.top = (e.clientY - wrap.top < 160) ? (wrap.height - 140) + "px" : "6px";
+  const spot = loupeSpot(wrap, e, at || (playMode() ? p : S[S.tool] || p));
+  l.style.left = spot.x + "px"; l.style.right = "auto"; l.style.top = spot.y + "px";
   /* the magnifier copies the table only while it shows: a copy is rebuilt whenever the table changes */
   if (l.hidden) for (const u of $("loupeRot").querySelectorAll("use")) u.setAttribute("href", u.dataset.href);
   l.hidden = false;
 }
+/* Where the magnifier goes: never under the finger or over the spot it magnifies, and clear of the pockets, above all the
+   pocket nearest that spot (the one usually being aimed at). The pockets' places on screen are measured once per drag. */
+const LOUPE = 138;   // 132 px across plus its border
+let loupeAt = null, loupeGeo = null;
+function loupeSpot(wrap, e, at) {
+  const key = [wrap.left, wrap.top, wrap.width, wrap.height, land, settings.W, settings.L].join();
+  if (!loupeGeo || loupeGeo.key !== key) {
+    const m = $("tbl").getScreenCTM(), pt = $("tbl").createSVGPoint();
+    const toWrap = tp => { const d = disp(toSvg(tp)); pt.x = d.x; pt.y = d.y; const c = m ? pt.matrixTransform(m) : { x: 0, y: 0 }; return { x: c.x - wrap.left, y: c.y - wrap.top }; };
+    loupeGeo = { key, toWrap, pk: Object.values(pockets()).map(k => ({ c: k.c, s: toWrap(k.c) })) };
+    loupeAt = null;
+  }
+  const r = LOUPE / 2, f = { x: e.clientX - wrap.left, y: e.clientY - wrap.top }, view = loupeGeo.toWrap(at);
+  const near = loupeGeo.pk.reduce((a, b) => len(sub(b.c, at)) < len(sub(a.c, at)) ? b : a);
+  const score = (x, y) => {
+    const c = { x: x + r, y: y + r }, d = q => Math.hypot(q.x - c.x, q.y - c.y);
+    let s = 0;
+    if (d(f) < r + 44) s += 1000;          // under the finger
+    if (d(view) < r + 22) s += 400;        // over what it magnifies
+    for (const k of loupeGeo.pk) if (d(k.s) < r + 16) s += k === near ? 600 : 120;
+    return s + y * .02;                     // otherwise nearer the top
+  };
+  const xs = [6, (wrap.width - LOUPE) / 2, wrap.width - LOUPE - 6], ys = [];
+  for (let i = 0; i <= 8; i++) ys.push(6 + (wrap.height - LOUPE - 12) * i / 8);
+  let best = null;
+  for (const x of xs) for (const y of ys) { const s = score(x, y); if (!best || s < best.s) best = { x, y, s }; }
+  /* stay put unless the new spot is clearly better, so it doesn't hop about while you drag */
+  if (loupeAt && score(loupeAt.x, loupeAt.y) <= best.s + 60) return loupeAt;
+  return (loupeAt = { x: Math.round(best.x), y: Math.round(best.y) });
+}
 function hideLoupe() {
   const l = $("loupe"); if (l.hidden) return;
-  l.hidden = true; for (const u of $("loupeRot").querySelectorAll("use")) u.removeAttribute("href");
+  l.hidden = true; loupeAt = null; loupeGeo = null; for (const u of $("loupeRot").querySelectorAll("use")) u.removeAttribute("href");
 }
 
 /* ---------- pocket zoom ---------- */
