@@ -475,3 +475,31 @@ body.land #cueModel { min-height: 40px; }
 .plhint { font-size: 0.8125rem; color: var(--muted); text-align: center; }
 .namerow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .namerow input { width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); background: var(--panel); border-radius: 9px; border-left: 5px solid var(--p-col); }
+/* ---------- Play full screen: only the table and the controls for playing ---------- */
+.plturn .fsbtn { min-width: 44px; padding: 0 8px; font-size: 1.125rem; line-height: 1; }
+body.fs { overflow: hidden; }
+body.fs .top, body.fs .colB, body.fs #view-log > :not(.colA), body.fs #modeSeg, body.fs .drill, body.fs #drillInfo, body.fs #topRow, body.fs #playStatus { display: none !important; }
+body.fs .colA { position: fixed !important; inset: 0; top: 0 !important; z-index: 50; margin: 0; background: var(--bg); box-shadow: none; display: flex; gap: 8px;
+  padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+body.fs.land .colA { flex-direction: row; align-items: stretch; gap: 6px; }
+body.fs.land .tablewrap { gap: 6px; }
+body.fs:not(.land) .colA { flex-direction: column; justify-content: center; }
+body.fs .tablewrap { flex: 1 1 auto; min-width: 0; min-height: 0; align-items: stretch; justify-content: center; }
+body.fs #tbl { align-self: center; }
+body.fs.land #tbl { width: min(100vw - 226px, (100dvh - 52px) * 109 / 59) !important; height: auto !important; }
+body.fs:not(.land) #tbl { height: min(100dvh - 120px, (100vw - 140px) * 109 / 59) !important; width: auto !important; }
+/* landscape: the buttons stack in a column on the right */
+body.fs.land .quickbar { flex: 0 0 76px; flex-direction: column; flex-wrap: nowrap; gap: 6px; }
+/* the aim and Undo buttons keep a set height and Shoot takes the rest of the column; Exit stays small at the top */
+body.fs.land .quickbar .qs, body.fs.land .quickbar .qs.fine { flex: 0 0 52px; width: 100%; min-height: 44px; }
+body.fs.land .quickbar .qs.good { flex: 1 1 auto; min-height: 60px; }
+body.fs.land .quickbar .qs.fsx { flex: 0 0 40px; min-height: 40px; margin-bottom: 4px; }
+body.fs:not(.land) .quickbar .fsx { flex: 0 0 56px; }
+/* whose turn it is, in the space under the table */
+.fsstatus { display: none; }
+body.fs .fsstatus:not(:empty) { display: block; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); max-width: calc(100% - 140px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.875rem; font-weight: 600; color: var(--muted); pointer-events: none; }
+body.fs .fsstatus.p1 { color: var(--accent); } body.fs .fsstatus.p2 { color: var(--p2); }
+/* the foul banner floats over the top of the table */
+body.fs #playBar { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(460px, calc(100vw - 280px)); min-height: 0; z-index: 60; pointer-events: none; }
+body.fs:not(.land) #playBar { width: calc(100vw - 32px); }
+body.fs #playBar .callout { position: static; pointer-events: auto; }

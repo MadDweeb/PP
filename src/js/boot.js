@@ -5,7 +5,7 @@ if (!pockets()[S.pocket]) S.pocket = "FR";
 function placeColumns() {
   const a = document.querySelector(".colA"), b = document.querySelector(".colB");
   const top = [$("modeSeg"), document.querySelector(".drill"), $("drillInfo"), $("topRow"), $("playBar")];
-  if (land) b.prepend(...top); else a.prepend(...top);
+  if (land && !fsOn) b.prepend(...top); else a.prepend(...top);   // full screen keeps them in colA, hidden, so the foul banner can show
 }
 function applyOrientation() {
   land = !!(LAND_MQ && LAND_MQ.matches);

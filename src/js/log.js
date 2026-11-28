@@ -161,7 +161,7 @@ function renderLog() {
   $("modeShot").setAttribute("aria-selected", !bm && !sm); $("modeBreak").setAttribute("aria-selected", bm); $("modeSim").setAttribute("aria-selected", sm);
   $("drillSel").hidden = bm || sm; $("brkTitle").hidden = !bm; $("simKinds").hidden = !sm;
   if (!bm && !sm) { $("topRow").hidden = true; $("playBar").hidden = true; }
-  if (!playMode()) { $("playBar").hidden = true; hideCallout(); $("quickbar").setAttribute("aria-live", "polite"); $("tbl").tabIndex = -1; $("tbl").setAttribute("aria-label", "Pool table. Tap to place balls and markers."); }
+  if (!playMode()) { if (fsOn) playFs(false); $("playBar").hidden = true; hideCallout(); $("quickbar").setAttribute("aria-live", "polite"); $("tbl").tabIndex = -1; $("tbl").setAttribute("aria-label", "Pool table. Tap to place balls and markers."); }
   $("shotNo").hidden = sm;
   document.querySelector(".sessionline").hidden = sm; document.querySelector(".savebar").hidden = sm;
   renderCards();
