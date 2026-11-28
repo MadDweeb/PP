@@ -212,11 +212,9 @@ function renderPlayBar() {
   const two = g.kind !== "8" && !g.over && g.fouls[g.turn] === 2;
   if (two) detail.push("on two fouls");
   const sc = solo ? "" : `<span class="score num" aria-label="Score ${g.score[0]} to ${g.score[1]}">${g.score[0]}<i style="background:var(--accent)"></i>–<i style="background:var(--p2)"></i>${g.score[1]}</span>`;
-  const undo = playRolling() || (undoList().length && !simAnim) ? `<button class="btn small" id="undoBtn" data-play="undo">Undo shot</button>` : "";
   const hint = (settings.playShots || 0) < AIM_HINT_SHOTS && !g.over && !g.choice
     ? `<div class="plhint">${g.inHand ? "Drag the cue ball to place it. " : ""}Drag the cue to aim, or tap a spot ahead of the cue ball to aim at it. ↺ ↻ fine-tune.</div>` : "";
-  $("playStatus").innerHTML = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><div class="who"><b>${head}</b>${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</div>${sc}${undo}</div>${hint}`;
-  fitCallout();
+  $("playStatus").innerHTML = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><div class="who"><b>${head}</b>${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</div>${sc}</div>${hint}`;
 }
 function renderGameCard() {
   const g = S.game, el = $("gameBody"); if (!g || !playMode()) return;
@@ -256,14 +254,15 @@ function rulesText(k) {
 function renderPlayQuick(q) {
   const g = S.game;
   if (!g) { q.innerHTML = ""; return; }
-  if (simAnim) { q.innerHTML = `<button class="qs plain" data-play="undo">Undo shot<small>put the balls back</small></button><button class="qs plain" data-play="skip">Skip to the end<small>the shot still counts</small></button>`; return; }
-  const solo = soloPlay();
-  if (g.over) { q.innerHTML = `<button class="qs good" data-play="next">Next rack<small>${solo ? "rack them up" : esc(playerName(otherP(g.breaker))) + " breaks"}</small></button>`; return; }
-  if (g.choice) { q.innerHTML = g.choice.options.map(([id, l]) => `<button class="qs plain" data-choice="${id}">${esc(l)}${solo ? "" : `<small>${esc(playerName(g.choice.by))}</small>`}</button>`).join(""); return; }
+  const undo = `<button class="qs fine undo" data-play="undo" aria-label="Undo the last shot">Undo</button>`;
+  if (simAnim) { q.innerHTML = undo + `<button class="qs plain" data-play="skip">Skip animation</button>`; return; }
+  const solo = soloPlay(), canUndo = undoList().length > 0;
+  if (g.over) { q.innerHTML = `<button class="qs good" data-play="next">Next rack<small>${solo ? "rack them up" : esc(playerName(otherP(g.breaker))) + " breaks"}</small></button>` + (canUndo ? undo : ""); return; }
+  if (g.choice) { q.innerHTML = g.choice.options.map(([id, l]) => `<button class="qs plain" data-choice="${id}">${esc(l)}${solo ? "" : `<small>${esc(playerName(g.choice.by))}</small>`}</button>`).join("") + (canUndo ? undo : ""); return; }
   const push = pushAvailable(g), armed = playArm === "push" && push, c = playCall();
   q.innerHTML = `<button class="qs fine" data-play="left" aria-label="Turn the aim anticlockwise a little">↺<small>0.1°</small></button>` +
-    `<button class="qs good" data-play="shoot">${g.phase === "break" ? "Break" : armed ? "Push out" : "Shoot"}<small>${needsCall(g) && !armed ? "call: " + esc(callText(c)) : solo ? (g.phase === "break" ? "power " + S.speedPct + "%" : "play it") : esc(playerName(g.turn))}</small></button>` +
-    `<button class="qs fine" data-play="right" aria-label="Turn the aim clockwise a little">↻<small>0.1°</small></button>` +
+    `<button class="qs good" data-play="shoot">${g.phase === "break" ? "Break" : armed ? "Push out" : "Shoot"}${needsCall(g) && !armed ? "<small>call: " + esc(callText(c)) + "</small>" : ""}</button>` +
+    `<button class="qs fine" data-play="right" aria-label="Turn the aim clockwise a little">↻<small>0.1°</small></button>` + (canUndo ? undo : "") +
     (push ? `<button class="qs ${armed ? "warn" : "plain"} wide" data-play="push" aria-pressed="${armed}">${armed ? "Cancel push out" : "Push out"}<small>no line to the ${lowestBall(g)}: any shot, no fouls but a scratch</small></button>` : "");
 }
 function renderPlayInfo() {
@@ -276,23 +275,23 @@ function renderPlayInfo() {
 function renderPlay() { ensureGame(); if (S.game.cb == null && !S.game.over) playPrep(); renderPlayInfo(); }
 
 /* ---------- callout over the table: fouls in red, the rest in plain ---------- */
-let calloutT = 0;
+let calloutT = 0, calloutTick = 0;
 function showCallout(kind, title, body) {
   title = soloText(title); body = soloText(body);
   if (soloPlay() && kind === "info") return;          // solo: no "next player" messages, only fouls and results
   if (!title) return;
-  const el = $("callout"); clearTimeout(calloutT);
-  el.className = "callout " + kind; el.innerHTML = `<div class="cot"><b>${esc(title)}</b>${body ? `<span>${esc(body)}</span>` : ""}</div><span class="cox" aria-hidden="true">✕</span>`;
-  el.title = "Tap to dismiss"; el.hidden = false; fitCallout();
-  calloutT = setTimeout(() => { el.hidden = true; }, kind === "bad" ? 7000 : 3200);
+  const el = $("callout"); clearTimeout(calloutT); clearInterval(calloutTick);
+  /* it closes by itself: the seconds left count down beside the close mark, and the ring round it runs out */
+  const ms = kind === "bad" ? 7000 : 3200, end = performance.now() + ms;
+  el.className = "callout " + kind; el.style.setProperty("--cd", ms + "ms");
+  el.innerHTML = `<div class="cot"><b>${esc(title)}</b>${body ? `<span>${esc(body)}</span>` : ""}</div>` +
+    `<small class="cdn" aria-hidden="true">${Math.ceil(ms / 1000)}s</small><span class="cox" aria-hidden="true"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" pathLength="100"/></svg>✕</span>`;
+  el.title = "Tap to dismiss"; el.hidden = false;
+  const n = el.querySelector(".cdn");
+  calloutTick = setInterval(() => { n.textContent = Math.max(1, Math.ceil((end - performance.now()) / 1000)) + "s"; }, 250);
+  calloutT = setTimeout(hideCallout, ms);
 }
-/* the callout covers the status line but not its Undo button */
-function fitCallout() {
-  const el = $("callout"), u = $("undoBtn"); if (!el || el.hidden) return;
-  const bar = $("playBar").getBoundingClientRect(), r = u && u.offsetParent ? u.getBoundingClientRect() : null;
-  el.style.right = r ? Math.max(0, bar.right - r.left + 6) + "px" : "0";
-}
-const hideCallout = () => { clearTimeout(calloutT); $("callout").hidden = true; };
+function hideCallout() { clearTimeout(calloutT); clearInterval(calloutTick); $("callout").hidden = true; }
 
 /* ---------- shooting ---------- */
 function playShoot() {

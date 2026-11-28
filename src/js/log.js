@@ -135,7 +135,13 @@ function updatePin() {
   if (!on || land) return;
   const top = document.querySelector(".top"), a = document.querySelector(".colA"), tw = $("tablewrap");
   const headH = top.getBoundingClientRect().height + (parseFloat(getComputedStyle(top).top) || 0);
-  a.style.setProperty("--pinTop", (headH - (tw.getBoundingClientRect().top - a.getBoundingClientRect().top) - 2) + "px");
+  /* Play keeps its status line (and the foul banner) pinned above the table */
+  const pb = $("playBar"), anchor = playMode() && !pb.hidden ? pb : tw;
+  const ar = a.getBoundingClientRect(), twr = tw.getBoundingClientRect(), an = anchor.getBoundingClientRect();
+  a.style.setProperty("--pinTop", (headH - (an.top - ar.top) - 2) + "px");
+  /* the table keeps its usual size unless the pinned block would leave under 120px of the page to scroll */
+  const extra = (twr.top - an.top) + (ar.bottom - twr.bottom) + (twr.height - $("tbl").getBoundingClientRect().height);
+  a.style.setProperty("--pinAvail", Math.round(innerHeight - headH - extra - 120) + "px");
 }
 $("pinTable").addEventListener("click", () => { settings.pinTable = settings.pinTable === false; saveSettings(); updatePin(); });
 addEventListener("resize", () => { if (brkMode() || simMode()) updatePin(); });
@@ -195,7 +201,7 @@ function renderQuick() {
   if (playMode()) return renderPlayQuick(q);
   if (simMode()) {
     const b = simBrk(), playing = !!simAnim, running = sum50 && sum50.done < sum50.n;
-    q.innerHTML = `<button class="qs good" data-simq="shoot">${playing ? "Stop" : b ? "Break" : "Shoot"}<small>${playing ? "stop the replay" : "play it in real time"}</small></button>` +
+    q.innerHTML = `<button class="qs good" data-simq="shoot">${playing ? "Stop" : b ? "Break" : "Shoot"}</button>` +
       (b ? `<button class="qs plain" data-simq="run50">${running ? "Cancel" : "Run 50"}<small>${running ? sum50.done + " of 50 done" : "random racks, real-stroke wobble"}</small></button>` : "") +
       `<button class="qs plain" data-simq="paths" aria-pressed="${S.simPaths !== false}">${S.simPaths !== false ? "Hide paths" : "Show paths"}<small>dashed lines</small></button>`;
     return;
