@@ -198,6 +198,7 @@ function renderSaveBar() {
 let quickBusy = false;
 function renderQuick() {
   const q = $("quickbar");
+  q.classList.toggle("play", playMode());
   if (playMode()) return renderPlayQuick(q);
   if (simMode()) {
     const b = simBrk(), playing = !!simAnim, running = sum50 && sum50.done < sum50.n;

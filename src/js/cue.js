@@ -98,11 +98,11 @@ function drawCue(look, shaftLen, butt, k) {
 /* ---------- the cue on the table and beside it ---------- */
 /* whose cue is in use: the shooter's, or always the first one when you play both sides yourself */
 const cuePlayer = () => !S.game || soloPlay() ? 0 : S.game.turn;
-/* Behind the cue ball along the aim: the shaft (29.2 in) and the first 15.85 in of the butt */
-const CUE_SHAFT_TABLE = 29.2, CUE_SHAFT_MODEL = 31.9;
+/* Behind the cue ball along the aim: the shaft (32.1 in) and the first 17.4 in of the butt */
+const CUE_SHAFT_TABLE = 32.1, CUE_BUTT_TABLE = 17.4, CUE_SHAFT_MODEL = 31.9;
 function cueStickSvg(cb, aim) {
   const g = S.game, q = toSvg(cb), deg = -(aim + Math.PI) * 180 / Math.PI;
-  return `<g transform="translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)">${drawCue(cueLook(g ? cuePlayer() : 0), CUE_SHAFT_TABLE, 15.85, 1)}</g>`;
+  return `<g transform="translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)">${drawCue(cueLook(g ? cuePlayer() : 0), CUE_SHAFT_TABLE, CUE_BUTT_TABLE, 1)}</g>`;
 }
 /* the shooter's whole cue standing upright beside the table (tip at the top); tap it to change it */
 function renderCueSide() {
