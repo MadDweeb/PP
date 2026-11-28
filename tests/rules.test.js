@@ -42,7 +42,7 @@ test("9-ball break: 9 on a legal break wins; too few balls to a rail is a foul w
   const weak = A.ref(g, facts({ first: 1, railBalls: 2, rest: g.balls }));
   assert.equal(weak.turn, 1); assert.equal(weak.inHand, "anywhere"); assert.match(weak.last.fouls[0], /Only 2 balls/);
   const wrong = A.ref(g, facts({ first: 4, railBalls: 6, rest: g.balls }));
-  assert.match(wrong.last.fouls[0], /Hit the 4 first, not the 1/);
+  assert.match(wrong.last.fouls[0], /Wrong ball contacted/);
 });
 
 test("9-ball: lowest ball first, any ball down keeps the turn, a combo on the 9 wins", () => {
@@ -119,7 +119,7 @@ test("8-ball: open table, groups go to the first called ball made, 8 early or un
   const sol = A.ref(brk, facts({ first: 5, pocketed: [{ n: 5, pocket: "SL" }], rest: brk.balls.filter(b => b.n !== 5) }), { call: { ball: 5, pocket: "SL" } });
   assert.equal(sol.groups[0], "solids"); assert.equal(sol.groups[1], "stripes"); assert.equal(sol.turn, 0);
   const eightFirst = A.ref(brk, facts({ first: 8, rest: brk.balls }), { call: { ball: 3, pocket: "SL" } });
-  assert.match(eightFirst.last.fouls[0], /Hit the 8 first/);
+  assert.match(eightFirst.last.fouls[0], /Wrong ball contacted/);
   const early = A.ref(sol, facts({ first: 1, pocketed: [{ n: 8, pocket: "FL" }], rest: sol.balls.filter(b => b.n !== 8) }), { call: { ball: 1, pocket: "HL" } });
   assert.equal(early.over.winner, 1); assert.match(early.over.why, /before clearing/);
   const end = playing("8", [8, 9], { groups: { 0: "solids", 1: "stripes" } });

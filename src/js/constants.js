@@ -3,7 +3,9 @@
 const R_BALL = 1.125;          // 2 1/4 in ball
 const RAIL = 4.5;              // drawn rail width, inches
 /* Vertical spin comes from where the tip hit the cue ball (tip.y, in ball radii, + is above centre). */
-const VSPIN = [["draw","Draw"],["stundraw","Stun-draw"],["stun","Stun"],["stunrun","Stun-follow"],["follow","Follow"]];
+const VSPIN = [["draw","Draw"],["stundraw","Stun-draw"],["stun","Centre"],["stunrun","Stun-follow"],["follow","Follow"]];
+/* "stun" is the key for a hit within the band through the middle of the ball (|up/down| < TIP_STUN); it is shown as Centre,
+   because a centre-ball hit is not a stun in itself. The key stays "stun" so saved shots, drills and CSVs keep working. */
 const VLAB = VSPIN.concat([["centre","Centre ball"]]);   // "Centre ball" only on shots logged before the cue ball picker
 const SIDE = [["L","Left"],["C","No side"],["R","Right"]];
 const SPEED = [[1,"Soft"],[2,"Medium"],[3,"Firm"],[4,"Power"]];

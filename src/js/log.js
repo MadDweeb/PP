@@ -246,12 +246,12 @@ function renderSpin() {
   const r = Math.hypot(t.x, t.y);
   $("cbDyn").innerHTML = $("cbDynBig").innerHTML = (r > .02 ? `<line x1="0" y1="0" x2="${t.x}" y2="${-t.y}" stroke="var(--accent)" stroke-width=".02" stroke-opacity=".8"/>` : "") +
     `<circle cx="${t.x}" cy="${-t.y}" r=".23" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width=".03"/><circle cx="${t.x}" cy="${-t.y}" r=".045" fill="var(--accent)"/>`;
-  const sideTxt = S.side === "C" ? "no side" : label(SIDE, S.side).toLowerCase() + " side";
+  const sideTxt = S.side === "C" ? (S.vspin === "stun" ? "" : "no side") : label(SIDE, S.side).toLowerCase() + " side";
   $("spinName").textContent = label(VSPIN, S.vspin); $("spinSide").textContent = sideTxt;
   const up = t.y, rt = t.x;
   $("spinOff").innerHTML = r < .005 ? "Dead centre" : `<b>${tipLen(r)}</b> from centre<br>${Math.abs(up) >= .005 ? tipLen(Math.abs(up)) + (up > 0 ? " up" : " down") : ""}${Math.abs(up) >= .005 && Math.abs(rt) >= .005 ? ", " : ""}${Math.abs(rt) >= .005 ? tipLen(Math.abs(rt)) + (rt > 0 ? " right" : " left") : ""}`;
   $("spinWarn").textContent = r > TIP_MISCUE ? "Miscue risk" : "";
-  $("bigName").textContent = label(VSPIN, S.vspin) + " · " + sideTxt; $("bigOff").innerHTML = $("spinOff").innerHTML; $("bigWarn").textContent = r > TIP_MISCUE ? "Past the miscue limit (red ring)" : "";
+  $("bigName").textContent = label(VSPIN, S.vspin) + (sideTxt ? " · " + sideTxt : ""); $("bigOff").innerHTML = $("spinOff").innerHTML; $("bigWarn").textContent = r > TIP_MISCUE ? "Past the miscue limit (red ring)" : "";
   svg.setAttribute("aria-valuetext", $("bigName").textContent + ", " + tipLen(r) + " from centre");
 }
 function setTip(x, y) {
