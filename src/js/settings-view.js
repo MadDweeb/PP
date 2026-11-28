@@ -37,8 +37,9 @@ function renderSettings() {
   <div class="panel">
     <h2>At the table</h2>
     <label class="switchrow"><span>Keep the screen on<small>While the Log tab is open, so the phone doesn't lock between shots</small></span><input type="checkbox" id="setWake" ${settings.wakeLock !== false ? "checked" : ""} ${wakeSupported() ? "" : "disabled"}></label>
-    ${wakeSupported() ? "" : `<p class="note">This browser can't keep the screen on. Chrome on Android can.</p>`}
-    <label class="switchrow"><span>Vibrate when a shot saves<small>A short tick, so you know it saved without looking</small></span><input type="checkbox" id="setHaptics" ${settings.haptics !== false ? "checked" : ""}></label>
+    ${wakeSupported() ? "" : `<p class="note">This browser can't keep the screen on.${isIOS() ? " iPhones can from iOS 16.4: update iOS, or set Auto-Lock to Never while you practise." : " Chrome on Android can."}</p>`}
+    <label class="switchrow"><span>Vibrate when a shot saves<small>A short tick, so you know it saved without looking</small></span><input type="checkbox" id="setHaptics" ${settings.haptics !== false ? "checked" : ""} ${vibrateSupported() ? "" : "disabled"}></label>
+    ${vibrateSupported() ? "" : `<p class="note">${isIOS() ? "iPhones don't let web apps vibrate." : "This browser can't vibrate."}</p>`}
   </div>
   <div class="panel">
     <h2>Table colours</h2>
@@ -68,7 +69,7 @@ function renderSettings() {
   </div>
   <div class="panel">
     <h2>Your data</h2>
-    <p class="note" id="dataNote">${store.mode === "cloud" ? "Shots sync to your Claude account through this page." : "Shots are stored in this browser on this device. If the browser's data is cleared, they are gone, so keep a backup."}</p>
+    <p class="note" id="dataNote">${store.mode === "cloud" ? "Shots sync to your Claude account through this page." : "Shots are stored in this browser on this device. If the browser's data is cleared, they are gone, so keep a backup." + (isIOS() && !isInstalled() ? " <b>On iPhone, add the app to your Home Screen</b> (Share, then Add to Home Screen): Safari can clear a website's data after about a week without a visit, but not a Home Screen app's." : "")}</p>
     <div class="row"><button class="btn" id="loadEx">Add 20 example shots</button></div>
   </div>
   <div class="panel" id="backupPanel">

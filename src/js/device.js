@@ -16,4 +16,17 @@ async function updateWakeLock() {
   finally { wakeBusy = false; }
 }
 document.addEventListener("visibilitychange", updateWakeLock);
+/* iPhone and iPad (iPadOS reports itself as a Mac, but with a touch screen) */
+function isIOS() { return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
+/* opened from the Home Screen icon rather than a browser tab */
+function isInstalled() { return navigator.standalone === true || !!(window.matchMedia && matchMedia("(display-mode: standalone)").matches); }
+const vibrateSupported = () => typeof navigator.vibrate === "function";
+/* iPhone in Safari: a one-time note on how to add the app to the Home Screen, where it runs full screen and Safari keeps its data */
+function renderIosHint() {
+  const el = $("iosHint"); if (!el) return;
+  el.hidden = !(isIOS() && !isInstalled() && !settings.iosHintSeen && view === "log");
+}
+document.addEventListener("click", e => {
+  if (e.target.closest("#iosHintOk")) { settings.iosHintSeen = true; saveSettings(); renderIosHint(); }
+});
 function buzz() { if (settings.haptics === false || !navigator.vibrate) return; try { navigator.vibrate(15); } catch (e) {} }
