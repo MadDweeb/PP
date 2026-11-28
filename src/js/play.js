@@ -156,7 +156,7 @@ function dynPlay() {
     return s;
   }
   const call = playCall(), P = pockets();
-  if (call && call.pocket && P[call.pocket]) { const pk = P[call.pocket], pc = toSvg(pk.c); s += `<circle cx="${pc.x}" cy="${pc.y}" r="${pk.w / 2 + 1}" fill="none" stroke="var(--marker)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>`; }
+  if (call && call.pocket && P[call.pocket]) { const pk = P[call.pocket], pc = toSvg(pk.c); s += `<circle cx="${pc.x}" cy="${pc.y}" r="${pk.w / 2 + 1}" fill="none" stroke="var(--marker)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>` + pulseRing(pc, pk.w / 2 + 1); }
   const r = g.cb && !g.over && !g.choice ? (g.phase === "break" ? null : playLive()) : null, c = playContact(r);
   if (g.cb && !g.over) {
     // the cue stick behind the ball, along the aim
@@ -176,9 +176,15 @@ function dynPlay() {
     }
   }
   for (const b of g.balls) s += numBall(b, b.n);
-  if (call && call.ball != null) { const b = g.balls.find(x => x.n === call.ball); if (b) s += ring(b, "var(--marker)", .95, 2.2).replace(`r="${R_BALL}"`, `r="${R_BALL + .7}"`); }
+  if (call && call.ball != null && !A) { const b = g.balls.find(x => x.n === call.ball); if (b) s += ring(b, "var(--marker)", .95, 2.6).replace(`r="${R_BALL}"`, `r="${R_BALL + .7}"`) + pulseRing(toSvg(b), R_BALL + .7); }
   if (g.cb) s += cueBallSvg(g.cb, !!g.inHand && !g.over);
   return s;
+}
+/* a ring that swells and fades round the called ball and pocket. The table is redrawn often while you aim, so each new ring
+   starts at the same point in the beat (a negative delay) and the pulse runs on smoothly instead of restarting. */
+const PULSE_MS = 1400;
+function pulseRing(c, r) {
+  return `<circle class="pulse" cx="${c.x.toFixed(2)}" cy="${c.y.toFixed(2)}" r="${r.toFixed(2)}" fill="none" stroke="var(--marker)" stroke-width="2.2" vector-effect="non-scaling-stroke" style="animation-delay:-${Math.round(performance.now() % PULSE_MS)}ms"/>`;
 }
 /* straight-line first contact (used only to show the aim at the break, where paths are hidden) */
 function rayFirst(cb, aim, balls) {

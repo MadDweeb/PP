@@ -38,8 +38,9 @@ function setCueLook(p, part, k) {
 const isDark = hex => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114) < 120; };
 
 /* The cue along +x from the tip (x = 0) to the butt, centred on y = 0, in inches; widths scaled by k so it reads at small sizes.
-   shaftLen: tip to joint (a real shaft is 29 in); butt: how much of the butt to draw past the joint (null = all of it). */
-function drawCue(look, shaftLen, butt, k) {
+   shaftLen: tip to joint (a real shaft is 29 in); butt: how much of the butt to draw past the joint (null = all of it);
+   bs stretches the butt's pieces (forearm, wrap, sleeve, cap). */
+function drawCue(look, shaftLen, butt, k, bs = 1) {
   const sh = pick(CUE_SHAFTS, look.shaft), bt = pick(CUE_BUTTS, look.butt), wrap = look.wrap;
   const dark = isDark(bt[2]), inlay = dark ? "#efe6d2" : "#1c1a18", accent = "#a3242a";
   const segs = [];   // [x0, x1, w0, w1, fill, kind]
@@ -50,10 +51,10 @@ function drawCue(look, shaftLen, butt, k) {
   seg(shaftLen - 1.65, .66, .98, sh[2], "shaft");
   seg(.7, 1, 1, "#b9bec4", "joint");
   const j = x;
-  seg(11, 1.02, 1.15, bt[2], "forearm");
-  seg(6.2, 1.15, 1.2, wrap === "linen" ? "#202022" : wrap === "leather" ? "#6b4226" : bt[2], "wrap");
-  seg(8.2, 1.2, 1.28, bt[2], "sleeve");
-  seg(.9, 1.28, 1.3, "#141414", "cap");
+  seg(11 * bs, 1.02, 1.15, bt[2], "forearm");
+  seg(6.2 * bs, 1.15, 1.2, wrap === "linen" ? "#202022" : wrap === "leather" ? "#6b4226" : bt[2], "wrap");
+  seg(8.2 * bs, 1.2, 1.28, bt[2], "sleeve");
+  seg(.9 * bs, 1.28, 1.3, "#141414", "cap");
   const end = butt == null ? x : j + butt;
   const W = (s, at) => (s[2] + (s[3] - s[2]) * (at - s[0]) / (s[1] - s[0])) * k;   // width of a segment at x
   const P = pts => `<polygon points="${pts.map(([a, b]) => a.toFixed(3) + "," + b.toFixed(3)).join(" ")}"`;
@@ -98,17 +99,18 @@ function drawCue(look, shaftLen, butt, k) {
 /* ---------- the cue on the table and beside it ---------- */
 /* whose cue is in use: the shooter's, or always the first one when you play both sides yourself */
 const cuePlayer = () => !S.game || soloPlay() ? 0 : S.game.turn;
-/* Behind the cue ball along the aim: the shaft (32.1 in) and the first 17.4 in of the butt */
-const CUE_SHAFT_TABLE = 32.1, CUE_BUTT_TABLE = 17.4, CUE_SHAFT_MODEL = 31.9;
+/* Behind the cue ball along the aim: the shaft (28.9 in) and the first 20.6 in of the butt. The butt is drawn 11.8% long so it
+   takes a tenth of the shaft's length (the whole cue stays the same length). */
+const CUE_SHAFT_TABLE = 28.9, CUE_BUTT_TABLE = 20.6, CUE_SHAFT_MODEL = 28.7, CUE_BUTT_SCALE = 1.118;
 function cueStickSvg(cb, aim) {
   const g = S.game, q = toSvg(cb), deg = -(aim + Math.PI) * 180 / Math.PI;
-  return `<g transform="translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)">${drawCue(cueLook(g ? cuePlayer() : 0), CUE_SHAFT_TABLE, CUE_BUTT_TABLE, 1)}</g>`;
+  return `<g transform="translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)">${drawCue(cueLook(g ? cuePlayer() : 0), CUE_SHAFT_TABLE, CUE_BUTT_TABLE, 1, CUE_BUTT_SCALE)}</g>`;
 }
 /* the shooter's whole cue standing upright beside the table (tip at the top); tap it to change it */
 function renderCueSide() {
   const el = $("vcue"); el.hidden = !playMode(); if (!playMode()) return;
   const p = cuePlayer();
-  $("cueModel").innerHTML = `<g transform="rotate(90)">${drawCue(cueLook(p), CUE_SHAFT_MODEL, null, 2)}</g>`;
+  $("cueModel").innerHTML = `<g transform="rotate(90)">${drawCue(cueLook(p), CUE_SHAFT_MODEL, null, 2, CUE_BUTT_SCALE)}</g>`;
   $("cueModel").setAttribute("aria-label", soloPlay() ? "Your cue. Tap to change it." : `${playerName(p)}'s cue. Tap to change it.`);
 }
 let cueFor = 0;
@@ -119,8 +121,8 @@ function renderCueSheet() {
   const row = (part, list, title) => `<div class="optrow"><span class="k">${title}</span><div class="chips">${list.map(([k, l, c]) => `<button class="chip sm ${c ? "matl" : ""}" aria-pressed="${look[part] === k}" data-cue="${part}" data-v="${k}">${c ? `<i style="background:${c}"></i>` : ""}${esc(l)}</button>`).join("")}</div></div>`;
   $("cueWho").hidden = soloPlay();
   $("cueWho").innerHTML = [0, 1].map(p => `<button class="chip sm" aria-pressed="${cueFor === p}" data-cuefor="${p}">${esc(playerName(p))}</button>`).join("");
-  $("cueFull").innerHTML = drawCue(look, CUE_SHAFT_MODEL, null, 3.2);
-  $("cueTip").innerHTML = drawCue(look, CUE_SHAFT_MODEL, null, 2.4);
-  $("cueButt").innerHTML = drawCue(look, CUE_SHAFT_MODEL, null, 2.4);
+  $("cueFull").innerHTML = drawCue(look, CUE_SHAFT_MODEL, null, 3.2, CUE_BUTT_SCALE);
+  $("cueTip").innerHTML = drawCue(look, CUE_SHAFT_MODEL, null, 2.4, CUE_BUTT_SCALE);
+  $("cueButt").innerHTML = drawCue(look, CUE_SHAFT_MODEL, null, 2.4, CUE_BUTT_SCALE);
   $("cueOpts").innerHTML = CUE_PARTS.map(([part, list, title]) => row(part, list, title)).join("");
 }
