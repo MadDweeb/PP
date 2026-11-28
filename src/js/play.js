@@ -3,7 +3,7 @@
 /* ---------- Play mode ---------- */
 const PATHS = [["all", "All balls"], ["cue", "Cue ball"], ["ghost", "Ghost ball"], ["none", "No paths"]];
 const BREAK_FROM = [["box", "Break box"], ["kitchen", "Behind the head string"]];
-let playRes = null, playKey = "", playT = 0, playLast = 0, playGap = 33, playArm = null, playDrag = null, playConfirm = null, playConfirmT = 0;
+let playRes = null, playKey = "", playT = 0, playLast = 0, playGap = 40, playArm = null, playDrag = null, playConfirm = null, playConfirmT = 0;
 const soloPlay = () => settings.playSolo === true;
 /* Player names from Settings; the referee's messages use them */
 function applyPlayerNames() { const n = Array.isArray(settings.playNames) ? settings.playNames : []; PLAYER_NAMES = [0, 1].map(i => String(n[i] || "").trim().slice(0, 16) || "Player " + (i + 1)); }
@@ -82,15 +82,15 @@ function playRun() {
   const g = S.game; if (!g || !g.cb || !window.PoolPhysics || g.over) return null;
   const r = window.PoolPhysics.simulate(playSpec(g), simParams()); r.kind = "play"; return r;
 }
-/* the prediction for what is on screen: worked out again up to about 30 times a second while you drag, less on a slow phone */
+/* the prediction for what is on screen: worked out again up to about 25 times a second while you drag, less on a slow phone */
 function playLive() {
   const g = S.game; if (!g || !g.cb) return null;
   const key = JSON.stringify([g.cb, g.aim, S.tip, S.speedPct, g.balls, g.phase, settings.W, settings.L, settings.wc, settings.ws, tuneKey()]);
   if (key === playKey && playRes) return playRes;
   const now = performance.now();
-  /* a slow phone gets fewer updates rather than a stuck screen: wait at least half again as long as the last one took */
-  if (!playRes || now - playLast > playGap) { clearTimeout(playT); playRes = playRun(); playKey = key; const t = performance.now(); playGap = Math.max(33, (t - now) * 1.3); playLast = t; }
-  else { clearTimeout(playT); playT = setTimeout(() => { renderTable(); renderPlayInfo(); playLoupe(); }, playGap + 5 - (now - playLast)); }
+  /* a slow phone gets fewer updates rather than a stuck screen: leave the phone at least half again as long as the last one took to draw in between */
+  if (!playRes || now - playLast > playGap) { clearTimeout(playT); playRes = playRun(); playKey = key; const t = performance.now(); playGap = Math.max(40, (t - now) * 1.6); playLast = t; }
+  else { clearTimeout(playT); playT = setTimeout(() => requestAnimationFrame(() => { playLoupe(); renderTable(); renderPlayInfo(); }), playGap + 5 - (now - playLast)); }
   return playRes;
 }
 /* the first ball the cue ball hits in the prediction, and the cue ball's centre at that moment (the ghost ball) */
@@ -183,13 +183,36 @@ function dynPlay() {
   if (g.cb) s += cueBallSvg(g.cb, !!g.inHand && !g.over);
   return s;
 }
-/* a ring that swells and fades round the ball to hit (or the called ball) and the called pocket. The table is redrawn often while you aim, so each new ring
-   starts at the same point in the beat (a negative delay) and the pulse runs on smoothly instead of restarting. */
-const PULSE_MS = 1400;
+/* a ring that swells and fades round the ball to hit (or the called ball) and the called pocket.
+   The rings are HTML circles laid over the table, not part of the SVG: anything that moves inside the SVG makes the phone
+   repaint the whole table every frame (worst in landscape, where the table is biggest), while these move on the graphics chip
+   alone. They are kept from one redraw to the next, so the beat runs on smoothly while you aim. */
 const pulseOn = () => settings.playPulse !== false;
-function pulseRing(c, r, col = "var(--marker)") {
-  if (!pulseOn()) return "";
-  return `<circle class="pulse" cx="${c.x.toFixed(2)}" cy="${c.y.toFixed(2)}" r="${r.toFixed(2)}" fill="none" stroke="${col}" stroke-width="2.2" vector-effect="non-scaling-stroke" style="animation-delay:-${Math.round(performance.now() % PULSE_MS)}ms"/>`;
+function pulseRing(c, r, col = "var(--marker)") { if (pulseOn()) pulseList.push({ c, r, col }); return ""; }
+/* where the table's drawing sits in the overlay, measured only when the layout has settled (never straight after a redraw) */
+function pulseMeasure() {
+  const o = $("pulses"), t = $("tblContent"), m = t && t.getScreenCTM(); if (!o || !m) return null;
+  const b = o.getBoundingClientRect();
+  return pulseGeo = { a: m.a, b: m.b, c: m.c, d: m.d, e: m.e - b.left, f: m.f - b.top, k: Math.hypot(m.a, m.b) };
+}
+function pulseWatch() {
+  if (pulseRO || !window.ResizeObserver) return;
+  pulseRO = new ResizeObserver(() => { pulseMeasure(); pulseDraw(); });
+  for (const id of ["tablewrap", "tbl", "vtip", "vspeed"]) if ($(id)) pulseRO.observe($(id));
+}
+function pulseReset() { pulseGeo = null; }
+function pulseDraw() {
+  const o = $("pulses"); if (!o) return;
+  const list = playMode() && !simAnim ? pulseList : [];
+  if (list.length && !pulseGeo) { requestAnimationFrame(() => { pulseMeasure(); pulseDraw(); }); return; }
+  while (o.children.length < list.length) { const el = document.createElement("i"); el.className = "pulsedot"; o.appendChild(el); }
+  [...o.children].forEach((el, i) => {
+    const p = list[i]; if (!p) { if (!el.hidden) el.hidden = true; return; }
+    const G = pulseGeo, x = G.a * p.c.x + G.c * p.c.y + G.e, y = G.b * p.c.x + G.d * p.c.y + G.f, r = p.r * G.k;
+    const css = `left:${(x - r).toFixed(1)}px;top:${(y - r).toFixed(1)}px;width:${(2 * r).toFixed(1)}px;height:${(2 * r).toFixed(1)}px;border-color:${p.col}`;
+    if (el._css !== css) { el.style.cssText = css; el._css = css; }
+    if (el.hidden) el.hidden = false;
+  });
 }
 /* straight-line first contact (used only to show the aim at the break, where paths are hidden) */
 function rayFirst(cb, aim, balls) {
@@ -225,7 +248,8 @@ function renderPlayBar() {
   const sc = solo ? "" : `<span class="score num" aria-label="Score ${g.score[0]} to ${g.score[1]}">${g.score[0]}<i style="background:var(--accent)"></i>–<i style="background:var(--p2)"></i>${g.score[1]}</span>`;
   const hint = (settings.playShots || 0) < AIM_HINT_SHOTS && !g.over && !g.choice
     ? `<div class="plhint">${g.inHand ? "Drag the cue ball to place it. " : ""}Drag the cue to aim, or tap a spot ahead of the cue ball to aim at it. ↺ ↻ fine-tune.</div>` : "";
-  $("playStatus").innerHTML = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><div class="who"><b>${head}</b>${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</div>${sc}<button class="btn small fsbtn" data-play="fs" aria-label="Full screen" title="Full screen">⛶</button></div>${hint}`;
+  const ps = $("playStatus"), h = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><div class="who"><b>${head}</b>${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</div>${sc}<button class="btn small fsbtn" data-play="fs" aria-label="Full screen" title="Full screen">⛶</button></div>${hint}`;
+  if (ps._h !== h) { ps.innerHTML = h; ps._h = h; }
 }
 function renderGameCard() {
   const g = S.game, el = $("gameBody"); if (!g || !playMode()) return;
@@ -263,9 +287,10 @@ function rulesText(k) {
     "Push out (house rule): only on the shot right after a foul-free break, and only if the cue ball has no straight line to the lowest ball. Your opponent then chooses who shoots.",
     "Three fouls in a row lose the rack."].concat(common);
 }
+/* redrawn on every frame while you aim, so the buttons are only rebuilt when something on them changes */
 function renderPlayQuick(q) {
-  playQuickBody(q);
-  if (fsOn) q.insertAdjacentHTML("afterbegin", `<button class="qs fine fsx" data-play="fsexit" aria-label="Exit full screen">Exit</button>`);
+  const h = (fsOn ? `<button class="qs fine fsx" data-play="fsexit" aria-label="Exit full screen">Exit</button>` : "") + playQuickBody();
+  if (q._h !== h) { q.innerHTML = h; q._h = h; }
   renderFsStatus();
 }
 /* full screen: whose turn it is, under the table */
@@ -275,18 +300,19 @@ function renderFsStatus() {
     const who = soloPlay() ? "" : playerName(g.turn), bits = [g.phase === "break" ? "break" : "", g.inHand && g.phase !== "break" ? "ball in hand" : "", g.kind !== "8" && g.fouls[g.turn] === 2 ? "on two fouls" : ""].filter(Boolean);
     t = [who, bits.join(", ")].filter(Boolean).join(": ");
   }
-  el.textContent = t; el.className = "fsstatus " + (soloPlay() || !g ? "" : g.turn ? "p2" : "p1");
+  const cls = "fsstatus " + (soloPlay() || !g ? "" : g.turn ? "p2" : "p1");
+  if (el.textContent !== t) el.textContent = t; if (el.className !== cls) el.className = cls;
 }
-function playQuickBody(q) {
+function playQuickBody() {
   const g = S.game;
-  if (!g) { q.innerHTML = ""; return; }
+  if (!g) return "";
   const undo = `<button class="qs fine undo" data-play="undo" aria-label="Undo the last shot">Undo</button>`;
-  if (simAnim) { q.innerHTML = undo + `<button class="qs plain" data-play="skip">Skip animation</button>`; return; }
+  if (simAnim) return undo + `<button class="qs plain" data-play="skip">Skip animation</button>`;
   const solo = soloPlay(), canUndo = undoList().length > 0;
-  if (g.over) { q.innerHTML = `<button class="qs good" data-play="next">Next rack<small>${solo ? "rack them up" : esc(playerName(otherP(g.breaker))) + " breaks"}</small></button>` + (canUndo ? undo : ""); return; }
-  if (g.choice) { q.innerHTML = g.choice.options.map(([id, l]) => `<button class="qs plain" data-choice="${id}">${esc(l)}${solo ? "" : `<small>${esc(playerName(g.choice.by))}</small>`}</button>`).join("") + (canUndo ? undo : ""); return; }
+  if (g.over) return `<button class="qs good" data-play="next">Next rack<small>${solo ? "rack them up" : esc(playerName(otherP(g.breaker))) + " breaks"}</small></button>` + (canUndo ? undo : "");
+  if (g.choice) return g.choice.options.map(([id, l]) => `<button class="qs plain" data-choice="${id}">${esc(l)}${solo ? "" : `<small>${esc(playerName(g.choice.by))}</small>`}</button>`).join("") + (canUndo ? undo : "");
   const push = pushAvailable(g), armed = playArm === "push" && push, c = playCall();
-  q.innerHTML = `<button class="qs fine" data-play="left" aria-label="Turn the aim anticlockwise a little">↺<small>0.1°</small></button>` +
+  return `<button class="qs fine" data-play="left" aria-label="Turn the aim anticlockwise a little">↺<small>0.1°</small></button>` +
     `<button class="qs good" data-play="shoot">${g.phase === "break" ? "Break" : armed ? "Push out" : "Shoot"}${needsCall(g) && !armed ? "<small>call: " + esc(callText(c)) + "</small>" : ""}</button>` +
     `<button class="qs fine" data-play="right" aria-label="Turn the aim clockwise a little">↻<small>0.1°</small></button>` + (canUndo ? undo : "") +
     (push ? `<button class="qs ${armed ? "warn" : "plain"} wide" data-play="push" aria-pressed="${armed}">${armed ? "Cancel push out" : "Push out"}<small>no line to the ${lowestBall(g)}: any shot, no fouls but a scratch</small></button>` : "");
@@ -464,34 +490,43 @@ function playDown(e) {
   /* a fingertip is bigger than the ball on a phone: grab it within about 30 screen pixels */
   if (g.inHand && len(sub(p, g.cb)) < Math.max(3.5, playInches(e, 30))) {
     const c = playContact(playLive()), on = c && g.balls.some(b => b.n === c.n) ? c.n : null;
-    playDrag = { id: e.pointerId, kind: "cb", off: sub(g.cb, p), target: on }; showLoupe(p, e, g.cb); return;
+    playDrag = { id: e.pointerId, kind: "cb", off: sub(g.cb, p), target: on, wrap: $("tablewrap").getBoundingClientRect() }; showLoupe(p, e, g.cb, playDrag.wrap); return;
   }
-  playDrag = { id: e.pointerId, kind: "aim", p0: p, moved: false };
+  playDrag = { id: e.pointerId, kind: "aim", p0: p, moved: false, wrap: $("tablewrap").getBoundingClientRect() };
 }
 /* while aiming, the magnifier shows where the cue ball meets the first ball, or the point under your finger when it meets none */
 function playLoupe() {
   const d = playDrag; if (!d || d.kind !== "aim" || !d.at) return;
-  showLoupe(d.p, d.at, playGhost(playLive()) || d.p);
+  showLoupe(d.p, d.at, playGhost(playLive()) || d.p, d.wrap);
 }
 /* aim at the middle of ball n, or the usual default when it's gone */
 function aimAtBall(g, n) {
   const b = n != null && g.balls.find(x => x.n === n);
   return b ? Math.atan2(b.y - g.cb.y, b.x - g.cb.x) : defaultAim(g);
 }
+/* A phone can send several moves a frame. Each one only updates the aim; the table is drawn once a frame, measuring
+   first (the magnifier) and then writing, so the browser never has to lay the page out twice in a frame. */
+let playFrameReq = 0;
 function playMove(e) {
   const d = playDrag; if (!d || d.id !== e.pointerId) return;
   const g = S.game, p = svgPt($("tbl"), e, $("tblContent")); if (!p) return;
-  if (d.kind === "cb") { const q = placeCb(g, add(p, d.off)); if (q) { g.cb = q; g.aim = aimAtBall(g, d.target); } showLoupe(p, e, g.cb); }
+  if (d.kind === "cb") { const q = placeCb(g, add(p, d.off)); if (q) { g.cb = q; g.aim = aimAtBall(g, d.target); } }
   else {
     if (!d.moved && len(sub(p, d.p0)) < .6) return;
     d.moved = true;
     if (len(sub(p, g.cb)) >= AIM_DEAD) g.aim = Math.atan2(g.cb.y - p.y, g.cb.x - p.x);
-    d.p = p; d.at = { clientX: e.clientX, clientY: e.clientY }; playLoupe();
   }
+  d.p = p; d.at = { clientX: e.clientX, clientY: e.clientY };
+  if (!playFrameReq) playFrameReq = requestAnimationFrame(playFrame);
+}
+function playFrame() {
+  playFrameReq = 0; const d = playDrag; if (!d) return;
+  if (d.kind === "cb") showLoupe(d.p, d.at, S.game.cb, d.wrap); else playLoupe();
   renderTable(); renderPlayBar(); renderQuick();
 }
 function playUp(e) {
   const d = playDrag; if (!d || d.id !== e.pointerId) return; playDrag = null; $("loupe").hidden = true;
+  cancelAnimationFrame(playFrameReq); playFrameReq = 0;
   const g = S.game;
   if (d.kind === "aim" && !d.moved && e.type === "pointerup") { const p = svgPt($("tbl"), e, $("tblContent")); if (p && len(sub(p, g.cb)) >= AIM_DEAD) {
     const ahead = (p.x - g.cb.x) * Math.cos(g.aim) + (p.y - g.cb.y) * Math.sin(g.aim) > 0;

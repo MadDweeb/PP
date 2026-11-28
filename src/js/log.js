@@ -200,6 +200,7 @@ function renderQuick() {
   const q = $("quickbar");
   q.classList.toggle("play", playMode());
   if (playMode()) return renderPlayQuick(q);
+  q._h = null;
   if (simMode()) {
     const b = simBrk(), playing = !!simAnim, running = sum50 && sum50.done < sum50.n;
     q.innerHTML = `<button class="qs good" data-simq="shoot">${playing ? "Stop" : b ? "Break" : "Shoot"}</button>` +
