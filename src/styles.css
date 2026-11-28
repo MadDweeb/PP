@@ -395,12 +395,11 @@ details.fold[open] > summary { margin-bottom: 0; }
 .callout .cox svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .callout .cox circle { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-opacity: .85; stroke-dasharray: 100; stroke-dashoffset: 0; animation: cdring var(--cd, 7s) linear forwards; }
 @keyframes cdring { to { stroke-dashoffset: 100; } }
-/* Play: the called ball and pocket pulse */
+/* Play: the ball to hit and the called pocket blink (play.js switches .dim every half second; no animation) */
 .pulses { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.pulsedot { position: absolute; box-sizing: border-box; border: 2.2px solid #fff; border-radius: 50%; opacity: 0; will-change: transform, opacity; animation: callpulse 1.4s ease-out infinite; }
+.pulsedot { position: absolute; box-sizing: border-box; border: 2.5px solid #fff; border-radius: 50%; transform: scale(1.35); }
 .pulsedot[hidden] { display: none; }
-@keyframes callpulse { 0% { transform: scale(1); opacity: .95; } 100% { transform: scale(1.9); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .pulsedot { animation: none; opacity: .6; transform: scale(1.35); } }
+.pulses.dim .pulsedot { opacity: .15; }
 .callout .cdn { flex: 0 0 auto; font-size: 0.75rem; opacity: .85; font-variant-numeric: tabular-nums; }
 .quickbar .qs.fine.undo { flex: 0 0 64px; font-size: 0.9375rem; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .callout .cox circle { animation: none; } }
