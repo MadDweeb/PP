@@ -124,7 +124,7 @@ function renderTopRow() {
   $("topRow").hidden = !(bm || sm);
   $("simPreset").hidden = !shot; $("rackTop").hidden = shot;
   const cur = playMode() && S.game ? S.game.kind : S.rack;
-  $("rackTop").innerHTML = (playMode() ? `<span class="toplbl">Game</span>` : `<span class="toplbl">Rack</span>`) + RACKS.map(([k, l]) => `<button class="chip sm" aria-pressed="${cur === k}" data-rack="${k}">${l}</button>`).join("");
+  $("rackTop").innerHTML = (playMode() ? `<span class="toplbl">Game</span>` : `<span class="toplbl">Rack</span>`) + RACKS.map(([k, l]) => `<button class="chip sm rackchip" aria-pressed="${cur === k}" data-rack="${k}" aria-label="${l}" title="${l}">${rackIcon(k)}</button>`).join("");
 }
 function renderSimPanel() {
   const b = simBrk();

@@ -67,7 +67,7 @@ function hitName(h) {
 function renderHit() {
   const h = S.hit || 0, x = h * 2;
   const obj = simMode() && !simBrk();
-  $("hitLbl").textContent = obj ? "Hit" : "1-ball";
+  $("hitLbl").textContent = "Hit"; $("hitLbl").hidden = !obj;   // the 1-ball speaks for itself
   $("hitPot").hidden = !(obj && S.ob);
   const need = obj && S.ob && S.cb ? ghostHit() : null;
   $("hitPot").title = !obj || !S.ob ? "" : need == null ? `Too thin to pot in the ${POCKET_NAMES[S.pocket].toLowerCase()}` : `To pot in the ${POCKET_NAMES[S.pocket].toLowerCase()}: ${hitName(need).toLowerCase()}`;
