@@ -490,9 +490,9 @@ body.fs.land #tbl { width: min(100vw - 226px, (100dvh - 52px) * 109 / 59) !impor
 body.fs:not(.land) #tbl { height: min(100dvh - 120px, (100vw - 140px) * 109 / 59) !important; width: auto !important; }
 /* landscape: the buttons stack in a column on the right */
 body.fs.land .quickbar { flex: 0 0 76px; flex-direction: column; flex-wrap: nowrap; gap: 6px; }
-/* the buttons share the column's height, Shoot a bigger share; Exit stays small at the top */
-body.fs.land .quickbar .qs, body.fs.land .quickbar .qs.fine { flex: 1 1 0; width: 100%; min-height: 44px; max-height: 96px; }
-body.fs.land .quickbar .qs.good { flex-grow: 1.6; max-height: 130px; }
+/* the aim and Undo buttons keep a set height and Shoot takes the rest of the column; Exit stays small at the top */
+body.fs.land .quickbar .qs, body.fs.land .quickbar .qs.fine { flex: 0 0 52px; width: 100%; min-height: 44px; }
+body.fs.land .quickbar .qs.good { flex: 1 1 auto; min-height: 60px; }
 body.fs.land .quickbar .qs.fsx { flex: 0 0 40px; min-height: 40px; margin-bottom: 4px; }
 body.fs:not(.land) .quickbar .fsx { flex: 0 0 56px; }
 /* whose turn it is, in the space under the table */
