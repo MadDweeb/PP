@@ -439,7 +439,7 @@ ul.rules { margin: 0; padding-left: 18px; font-size: 0.8125rem; display: flex; f
 .vhname span { color: var(--muted); }
 .btn.tiny { padding: 2px 8px; min-height: 44px; font-size: 0.8125rem; }
 /* the shooter's cue beside the table in Play, and the cue picker */
-.vcue { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 12px; border: 0; background: none; padding: 4px 0; cursor: pointer; border-radius: 8px; }
+.vcue { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 12px; border: 0; background: none; padding: 4px 0 0; cursor: pointer; border-radius: 8px; }
 .vcue[hidden] { display: none; }
 .vcue:focus-visible { outline: 2px solid var(--accent); }
 #cueModel { flex: 1 1 0; min-height: 110px; width: 56px; display: block; }
