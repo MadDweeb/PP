@@ -184,7 +184,7 @@ function playScene() {
   const d = $("tDyn"); if (!d) return null;
   if (pScene && pScene.root === d && d.firstChild === pScene.under) return pScene;
   d.innerHTML = "<g></g><g></g><g></g><g></g><g></g><g></g><g></g>"; d._h = null;
-  const [under, cue, paths, trails, balls, over, top] = d.children;
+  const [under, paths, trails, balls, over, top, cue] = d.children;   // the cue last: it lies over every ball, as a real cue does
   pScene = { root: d, under, cue, paths, trails, balls, over, top, html: {}, ball: {}, cueKey: null, cueT: "", trail: null, stamp: 0 };
   return pScene;
 }
