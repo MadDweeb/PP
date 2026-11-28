@@ -55,7 +55,7 @@ function renderSettings() {
       <label class="field">Corner pocket mouth (${u})<input id="sWc" type="number" inputmode="decimal" step="${m ? .1 : .05}" value="${sv(settings.wc)}"></label>
       <label class="field">Side pocket mouth (${u})<input id="sWs" type="number" inputmode="decimal" step="${m ? .1 : .05}" value="${sv(settings.ws)}"></label>
     </div>
-    <p class="note">Set for your Rasson Accura: ${m ? "254 × 127 cm" : "100 × 50 in"} cushion to cushion, ${m ? "10.8 cm" : "4.25 in"} corner and ${m ? "12.1 cm" : "4.75 in"} side pocket mouths, measured jaw tip to jaw tip.</p>
+    <p class="note">Set to Rasson Accura: ${m ? "254 × 127 cm" : "100 × 50 in"} cushion to cushion, ${m ? "10.8 cm" : "4.25 in"} corner and ${m ? "12.1 cm" : "4.75 in"} side pocket mouths, measured jaw tip to jaw tip.</p>
     <div class="row"><button class="btn small" id="resetSize">Revert to default</button></div>
   </div>
   <div class="panel">
