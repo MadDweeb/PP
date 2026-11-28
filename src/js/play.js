@@ -225,7 +225,7 @@ function renderPlayBar() {
   const sc = solo ? "" : `<span class="score num" aria-label="Score ${g.score[0]} to ${g.score[1]}">${g.score[0]}<i style="background:var(--accent)"></i>–<i style="background:var(--p2)"></i>${g.score[1]}</span>`;
   const hint = (settings.playShots || 0) < AIM_HINT_SHOTS && !g.over && !g.choice
     ? `<div class="plhint">${g.inHand ? "Drag the cue ball to place it. " : ""}Drag the cue to aim, or tap a spot ahead of the cue ball to aim at it. ↺ ↻ fine-tune.</div>` : "";
-  $("playStatus").innerHTML = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><div class="who"><b>${head}</b>${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</div>${sc}</div>${hint}`;
+  $("playStatus").innerHTML = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><div class="who"><b>${head}</b>${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</div>${sc}<button class="btn small fsbtn" data-play="fs" aria-label="Full screen" title="Full screen">⛶</button></div>${hint}`;
 }
 function renderGameCard() {
   const g = S.game, el = $("gameBody"); if (!g || !playMode()) return;
@@ -264,6 +264,19 @@ function rulesText(k) {
     "Three fouls in a row lose the rack."].concat(common);
 }
 function renderPlayQuick(q) {
+  playQuickBody(q);
+  if (fsOn) q.insertAdjacentHTML("afterbegin", fsHead());
+}
+/* full screen: an Exit button and a short line on whose turn it is, above the usual buttons */
+function fsHead() {
+  const g = S.game; let t = "";
+  if (g && !g.over && !g.choice && !simAnim) {
+    const who = soloPlay() ? "" : playerName(g.turn), bits = [g.phase === "break" ? "break" : "", g.inHand && g.phase !== "break" ? "ball in hand" : "", g.kind !== "8" && g.fouls[g.turn] === 2 ? "on two fouls" : ""].filter(Boolean);
+    t = [who, bits.join(", ")].filter(Boolean).join(": ");
+  }
+  return `<button class="qs fine fsx" data-play="fsexit" aria-label="Exit full screen">Exit</button>` + (t ? `<div class="fsturn ${soloPlay() ? "" : g.turn ? "p2" : "p1"}">${esc(t)}</div>` : "") + `<div class="fsgrow"></div>`;
+}
+function playQuickBody(q) {
   const g = S.game;
   if (!g) { q.innerHTML = ""; return; }
   const undo = `<button class="qs fine undo" data-play="undo" aria-label="Undo the last shot">Undo</button>`;
@@ -344,6 +357,8 @@ function playAction(k) {
   if (k === "shoot") return playShoot();
   if (k === "skip") { simStopAnim(); return; }
   if (k === "undo") return playUndo();
+  if (k === "fs") return playFs(true);
+  if (k === "fsexit") return playFs(false);
   if (k === "next") { playNew(g.kind, true); renderLog(); showCallout("info", S.game.last.text, ""); return; }
   if (k === "push") { playArm = playArm === "push" ? null : "push"; renderQuick(); return; }
   if (k === "left" || k === "right") { nudgeAim(k === "left" ? 1 : -1, .1); return; }
@@ -376,6 +391,24 @@ function playUndo() {
   playArm = null; hideCallout(); saveWork(); renderLog();
   toast(h.length ? `Undone. ${h.length} more to the start of the rack` : "Undone. Back at the start of the rack");
 }
+/* Full screen (Play only): the table as big as the screen allows with only the controls for playing. Asks the browser for
+   full screen and a landscape lock; where it can't (an iPhone, an embedded preview) the layout still fills the page.
+   Exit locks portrait for a moment before leaving, so the phone turns back. */
+let fsOn = false;
+function playFs(on) {
+  if (on === fsOn) return;
+  fsOn = on; document.body.classList.toggle("fs", on);
+  const el = document.documentElement, o = screen.orientation;
+  if (on) {
+    if (el.requestFullscreen && !document.fullscreenElement)
+      el.requestFullscreen({ navigationUI: "hide" }).then(() => o && o.lock ? o.lock("landscape") : null).catch(() => {});
+  } else if (document.fullscreenElement) {
+    const leave = () => { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); };
+    if (o && o.lock) o.lock("portrait").catch(() => {}).finally(() => setTimeout(leave, 150)); else leave();
+  }
+  $("loupe").hidden = true; placeColumns(); buildTable(); renderLog(); updatePin(); scrollTo(0, 0);
+}
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && fsOn) playFs(false); });
 /* Fine aim: a tap turns 0.1°; holding repeats, faster after a second */
 let fineT = 0, fineStart = 0, fineDir = 0;
 function fineHold(dir) {

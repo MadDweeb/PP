@@ -113,7 +113,7 @@ document.addEventListener("click", async e => {
 $("cueSheet").addEventListener("click", e => { if (e.target.id === "cueSheet") closeCueSheet(); });
 $("sheet").addEventListener("click", e => { if (e.target.id === "sheet") { closeZoom(); saveWork(); renderLog(); } });
 document.addEventListener("keydown", e => {
-  if (e.key === "Enter" && e.target.id === "newDrillName") { e.preventDefault(); saveDrill(); return; } if (e.key === "Escape" && !$("sheet").hidden) { closeZoom(); renderLog(); } if (e.key === "Escape" && !$("spinSheet").hidden) { $("spinSheet").hidden = true; saveWork(); } if (e.key === "Escape" && !$("cueSheet").hidden) closeCueSheet(); });
+  if (e.key === "Enter" && e.target.id === "newDrillName") { e.preventDefault(); saveDrill(); return; } if (e.key === "Escape" && !$("sheet").hidden) { closeZoom(); renderLog(); } if (e.key === "Escape" && !$("spinSheet").hidden) { $("spinSheet").hidden = true; saveWork(); } if (e.key === "Escape" && !$("cueSheet").hidden) closeCueSheet(); else if (e.key === "Escape" && fsOn) playFs(false); });
 document.addEventListener("change", e => {
   if (e.target.id === "drillSel") {
     const d = findDrill(e.target.value);
