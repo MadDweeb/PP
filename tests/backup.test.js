@@ -70,9 +70,10 @@ test("a backup keeps the Play settings and each player's cue, and drops anything
 
 test("Play settings from a backup: solo is true or false, names are short text", () => {
   const app = loadCore(), g = good(app);
-  g.settings.playSolo = "yes"; g.settings.playNames = ["Wong", "x".repeat(40), "extra"]; g.settings.playShots = "3";
+  g.settings.playSolo = "yes"; g.settings.playPulse = 0; g.settings.playNames = ["Wong", "x".repeat(40), "extra"]; g.settings.playShots = "3";
   const b = app.parseBackup(JSON.stringify(g));
   assert.equal(b.settings.playSolo, true);
+  assert.equal(b.settings.playPulse, false);
   assert.deepEqual(b.settings.playNames, ["Wong", "x".repeat(16)]);
   assert.equal(b.settings.playShots, 3);
 });

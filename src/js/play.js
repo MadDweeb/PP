@@ -186,7 +186,9 @@ function dynPlay() {
 /* a ring that swells and fades round the ball to hit (or the called ball) and the called pocket. The table is redrawn often while you aim, so each new ring
    starts at the same point in the beat (a negative delay) and the pulse runs on smoothly instead of restarting. */
 const PULSE_MS = 1400;
+const pulseOn = () => settings.playPulse !== false;
 function pulseRing(c, r, col = "var(--marker)") {
+  if (!pulseOn()) return "";
   return `<circle class="pulse" cx="${c.x.toFixed(2)}" cy="${c.y.toFixed(2)}" r="${r.toFixed(2)}" fill="none" stroke="${col}" stroke-width="2.2" vector-effect="non-scaling-stroke" style="animation-delay:-${Math.round(performance.now() % PULSE_MS)}ms"/>`;
 }
 /* straight-line first contact (used only to show the aim at the break, where paths are hidden) */
@@ -239,6 +241,7 @@ function renderGameCard() {
   h += `<div class="optrow"><span class="k">Players</span><div class="chips"><button class="chip sm" aria-pressed="${!soloPlay()}" data-solo="0">Two players</button><button class="chip sm" aria-pressed="${soloPlay()}" data-solo="1">Solo: I play both sides</button></div>` +
     (soloPlay() ? "" : `<div class="namerow">${[0, 1].map(i => `<input id="pname${i}" style="--p-col:${i ? "var(--p2)" : "var(--accent)"}" value="${esc((settings.playNames || [])[i] || "")}" placeholder="Player ${i + 1}" maxlength="16" autocomplete="off" aria-label="Player ${i + 1} name">`).join("")}</div>`) + `</div>`;
   h += `<div class="optrow"><span class="k">Paths</span><div class="chips">${PATHS.map(([k, l]) => `<button class="chip sm" aria-pressed="${pathMode() === k}" data-paths="${k}">${l}</button>`).join("")}</div></div>`;
+  h += `<div class="optrow"><span class="k">Pulse</span><div class="chips"><button class="chip sm" aria-pressed="${pulseOn()}" data-pulse="1">On</button><button class="chip sm" aria-pressed="${!pulseOn()}" data-pulse="0">Off</button></div></div>`;
   h += `<div class="optrow"><span class="k">Break from</span><div class="chips">${BREAK_FROM.map(([k, l]) => `<button class="chip sm" aria-pressed="${breakFrom() === k}" data-brkfrom="${k}">${l}</button>`).join("")}</div></div>`;
   const log = (g.log || []).slice(-6).reverse();
   if (log.length) h += `<div class="glog"><span class="k">Last shots</span><ol>${log.map(e => `<li class="${e.fouls && e.fouls.length ? "bad" : ""}"><b>Rack ${e.rack}, shot ${e.shot}:</b> ${esc(e.fouls && e.fouls.length ? "Foul. " + e.fouls.join(". ") : soloText(e.text) || "Shot played")}</li>`).join("")}</ol></div>`;

@@ -23,6 +23,7 @@ document.addEventListener("click", async e => {
   if (t.dataset.callpk) { setCall({ pocket: t.dataset.callpk }); return; }
   if (t.dataset.callsafe) { setCall({ safety: true }); return; }
   if (t.dataset.callauto) { setCall({ auto: true }); return; }
+  if (t.dataset.pulse) { settings.playPulse = t.dataset.pulse === "1"; saveSettings(); renderTable(); renderPlayInfo(); return; }
   if (t.dataset.paths) { settings.playPaths = t.dataset.paths; saveSettings(); renderTable(); renderPlayInfo(); return; }
   if (t.dataset.brkfrom) { settings.playBreak = t.dataset.brkfrom; saveSettings(); const g = S.game; if (g && g.inHand === "break" && g.cb) { const q = placeCb(g, g.cb); if (q) g.cb = q; g.aim = defaultAim(g); } saveWork(); renderTable(); renderPlayInfo(); return; }
   if (t.dataset.rack) { S.rack = t.dataset.rack; saveWork(); renderLog(); return; }
