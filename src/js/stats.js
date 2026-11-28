@@ -80,7 +80,7 @@ function renderStats() {
       const arrow = (a, b, lowerBetter) => a == null || b == null || Math.abs(a - b) < 1e-9 ? "" : ((lowerBetter ? a < b : a > b) ? ' <span style="color:var(--good)">▲</span>' : ' <span style="color:var(--bad)">▼</span>');
       return `<tr${x.id === F.session ? ' style="background:var(--accent-soft)"' : ""}><td>${esc(sessionLabel(x.start))}</td><td>${s.n}</td><td>${pct(s.pot)}${prev ? arrow(s.pot, prev.pot) : ""}</td><td>${pct(s.zone)}${prev ? arrow(s.zone, prev.zone) : ""}</td><td>${fl(s.err, 1)}${prev ? arrow(s.err, prev.err, true) : ""}</td></tr>`; }).join("")}
     </tbody></table></div>
-    <p class="note">▲ is better than the session before, ▼ is worse. A new session starts automatically after 2 hours without a shot, or when you tap New session on the Log tab.</p>
+    <p class="note">A new session starts after 2 hours without a shot, or when you tap New session on the Log tab.</p>
   </div>
   <div class="panel">
     <h2>Cue ball miss pattern</h2>
@@ -100,7 +100,12 @@ function renderStats() {
     <div class="scroll" tabindex="0" role="region" aria-label="Table, scrolls sideways"><table class="t"><thead><tr><th>Spin</th><th>Shots</th><th>Pot</th><th>In zone</th><th>CB miss</th><th>Long/short</th><th>Bias</th><th>Spread</th></tr></thead><tbody>
     ${vs.map(([k, l, s]) => `<tr><td>${l}</td><td>${s.n}</td><td>${pct(s.pot)}</td><td>${pct(s.zone)}</td><td>${fl(s.err, 1)}</td><td>${lsTxt(s.long)}</td><td>${s.bias == null ? "–" : (s.bias >= 0 ? "+" : "") + fl(s.bias, 2)}</td><td>${fl(s.spread, 2)}</td></tr>`).join("")}
     </tbody></table></div>
-    <p class="note">Long/short and left/right are measured along the line the cue ball travelled to its target. CB miss is the distance in ${isMetric() ? "centimetres" : "inches"} between your target and where the cue ball stopped. Bias is the average pocket entry offset (+ means right of centre, seen from the object ball); spread is its standard deviation.</p>
+    <ul class="notelist">
+      <li><b>CB miss</b>: distance in <b>${isMetric() ? "cm" : "inches"}</b> from your target to where the cue ball stopped</li>
+      <li><b>Long/short</b>: measured along the line the cue ball travelled to its target</li>
+      <li><b>Bias</b>: average pocket entry offset (<b>+</b> is right of centre, seen from the object ball)</li>
+      <li><b>Spread</b>: how much the pocket entry varies (standard deviation)</li>
+    </ul>
     </div>
   </details>
   <details class="panel fold" data-fold="breakdown"${foldOpen.breakdown ? " open" : ""}>
@@ -176,7 +181,7 @@ function drawProgress(rows) {
   box.onclick = e => { const h = e.target.closest(".hit"); if (!h) return; progSel = +h.dataset.i; drawProgress(rows); };
 }
 let selShot = null;
-function shotLine(s) {
+function scatterLine(s) {
   return `${s.drill || "Unnamed drill"} #${s.shotNo} · ${label(VLAB, s.vspin)}, ${label(SIDE, s.side).toLowerCase()}, ${speedText(s)}` +
     (s.inZone === 1 ? " · in zone" : s.inZone === 0 ? " · outside zone" : "") +
     (s.cbErr != null ? ` · ${fls(s.cbErr, 1)} from target` : "") +
@@ -189,8 +194,8 @@ function drawScatter(list) {
   if (selShot && !all.some(s => s.id === selShot)) selShot = null;
   const one = selShot ? all.find(s => s.id === selShot) : null;
   // picker: one row per shot, oldest first so the numbers read in order
-  $("picker").innerHTML = all.map(s => `<button data-pick="${esc(s.id)}" aria-pressed="${s.id === selShot}"><b>#${s.shotNo}</b><span>${esc(label(VLAB, s.vspin))}${s.cbErr != null ? " " + fl(s.cbErr, 1) + uName() : ""}${s.inZone === 1 ? " ✓" : s.inZone === 0 ? " ✗" : ""}</span></button>`).join("");
-  $("scTip").textContent = one ? shotLine(one) : `${all.length} shots shown. Tap a ball or a shot in the list to see it on its own.`;
+  $("picker").innerHTML = all.map(s => `<button data-pick="${esc(s.id)}" aria-pressed="${s.id === selShot}"><b>#${s.shotNo}${s.inZone === 1 ? ' <i class="ok" aria-label="in zone">✓</i>' : s.inZone === 0 ? ' <i class="no" aria-label="outside zone">✗</i>' : ""}</b><span>${esc(label(VLAB, s.vspin))}${s.cbErr != null ? " " + fl(s.cbErr, 1) + uName() : ""}</span></button>`).join("");
+  $("scTip").textContent = one ? scatterLine(one) : `${all.length} shots shown. Tap a ball or a shot in the list to see it on its own.`;
   $("shotAll").hidden = !one;
   if (one) {
     // the selected shot on its own: start positions, shot lines, target, result and pocket entry

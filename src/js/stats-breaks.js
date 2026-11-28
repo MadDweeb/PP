@@ -31,11 +31,11 @@ function renderBreakStats(v, seg) {
   const list = all.filter(s => keep(s)), t = brkSummary(list);
   const groups = new Map(); for (const s of all.filter(s => keep(s, true))) { const k = sessionOf(s); (groups.get(k) || groups.set(k, []).get(k)).push(s); }
   const bySess = sess.filter(x => groups.has(x.id)).map(x => [esc(sessionLabel(x.start)), brkSummary(groups.get(x.id))]);
-  const chipsRow = (key, opts) => `<div class="chips">${opts.map(([k, l]) => `<button class="chip sm" aria-pressed="${BF[key] === k}" data-bf="${key}" data-v="${k}">${l}</button>`).join("")}</div>`;
+  const chipsRow = (key, opts) => `<div class="chips">${opts.map(([k, l, ico]) => `<button class="chip sm${ico ? " rackchip" : ""}" aria-pressed="${BF[key] === k}" data-bf="${key}" data-v="${k}"${ico ? ` aria-label="${l}" title="${l}"` : ""}>${ico || l}</button>`).join("")}</div>`;
   v.innerHTML = seg + `
   <div class="filters">
     <select id="bfSession" aria-label="Session"><option value="__all">All sessions (${sess.length})</option>${sess.map(x => `<option value="${esc(x.id)}" ${BF.session === x.id ? "selected" : ""}>${esc(sessionLabel(x.start))} (${x.n})</option>`).join("")}</select>
-    ${chipsRow("rack", [["all", "All racks"], ["8", "8-ball"], ["9", "9-ball"], ["10", "10-ball"]])}
+    ${chipsRow("rack", [["all", "All racks"]].concat(RACKS.map(([k, l]) => [k, l, rackIcon(k)])))}
     ${chipsRow("pocket", [["all", "Both sides"], ["SL", "Side left"], ["SR", "Side right"]])}
   </div>
   <div class="tiles">

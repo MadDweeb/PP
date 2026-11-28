@@ -51,6 +51,7 @@ document.addEventListener("click", async e => {
   if (t.dataset.themeSet) { settings.theme = t.dataset.themeSet; saveSettings(); applyAppearance(); renderSettings(); return; }
   if (t.dataset.units) { settings.units = t.dataset.units; saveSettings(); renderSettings(); return; }
   if (t.dataset.sw) { setColor(t.dataset.sw, t.dataset.hex, true); renderSettings(); return; }
+  if (t.id === "resetSize") { Object.assign(settings, { L: 100, W: 50, wc: 4.25, ws: 4.75 }); saveSettings(); buildTable(); renderLog(); renderSettings(); return; }
   if (t.id === "resetColors") { Object.assign(settings, COLOR_DEFAULTS); saveSettings(); applyAppearance(); renderSettings(); return; }
   if (t.id === "tipCentre" || t.id === "tipCentre2") { setTip(0, 0); saveWork(); return; }
   if (t.id === "spinDone") { $("spinSheet").hidden = true; saveWork(); return; }
@@ -195,7 +196,7 @@ cueSvg.addEventListener("keydown", e => {
   const d = { ArrowUp: [0, .05], ArrowDown: [0, -.05], ArrowLeft: [-.05, 0], ArrowRight: [.05, 0] }[e.key]; if (!d) return;
   e.preventDefault(); setTip(S.tip.x + d[0], S.tip.y + d[1]); saveWork();
 });
-$("drill").addEventListener("input", e => { S.drill = e.target.value; saveWork(); $("shotNo").textContent = "Shot " + (drillShots(S.drill).length + 1); renderSaveBar(); });
+$("drill").addEventListener("input", e => { S.drill = e.target.value; saveWork(); $("shotNo").innerHTML = `Shot <b>${drillShots(S.drill).length + 1}</b>`; renderSaveBar(); });
 $("notes").addEventListener("input", e => { S.notes = e.target.value; saveWork(); });
 const tbl = $("tbl");
 tbl.addEventListener("pointerdown", onTableDown);

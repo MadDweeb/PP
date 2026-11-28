@@ -86,6 +86,15 @@ function rackBalls(kind) {
   } });
   return out;
 }
+/* a small picture of the rack, 1-ball at the top, for the rack chips; the same scale for all three so the balls match */
+function rackIcon(kind) {
+  const rack = rackBalls(kind), h = rack[0];
+  return `<svg class="rackico" viewBox="-5.4 -1.4 10.8 10.3" aria-hidden="true">` + rack.map(b => {
+    const x = +((b.x - h.x) / R_BALL).toFixed(2), y = +((b.y - h.y) / R_BALL).toFixed(2), c = BALL_COL[b.n];
+    return (b.n > 8 ? `<circle cx="${x}" cy="${y}" r=".97" fill="#fbfaf4"/><rect x="${x - .82}" y="${y - .42}" width="1.64" height=".84" fill="${c}"/>` : `<circle cx="${x}" cy="${y}" r=".97" fill="${c}"/>`) +
+      `<circle cx="${x}" cy="${y}" r=".97" fill="none" stroke="#000" stroke-opacity=".35" stroke-width=".12"/><circle cx="${x}" cy="${y}" r=".36" fill="#fffdf4"/>`;
+  }).join("") + `</svg>`;
+}
 function numBall(p, n) {
   const q = toSvg(p), stripe = n > 8;
   return (stripe ? `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="#fbfaf4" stroke="#1b1b1b" stroke-opacity=".5" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${q.x - R_BALL * .98}" y="${q.y - R_BALL * .55}" width="${R_BALL * 1.96}" height="${R_BALL * 1.1}" fill="${BALL_COL[n]}"/>`

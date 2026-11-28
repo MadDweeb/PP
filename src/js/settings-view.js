@@ -22,17 +22,17 @@ function renderSettings() {
   $("view-settings").innerHTML = `
   <div class="panel">
     <h2>Feedback</h2>
-    <p class="note">Found a bug, got confused, or have an idea? It takes a minute, and every reply is read. The app version and your phone type are filled in for you.</p>
+    <p class="note">Found a bug, confused about something, or have a suggestion? Send me feedback via a short Google Forms survey with the button below, and I'll do my best to apply the change to your satisfaction. The app version and your phone type are filled in to help with debugging; no other personal data is taken.</p>
     <div class="row"><a class="btn primary" id="fbSettings" href="#" target="_blank" rel="noopener">Send feedback</a></div>
     <p class="note" style="margin:0">App version ${esc(APP_VERSION)}</p>
   </div>
   <div class="panel">
     <h2>Display</h2>
     <span class="label">Theme</span>
-    <div class="chips">${[["system", "Match phone"], ["light", "Light"], ["dark", "Dark"]].map(([k, l]) => `<button class="chip" aria-pressed="${settings.theme === k}" data-theme-set="${k}">${l}</button>`).join("")}</div>
+    <div class="chips">${[["system", "Match phone"], ["light", "Light"], ["dark", "Dark"]].map(([k, l]) => `<button class="chip" aria-pressed="${settings.theme === k}" data-theme-set="${k}">${k === "system" ? `<svg class="halfmoon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="#ffffff" stroke="#15171a" stroke-width="1.5"/><path d="M10 2a8 8 0 0 1 0 16z" fill="#15171a"/></svg>${l}` : l}</button>`).join("")}</div>
     <span class="label">Units</span>
     <div class="chips">${[["imperial", "Imperial (in)"], ["metric", "Metric (cm)"]].map(([k, l]) => `<button class="chip" aria-pressed="${settings.units === k}" data-units="${k}">${l}</button>`).join("")}</div>
-    <p class="note">Units apply everywhere, including the CSV: in metric its distance columns end in _cm instead of _in. If you mix exports, check the column names.</p>
+    <p class="note">Double-check the units when exporting data, so you don't mix them.</p>
   </div>
   <div class="panel">
     <h2>At the table</h2>
@@ -44,7 +44,7 @@ function renderSettings() {
     <h2>Table colours</h2>
     ${COLOR_ROWS.map(colorBlock).join("")}
     <p class="note">Picking a cloth swatch also sets the rails to a slightly darker shade of it, the way covered cushions look. Change the rails on their own after that if yours differ.</p>
-    <div class="row"><button class="btn small" id="resetColors">Back to my grey table</button></div>
+    <div class="row"><button class="btn small" id="resetColors">Revert to default</button></div>
   </div>
   <div class="panel">
     <h2>Table size</h2>
@@ -55,12 +55,12 @@ function renderSettings() {
       <label class="field">Side pocket mouth (${u})<input id="sWs" type="number" inputmode="decimal" step="${m ? .1 : .05}" value="${sv(settings.ws)}"></label>
     </div>
     <p class="note">Set for your Rasson Accura: ${m ? "254 × 127 cm" : "100 × 50 in"} cushion to cushion, ${m ? "10.8 cm" : "4.25 in"} corner and ${m ? "12.1 cm" : "4.75 in"} side pocket mouths, measured jaw tip to jaw tip.</p>
+    <div class="row"><button class="btn small" id="resetSize">Revert to default</button></div>
   </div>
   <div class="panel">
     <h2>Zones</h2>
     <div class="chips" id="gridChips">${[["off", "No grid"], ["8x4", "8 × 4 (diamonds)"], ["16x8", "16 × 8 (half diamonds)"]].map(([k, l]) => `<button class="chip" aria-pressed="${settings.grid === k}" data-g="${k}">${l}</button>`).join("")}</div>
     <div class="chips"><button class="chip" id="lblToggle" aria-pressed="${settings.labels}">Show zone names</button></div>
-    <p class="note">Zones are named by column letter from the left (seen from the head end) and row number from the head rail, so A1 is the head-left corner. Exact coordinates are always saved too.</p>
   </div>
   <div class="panel">
     <h2>My drills</h2>
@@ -86,7 +86,15 @@ function renderSettings() {
   </div>
   <div class="panel">
     <h2>Coordinates in the CSV</h2>
-    <p class="note">x is ${isMetric() ? "centimetres" : "inches"} from the left long cushion, y is ${isMetric() ? "centimetres" : "inches"} from the head cushion, both measured to the ball's centre, with the table seen from the head end. The cut angle is + for a cut to the right. Pocket offset is + when the object ball entered right of the pocket centre, looking from where the object ball started. Tip x and y are where the cue tip hit, in cue ball radii from centre (+ is right and up), and speed_pct is the 0 to 100% bar.</p>
+    <p class="note">Measured to the ball's centre, with the table seen from the head end.</p>
+    <ul class="notelist">
+      <li><b>x</b>: <b>${isMetric() ? "cm" : "inches"}</b> from the left long cushion</li>
+      <li><b>y</b>: <b>${isMetric() ? "cm" : "inches"}</b> from the head cushion</li>
+      <li><b>Cut angle</b>: <b>+</b> is a cut to the right</li>
+      <li><b>Pocket offset</b>: <b>+</b> is right of the pocket centre, seen from where the object ball started</li>
+      <li><b>Tip x, y</b>: where the tip hit, in <b>cue ball radii</b> from centre (<b>+</b> is right and up)</li>
+      <li><b>speed_pct</b>: the speed bar, <b>0 to 100%</b></li>
+    </ul>
   </div>
   <div class="panel danger">
     <h2>Delete all shots</h2>

@@ -515,6 +515,44 @@ body.fs:not(.land) #playBar { width: calc(100vw - 32px); }
 /* sheets (tip, cue) and toasts open over the full-screen table */
 body.fs .sheet { z-index: 70; } body.fs .toast { z-index: 80; }
 body.fs #playBar .callout { position: static; pointer-events: auto; }
-/* full screen, landscape: the banner's words are centred; an empty block on the left balances the countdown on the right */
-body.fs.land #playBar .callout .cot { align-items: center; text-align: center; }
-body.fs.land #playBar .callout::before { content: ""; flex: 0 0 58px; }
+/* the foul banner's words are centred; an empty block on the left balances the countdown on the right */
+#playBar .callout .cot { align-items: center; text-align: center; }
+#playBar .callout::before { content: ""; flex: 0 0 58px; }
+
+/* ---------- small changes, Nov 2026 ---------- */
+/* tab icons */
+.tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.tabs .ti { width: 18px; height: 18px; flex: 0 0 18px; fill: none; stroke: currentColor; }
+@media (max-width: 360px) { .tabs button { flex-direction: column; gap: 1px; font-size: 0.75rem; padding: 4px 2px; } }
+/* Shot N / Break N: as tall as the drill picker and Pin button beside it, with the number in the accent colour */
+.badge { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 14px; border-radius: 9px; }
+.badge b { color: var(--accent); font-size: 1.375rem; }
+#pinTable { min-height: 44px; display: inline-flex; align-items: center; gap: 4px; }
+#pinTable .pin { width: 20px; height: 20px; flex: 0 0 20px; transition: transform .15s; }
+#pinTable[aria-pressed="false"] .pin { transform: rotate(40deg); filter: grayscale(1); opacity: .55; }
+#pinTable[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+/* rack chips show the rack itself */
+.chip.rackchip { display: inline-flex; align-items: center; justify-content: center; padding: 4px 12px; }
+.rackico { height: 38px; width: auto; display: block; }
+.chip.rackchip[aria-pressed="true"] { background: var(--accent-soft); color: inherit; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+/* the contact point sheet's buttons are slimmer */
+#spinSheet .savebar .btn { padding: 8px 12px; min-height: 44px; font-size: 0.9375rem; }
+/* text boxes only as wide as what goes in them */
+.colorrow input[type="text"] { width: calc(7ch + 24px); }
+.fields .field input { width: 7.5em; max-width: 100%; }
+/* notes written as a list */
+.notelist { margin: 4px 0 0; padding-left: 18px; font-size: 0.8125rem; color: var(--muted); line-height: 1.45; }
+.notelist li { margin: 2px 0; }
+.notelist b { color: var(--ink); font-weight: 600; }
+/* in or out of the zone, in colour */
+.picker i { font-style: normal; font-weight: 700; }
+.picker i.ok { color: var(--good); } .picker i.no { color: var(--bad); }
+.picker button[aria-pressed="true"] i { color: inherit; }
+/* a two-way switch fills the width */
+.modeseg:has(> button:nth-child(2):last-child) { grid-template-columns: 1fr 1fr; }
+/* theme buttons look like the theme they pick */
+.chip[data-theme-set="light"] { background: #ffffff; color: #15171a; border-color: #c9ced4; }
+.chip[data-theme-set="dark"] { background: #15171a; color: #f1f3f5; border-color: #3a3f45; }
+.chip[data-theme-set="system"] { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); color: var(--ink); }
+.chip .halfmoon { width: 18px; height: 18px; flex: 0 0 18px; }
+.chip[data-theme-set][aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }

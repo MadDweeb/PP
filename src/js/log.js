@@ -131,7 +131,7 @@ function applySpeedSide() {
 function updatePin() {
   const on = (brkMode() || simMode()) && settings.pinTable !== false && !arranging;   // unpinned while rearranging, so the whole list is in view
   document.body.classList.toggle("pin", on);
-  const btn = $("pinTable"); btn.hidden = !(brkMode() || simMode()) || land; btn.setAttribute("aria-pressed", on); btn.textContent = on ? "Unpin table" : "Pin table";
+  const btn = $("pinTable"); btn.hidden = !(brkMode() || simMode()) || land; btn.setAttribute("aria-pressed", on); btn.setAttribute("aria-label", on ? "Unpin table" : "Pin table"); btn.title = on ? "Table pinned: tap to unpin" : "Pin the table";
   if (!on || land) return;
   const top = document.querySelector(".top"), a = document.querySelector(".colA"), tw = $("tablewrap");
   const headH = top.getBoundingClientRect().height + (parseFloat(getComputedStyle(top).top) || 0);
@@ -172,7 +172,7 @@ function renderLog() {
   updatePin();
   $("drill").value = S.drill || "";
   $("notes").value = S.notes || "";
-  $("shotNo").textContent = (bm ? "Break " : "Shot ") + (drillShots(S.drill).length + 1);
+  $("shotNo").innerHTML = `${bm ? "Break" : "Shot"} <b>${drillShots(S.drill).length + 1}</b>`;
   renderTable(); renderTools();
   if (bm) renderBreakPanel();
   if (sm) renderSimPanel();
@@ -204,7 +204,7 @@ function renderQuick() {
   if (simMode()) {
     const b = simBrk(), playing = !!simAnim;
     q.innerHTML = `<button class="qs good" data-simq="shoot">${playing ? "Stop" : b ? "Break" : "Shoot"}</button>` +
-      `<button class="qs plain" data-simq="paths" aria-pressed="${S.simPaths !== false}">${S.simPaths !== false ? "Hide paths" : "Show paths"}<small>dashed lines</small></button>`;
+      `<button class="qs plain" data-simq="paths" aria-pressed="${S.simPaths !== false}">${S.simPaths !== false ? "Hide paths" : "Show paths"}</button>`;
     return;
   }
   if (brkMode()) {

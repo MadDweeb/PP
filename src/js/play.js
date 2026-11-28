@@ -1,8 +1,8 @@
 // Play mode (Simulator tab): 8-, 9- and 10-ball for two players on one phone. Aim by dragging on the table; the
 // referee is in rules.js. The game lives in S.game, so it survives a reload.
 /* ---------- Play mode ---------- */
-const PATHS = [["all", "All balls"], ["cue", "Cue ball"], ["ghost", "Ghost ball"], ["none", "No paths"]];
-const BREAK_FROM = [["box", "Break box"], ["kitchen", "Behind the head string"]];
+const PATHS = [["all", "All balls"], ["cue", "Cue ball"], ["ghost", "Ghost ball"], ["none", "None"]];
+const BREAK_FROM = [["box", "Break box"], ["kitchen", "Behind head string"]];
 let playRes = null, playKey = "", playT = 0, playLast = 0, playGap = 40, playArm = null, playDrag = null, playConfirm = null, playConfirmT = 0;
 const soloPlay = () => settings.playSolo === true;
 /* Player names from Settings; the referee's messages use them */
@@ -318,7 +318,7 @@ function renderGameCard() {
       `<div class="chips">${g.kind === "8" ? `<button class="chip sm" aria-pressed="${!!cm.safety}" data-callsafe="1">Safety</button>` : ""}<button class="chip sm" aria-pressed="${!g.callManual}" data-callauto="1">From my aim</button></div>` +
       `<p class="note">Tap a pocket on the table to call it too.</p></div>`;
   }
-  h += `<div class="optrow"><span class="k">Players</span><div class="chips"><button class="chip sm" aria-pressed="${!soloPlay()}" data-solo="0">Two players</button><button class="chip sm" aria-pressed="${soloPlay()}" data-solo="1">Solo: I play both sides</button></div>` +
+  h += `<div class="optrow"><span class="k">Players</span><div class="chips"><button class="chip sm" aria-pressed="${!soloPlay()}" data-solo="0">2P</button><button class="chip sm" aria-pressed="${soloPlay()}" data-solo="1">Solo</button></div>` +
     (soloPlay() ? "" : `<div class="namerow">${[0, 1].map(i => `<input id="pname${i}" style="--p-col:${i ? "var(--p2)" : "var(--accent)"}" value="${esc((settings.playNames || [])[i] || "")}" placeholder="Player ${i + 1}" maxlength="16" autocomplete="off" aria-label="Player ${i + 1} name">`).join("")}</div>`) + `</div>`;
   h += `<div class="optrow"><span class="k">Paths</span><div class="chips">${PATHS.map(([k, l]) => `<button class="chip sm" aria-pressed="${pathMode() === k}" data-paths="${k}">${l}</button>`).join("")}</div></div>`;
   h += `<div class="optrow"><span class="k">Break from</span><div class="chips">${BREAK_FROM.map(([k, l]) => `<button class="chip sm" aria-pressed="${breakFrom() === k}" data-brkfrom="${k}">${l}</button>`).join("")}</div></div>`;
@@ -328,7 +328,7 @@ function renderGameCard() {
   h += `<details class="tunebox"><summary>The rules</summary><ul class="rules">${rulesText(g.kind).map(t => `<li>${esc(t)}</li>`).join("")}</ul></details>`;
   /* rebuilt only when it changes: it is asked for on every aim update, and a rebuild would close The rules and drop a name being typed */
   if (el._h !== h) { el._h = h; el.innerHTML = h; }
-  $("gameSub").textContent = `${soloPlay() ? "Solo practice" : "Two players on one phone"}, ${GAME_NAMES[g.kind]}, WPA rules`;
+  $("gameSub").textContent = `${soloPlay() ? "Solo" : "Two players"}, ${GAME_NAMES[g.kind]}, WPA rules`;
 }
 function rulesText(k) {
   const common = ["Break from the break box (or behind the head string, set below). Paths are hidden on the break: every rack sits a little differently.",
@@ -378,9 +378,9 @@ function playQuickBody() {
   const g = S.game;
   if (!g) return "";
   const undo = `<button class="qs fine undo" data-play="undo" aria-label="Undo the last shot">Undo</button>`;
-  if (simAnim) return undo + `<button class="qs plain" data-play="skip">${fsLand() ? "Skip" : "Skip animation"}</button>`;
+  if (simAnim) return undo + `<button class="qs plain" data-play="skip">Skip</button>`;
   const solo = soloPlay(), canUndo = undoList().length > 0;
-  if (g.over) return `<button class="qs good" data-play="next">Next rack<small>${solo ? "rack them up" : esc(playerName(otherP(g.breaker))) + " breaks"}</small></button>` + (canUndo ? undo : "");
+  if (g.over) return `<button class="qs good" data-play="next">New rack${solo ? "" : `<small>${esc(playerName(otherP(g.breaker)))} breaks</small>`}</button>` + (canUndo ? undo : "");
   if (g.choice && fsLand()) return canUndo ? undo : "";   // full screen, landscape: the choice is under the table
   if (g.choice) return g.choice.options.map(([id, l]) => `<button class="qs plain" data-choice="${id}">${esc(l)}${solo ? "" : `<small>${esc(playerName(g.choice.by))}</small>`}</button>`).join("") + (canUndo ? undo : "");
   const push = pushAvailable(g), armed = playArm === "push" && push, c = playCall();
