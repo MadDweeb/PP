@@ -459,13 +459,16 @@ body.land #cueModel { min-height: 40px; }
 .chip.matl i { flex: 0 0 14px; width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.35); box-shadow: 0 0 0 1px rgba(255,255,255,.7); display: inline-block; }
 
 /* Play: whose turn it is, big, in that player's colour, with the score */
-.plturn { display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 12px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--p-col, var(--accent)); min-height: 48px; }
+.plturn { display: grid; grid-template-columns: 1fr minmax(0, auto) 1fr; align-items: center; gap: 10px; padding: 6px 10px 6px 12px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--p-col, var(--accent)); min-height: 48px; }
 .plturn.p1 { --p-col: var(--accent); } .plturn.p2 { --p-col: var(--p2); } .plturn.solo { --p-col: var(--muted); }
-.plturn .who { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+/* whose turn it is sits in the middle; the score and the full-screen button on the right, balanced by an empty column on the left */
+.plturn .who { min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; line-height: 1.2; }
+.plturn .plr { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
 .plturn .who b { font-family: var(--f-display); font-size: 1.25rem; letter-spacing: .02em; }
 .plturn .who span { font-size: 0.8125rem; color: var(--muted); }
 .plturn .who span.warn { color: var(--warn); font-weight: 600; }
-.plturn .score { font-family: var(--f-display); font-size: 1.375rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plturn .plsub { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 10px; }
+.plturn .score { font-family: var(--f-display); font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .plturn .score i { font-style: normal; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px; vertical-align: middle; }
 .plturn .btn { flex: 0 0 auto; }
 .plhint { font-size: 0.8125rem; color: var(--muted); text-align: center; }
@@ -499,8 +502,6 @@ body.fs .fsstatus .fsmsg > span { overflow: hidden; text-overflow: ellipsis; }
 body.fs .fsstatus .warnic { flex: 0 0 18px; width: 18px; height: 17px; }
 body.fs .fsstatus .btn { pointer-events: auto; flex: 0 0 auto; min-height: 34px; padding: 4px 12px; white-space: nowrap; }
 body.fs .fsstatus .warnbtn { background: var(--bad); color: #fff; border-color: var(--bad); }
-/* full screen, landscape: no "Tip" label under the small ball (its name is above it) */
-body.fs.land .vtip > .vslbl { display: none; }
 /* full screen, landscape: the tip sheet puts the ball as big as the height allows on the left, the words on the right */
 body.fs.land #spinSheet { align-items: center; padding: 8px; }
 body.fs.land #spinSheet .card { max-width: min(860px, 100%); border-radius: 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto 1fr auto; column-gap: 24px; row-gap: 8px; max-height: calc(100dvh - 16px); overflow: hidden; }

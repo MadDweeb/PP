@@ -304,7 +304,7 @@ function renderPlayBar() {
   const sc = solo ? "" : `<span class="score num" aria-label="Score ${g.score[0]} to ${g.score[1]}">${g.score[0]}<i style="background:var(--accent)"></i>–<i style="background:var(--p2)"></i>${g.score[1]}</span>`;
   const hint = (settings.playShots || 0) < AIM_HINT_SHOTS && !g.over && !g.choice
     ? `<div class="plhint">${g.inHand ? "Drag the cue ball to place it. " : ""}Drag ahead of the cue ball and the shot follows your finger; drag on the cue and it swings the other way. ↺ ↻ fine-tune.</div>` : "";
-  const ps = $("playStatus"), h = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><div class="who"><b>${head}</b>${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</div>${sc}<button class="btn small fsbtn" data-play="fs" aria-label="Full screen" title="Full screen">⛶</button></div>${hint}`;
+  const ps = $("playStatus"), h = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><span class="plsp"></span><div class="who"><b>${head}</b>${sc || detail.length ? `<span class="plsub">${sc}${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</span>` : ""}</div><div class="plr"><button class="btn small fsbtn" data-play="fs" aria-label="Full screen" title="Full screen">⛶</button></div></div>${hint}`;
   if (ps._h !== h) { ps.innerHTML = h; ps._h = h; }
 }
 function renderGameCard() {
