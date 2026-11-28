@@ -569,3 +569,6 @@ body.fs #playBar .callout { position: static; pointer-events: auto; }
 svg, .vstrack, .quickbar, .tabs, .modeseg, .chip, .btn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 button, a, .chip, svg { -webkit-tap-highlight-color: transparent; }
 body.fs .ioshint { display: none !important; }
+/* New game resets the score: red so it can't be missed, solid red when a second tap will reset */
+.btn.newgame { color: var(--bad); border: 2px solid var(--bad); font-weight: 700; padding: 8px 16px; }
+.btn.newgame.armed { background: var(--bad); color: var(--on-bad); }

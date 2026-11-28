@@ -2,9 +2,15 @@
 
 ## Use it
 
-1. Open **https://maddweeb.github.io/PP/** in Chrome on Android.
-2. Tap ⋮ → **Add to Home screen** (or **Install app**).
+Works on **Android and iPhone**.
+
+1. Open **https://maddweeb.github.io/PP/**: in Chrome on Android, in Safari on iPhone.
+2. Add it to your Home Screen:
+   - **Android:** tap ⋮ → **Add to Home screen** (or **Install app**).
+   - **iPhone:** tap **Share** → **Add to Home Screen**.
 3. That's it. It works offline, and your shots stay on your phone.
+
+On iPhone, vibration and the browser's full screen aren't available to web apps; everything else works the same.
 
 Save a backup now and then (Settings → Backup), in case the browser's data gets cleared.
 
