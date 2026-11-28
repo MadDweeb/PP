@@ -503,4 +503,6 @@ body.fs .fsstatus.p1 { color: var(--accent); } body.fs .fsstatus.p2 { color: var
 /* the foul banner floats over the top of the table */
 body.fs #playBar { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(460px, calc(100vw - 280px)); min-height: 0; z-index: 60; pointer-events: none; }
 body.fs:not(.land) #playBar { width: calc(100vw - 32px); }
+/* sheets (tip, cue) and toasts open over the full-screen table */
+body.fs .sheet { z-index: 70; } body.fs .toast { z-index: 80; }
 body.fs #playBar .callout { position: static; pointer-events: auto; }

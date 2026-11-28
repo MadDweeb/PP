@@ -8,9 +8,10 @@ function placeColumns() {
   if (land && !fsOn) b.prepend(...top); else a.prepend(...top);   // full screen keeps them in colA, hidden, so the foul banner can show
 }
 function applyOrientation() {
-  land = !!(LAND_MQ && LAND_MQ.matches);
+  const was = land; land = !!(LAND_MQ && LAND_MQ.matches);
   document.body.classList.toggle("land", land);
   placeColumns(); buildTable(); updatePin(); if (view === "stats") renderStats();
+  if (land !== was) fsRotate(land);
 }
 land = !!(LAND_MQ && LAND_MQ.matches); document.body.classList.toggle("land", land); placeColumns();
 if (LAND_MQ) { if (LAND_MQ.addEventListener) LAND_MQ.addEventListener("change", applyOrientation); else if (LAND_MQ.addListener) LAND_MQ.addListener(applyOrientation); }
