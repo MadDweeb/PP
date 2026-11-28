@@ -176,15 +176,18 @@ function dynPlay() {
     }
   }
   for (const b of g.balls) s += numBall(b, b.n);
-  if (call && call.ball != null && !A) { const b = g.balls.find(x => x.n === call.ball); if (b) s += ring(b, "var(--marker)", .95, 2.6).replace(`r="${R_BALL}"`, `r="${R_BALL + .7}"`) + pulseRing(toSvg(b), R_BALL + .7); }
+  /* 9- and 10-ball: the lowest ball, which must be hit first, pulses. 8-ball: the called ball does. */
+  const low = g.kind !== "8" && !g.over ? g.balls.find(b => b.n === lowestBall(g)) : null;
+  if (low) s += ring(low, "#ffffff", .95, 2.4).replace(`r="${R_BALL}"`, `r="${R_BALL + .7}"`) + pulseRing(toSvg(low), R_BALL + .7, "#ffffff");
+  if (call && call.ball != null) { const b = g.balls.find(x => x.n === call.ball); if (b) s += ring(b, "var(--marker)", .95, 2.6).replace(`r="${R_BALL}"`, `r="${R_BALL + (b === low ? 1.3 : .7)}"`) + (low ? "" : pulseRing(toSvg(b), R_BALL + .7)); }
   if (g.cb) s += cueBallSvg(g.cb, !!g.inHand && !g.over);
   return s;
 }
-/* a ring that swells and fades round the called ball and pocket. The table is redrawn often while you aim, so each new ring
+/* a ring that swells and fades round the ball to hit (or the called ball) and the called pocket. The table is redrawn often while you aim, so each new ring
    starts at the same point in the beat (a negative delay) and the pulse runs on smoothly instead of restarting. */
 const PULSE_MS = 1400;
-function pulseRing(c, r) {
-  return `<circle class="pulse" cx="${c.x.toFixed(2)}" cy="${c.y.toFixed(2)}" r="${r.toFixed(2)}" fill="none" stroke="var(--marker)" stroke-width="2.2" vector-effect="non-scaling-stroke" style="animation-delay:-${Math.round(performance.now() % PULSE_MS)}ms"/>`;
+function pulseRing(c, r, col = "var(--marker)") {
+  return `<circle class="pulse" cx="${c.x.toFixed(2)}" cy="${c.y.toFixed(2)}" r="${r.toFixed(2)}" fill="none" stroke="${col}" stroke-width="2.2" vector-effect="non-scaling-stroke" style="animation-delay:-${Math.round(performance.now() % PULSE_MS)}ms"/>`;
 }
 /* straight-line first contact (used only to show the aim at the break, where paths are hidden) */
 function rayFirst(cb, aim, balls) {
