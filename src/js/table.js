@@ -1,6 +1,7 @@
 // Drawing the table and balls, touch handling on it, and the pocket zoom sheet.
 /* ---------- table drawing ---------- */
 const NS = "http://www.w3.org/2000/svg";
+let pScene = null;   // Play's kept drawing (play.js)
 function staticTable() {
   const { W, L } = settings; const P = pockets();
   let g = `<rect x="${-RAIL}" y="${-RAIL}" width="${W + 2 * RAIL}" height="${L + 2 * RAIL}" rx="2.2" fill="var(--rail)"/>`;
@@ -155,11 +156,18 @@ function buildTable() {
   const svg = $("tbl");
   svg.setAttribute("viewBox", viewBox());
   svg.style.aspectRatio = aspect();
-  svg.innerHTML = `<g transform="${rotAttr()}"><g id="tblContent"><g>${staticTable()}</g><g id="tDyn"></g></g></g>`;
+  svg.innerHTML = `<g transform="${rotAttr()}"><g id="tblContent"><g id="tStatic">${staticTable()}</g><g id="tDyn"></g></g></g>`;
   $("loupeRot").setAttribute("transform", rotAttr());
   renderTable();
 }
-function renderTable() { const d = $("tDyn"); if (d) d.innerHTML = dynTable(); }
+/* Play keeps its drawing between frames (see drawPlay); the other modes are drawn from markup, and the page is only
+   touched when the markup changes */
+function renderTable() {
+  const d = $("tDyn"); if (!d) return;
+  if (playMode()) return drawPlay();
+  pScene = null; const h = dynTable();
+  if (d._h !== h) { d._h = h; d.innerHTML = h; }
+}
 
 /* ---------- pointer handling on the table ---------- */
 function svgPt(svg, e, el) {
@@ -221,7 +229,7 @@ function onTableMove(e) {
 function onTableUp(e) {
   if (playMode()) return playUp(e);
   if (!drag || e.pointerId !== drag.id) return;
-  drag = null; $("loupe").hidden = true; saveWork(); renderLog();
+  drag = null; hideLoupe(); saveWork(); renderLog();
 }
 /* wrapBox: the table area's box, when the caller already has it (Play measures it once per drag, so a move never forces a layout) */
 function showLoupe(p, e, at, wrapBox) {
@@ -232,7 +240,13 @@ function showLoupe(p, e, at, wrapBox) {
   const leftSide = e.clientX - wrap.left > wrap.width / 2;
   l.style.left = leftSide ? "6px" : "auto"; l.style.right = leftSide ? "auto" : "6px";
   l.style.top = (e.clientY - wrap.top < 160) ? (wrap.height - 140) + "px" : "6px";
+  /* the magnifier copies the table only while it shows: a copy is rebuilt whenever the table changes */
+  if (l.hidden) for (const u of $("loupeRot").querySelectorAll("use")) u.setAttribute("href", u.dataset.href);
   l.hidden = false;
+}
+function hideLoupe() {
+  const l = $("loupe"); if (l.hidden) return;
+  l.hidden = true; for (const u of $("loupeRot").querySelectorAll("use")) u.removeAttribute("href");
 }
 
 /* ---------- pocket zoom ---------- */

@@ -17,7 +17,7 @@ function ghostHit() {
 function simParams() { return Object.assign({}, tune, { W: settings.W, L: settings.L, wc: settings.wc, ws: settings.ws }, simBrk() || playBreakNow() ? { vmax: tune.vbreak || BREAK_VMAX } : {}); }
 function simInputs() { return [S.simKind, S.cb, S.ob, S.target, S.pocket, S.tip, S.speedPct, S.hit, S.rack, settings.W, settings.L, settings.wc, settings.ws, tuneKey()]; }
 /* one break: optional loose rack and stroke wobble for Run 50 */
-function simBreakRun(seed, wobble) {
+function simBreakJob(seed, wobble) {
   const rnd = seededRnd(seed), rack = rackBalls(S.rack), head = rack[0];
   if (wobble) {   // gaps of up to 0.08 in between balls, and a small random shift, so no two racks are the same
     const gap = .02 + rnd() * .06, k = (2 * R_BALL + gap) / (2 * R_BALL);
@@ -27,11 +27,11 @@ function simBreakRun(seed, wobble) {
   const aim = breakAimAngle(S.cb, rackBalls(S.rack)[0], S.hit || 0) + j() * .15 * Math.PI / 180;
   const speed = Math.max(0, Math.min(1, S.speedPct / 100 * (1 + j() * .02)));
   const tip = { x: S.tip.x + j() * .02, y: S.tip.y + j() * .02 };
-  const r = window.PoolPhysics.simulate({ balls: [{ id: "cb", x: S.cb.x, y: S.cb.y }].concat(rack.map(b => ({ id: "b" + b.n, x: b.x, y: b.y }))), cue: 0, aim, tip, speed, tMax: 25, sample: 1 / 60, seed }, simParams());
-  r.balls.forEach((b, i) => { b.n = i ? rack[i - 1].n : 0; });
-  r.kind = "break"; r.rack = rack;
-  return r;
+  const spec = { balls: [{ id: "cb", x: S.cb.x, y: S.cb.y }].concat(rack.map(b => ({ id: "b" + b.n, x: b.x, y: b.y }))), cue: 0, aim, tip, speed, tMax: 25, sample: 1 / 60, seed };
+  const finish = r => { r.balls.forEach((b, i) => { b.n = i ? rack[i - 1].n : 0; }); r.kind = "break"; r.rack = rack; return r; };
+  return { spec, params: simParams(), finish };
 }
+function simBreakRun(seed, wobble) { const j = simBreakJob(seed, wobble); return j.finish(window.PoolPhysics.simulate(j.spec, j.params)); }
 function seededRnd(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function simRun() {
   if (!S.cb || !window.PoolPhysics) return null;
@@ -42,17 +42,40 @@ function simRun() {
   r.kind = "shot";
   return r;
 }
-/* the result for what is on screen now: shots run every time; breaks at most about 11 times a second while you drag */
+/* The result for what is on screen now. Shots run every time. A break is worked out off the page when it can be (the
+   last one stays on screen until the new one arrives), else here at most about 11 times a second while you drag. */
+let simWant = null, simRedraw = 0;
 function simLive() {
   const key = JSON.stringify(simInputs()), kind = simBrk() ? "break" : "shot";
   if (key === simKey && simRes) return simRes;
   if (sum50) { runTok++; sum50 = null; renderQuick(); }
+  const keep = () => simRes && simRes.kind === kind ? simRes : null;
+  if (kind === "break") {
+    if (key === simWant) return keep();
+    const j = simBreakJob(1, false);
+    if (physAsk("sim", j.spec, j.params, r => simGot(key, j.finish(r)))) { simWant = key; return keep(); }
+  }
   const now = performance.now();
   if (kind === "shot" || !simRes || simRes.kind !== kind || now - simLast > 90) {
     clearTimeout(simT); simRes = simRun(); simKey = key; simLast = performance.now();
   } else {
     clearTimeout(simT); simT = setTimeout(() => { renderTable(); renderSimRes(); }, 95 - (now - simLast));
   }
+  return simRes;
+}
+function simGot(key, r) {
+  if (simWant === key) simWant = null;
+  simRes = r; simKey = key;
+  if (!simRedraw) simRedraw = requestAnimationFrame(() => {
+    simRedraw = 0;
+    if (!simMode() || playMode() || simAnim || JSON.stringify(simInputs()) !== simKey) return;
+    renderTable(); renderSimRes();
+  });
+}
+/* the run for the shot about to be played: exactly what is set up now, never an older one still on screen */
+function simNow() {
+  const key = JSON.stringify(simInputs());
+  if (!(simRes && simKey === key)) { simRes = simRun(); simKey = key; simLast = performance.now(); }
   return simRes;
 }
 /* stopping a replay early still finishes the shot: a Play shot is then refereed as it would have ended */
@@ -68,7 +91,7 @@ function simPlay(r, done) {
     if (!simAnim) return;
     const t = reduce ? r.t : (now - t0) / 1000;
     for (const b of r.balls) {
-      let i = b.path.findIndex(q => q.t > t); if (i < 0) i = b.path.length; i = Math.max(0, i - 1);
+      let i = simAnim.i[b.id] || 0; while (i + 1 < b.path.length && b.path[i + 1].t <= t) i++;   // the last point reached; time only goes forward
       simAnim.i[b.id] = i; simAnim.pos[b.id] = b.potted && i >= b.path.length - 1 ? null : b.path[i];
     }
     renderTable();
@@ -79,15 +102,21 @@ function simPlay(r, done) {
 }
 function simQuick(k) {
   if (k === "paths") { S.simPaths = S.simPaths === false; saveWork(); renderTable(); renderQuick(); return; }
-  if (k === "shoot") { if (simAnim) { simStopAnim(); renderTable(); return; } const r = simLive(); if (r) simPlay(r); return; }
+  if (k === "shoot") { if (simAnim) { simStopAnim(); renderTable(); return; } const r = simNow(); if (r) simPlay(r); return; }
   if (k === "run50") {
     if (sum50 && sum50.done < sum50.n) { runTok++; sum50 = null; renderQuick(); renderSimRes(); renderTable(); return; }
     simStopAnim();
     const tok = ++runTok;
     sum50 = { n: 50, done: 0, made: 0, some: 0, game: 0, scratch: 0, legal: 0, oneMade: 0, pockets: {}, ends: [], key: simKey };
+    /* each break runs off the page when it can, so the page stays responsive while the 50 run */
     const one = () => {
       if (tok !== runTok || !sum50) return;
-      const r = simBreakRun((Math.random() * 2 ** 31) >>> 0, true), st = simBreakStats(r), m = sum50;
+      const j = simBreakJob((Math.random() * 2 ** 31) >>> 0, true);
+      if (!physAsk("run50", j.spec, j.params, r => tally(j.finish(r)))) tally(j.finish(window.PoolPhysics.simulate(j.spec, j.params)));
+    };
+    const tally = r => {
+      if (tok !== runTok || !sum50) return;
+      const st = simBreakStats(r), m = sum50;
       m.done++; m.made += st.made.length; if (st.made.length) m.some++; if (st.game) m.game++; if (st.scratch) m.scratch++; if (st.legal) m.legal++; if (st.oneMade) m.oneMade++;
       for (const b of st.made) m.pockets[b.potted] = (m.pockets[b.potted] || 0) + 1;
       const last = st.cb.path[st.cb.path.length - 1];
@@ -214,7 +243,6 @@ function thinPath(pts, tol = .03) {
 }
 const pathD = pts => thinPath(pts).map((q, i) => { const v = toSvg(q); return (i ? "L" : "M") + v.x.toFixed(2) + " " + v.y.toFixed(2); }).join("");
 function dynSim() {
-  if (playMode()) return dynPlay();
   const r = simLive(), A = simAnim, paths = S.simPaths !== false; let g = "";
   const dashed = (pts, col, w, op) => `<path d="${pathD(pts)}" fill="none" stroke="${col}" stroke-width="${w}" stroke-opacity="${op}" ${A ? "" : 'stroke-dasharray="5 3"'} stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
   const ring = (p, col, op) => { const q = toSvg(p); return `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="none" stroke="${col}" stroke-opacity="${op}" stroke-width="2" vector-effect="non-scaling-stroke"/>`; };

@@ -276,7 +276,7 @@ function renderSpeed() {
 function setSpeed(p) {
   p = Math.max(0, Math.min(100, Math.round(p)));
   if (p === S.speedPct) return;
-  S.speedPct = p; S.speed = speedOf(p); renderSpeed(); saveWork();
+  S.speedPct = p; S.speed = speedOf(p); renderSpeed(); saveWorkLater();
   if (brkMode()) { renderTable(); renderPredText(); }
   if (simMode()) { if (!playMode()) simStopAnim(); renderTable(); renderSimRes(); }
 }
