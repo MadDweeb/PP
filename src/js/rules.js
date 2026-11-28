@@ -105,11 +105,11 @@ function ref(g0, f, ctx) {
   const madeN = f.pocketed.map(b => b.n), downN = madeN.concat(f.off);
   const fouls = [];
   const legal = legalFirst(g);
-  if (f.cbPocket) fouls.push("Scratch in the " + (POCKET_NAMES[f.cbPocket] || f.cbPocket).toLowerCase() + " pocket");
+  if (f.cbPocket) fouls.push("Scratch");
   if (f.cbOff) fouls.push("The cue ball left the table");
   if (!push) {
     if (f.first == null) fouls.push("The cue ball didn't hit a ball");
-    else if (!legal.includes(f.first)) fouls.push(k === "8" ? (f.first === 8 ? "Hit the 8 first" : `Hit the ${f.first} first, which isn't your group`) : `Hit the ${f.first} first, not the ${legal[0]}`);
+    else if (!legal.includes(f.first)) fouls.push("Wrong ball contacted");
     if (!isBreak && f.first != null && !madeN.length && !f.rail) fouls.push("No ball reached a rail after contact");
   }
   for (const n of f.off) fouls.push(`The ${n} left the table`);
