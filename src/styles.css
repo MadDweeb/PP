@@ -543,6 +543,8 @@ body.fs #playBar .callout { position: static; pointer-events: auto; }
 /* notes written as a list */
 .notelist { margin: 4px 0 0; padding-left: 18px; font-size: 0.8125rem; color: var(--muted); line-height: 1.45; }
 .notelist li { margin: 2px 0; }
+#backupPanel .note { margin: 0 0 6px; }
+#backupPanel .notelist { margin: 0 0 10px; }
 .notelist b { color: var(--ink); font-weight: 600; }
 /* in or out of the zone, in colour */
 .picker i { font-style: normal; font-weight: 700; }

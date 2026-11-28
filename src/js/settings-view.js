@@ -73,7 +73,13 @@ function renderSettings() {
   </div>
   <div class="panel" id="backupPanel">
     <h2>Backup</h2>
-    <p class="note">One file with everything: ${shots.filter(s => !isBrk(s)).length} shots, ${shots.filter(isBrk).length} breaks, ${myDrills.length} drills, your settings and your table tuning. Keep it in your files or cloud drive; restore it here or on a new phone. ${settings.lastBackup ? `Last backup: <b>${esc(new Date(settings.lastBackup).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }))}</b>.` : "<b>No backup yet.</b>"}</p>
+    <p class="note">Everything in one go: <b>${shots.filter(s => !isBrk(s)).length} shots</b>, <b>${shots.filter(isBrk).length} breaks</b>, <b>${myDrills.length} drills</b>, your settings and your table tuning. Restore it here or on a new phone.</p>
+    <p class="note">${settings.lastBackup ? `Last backup: <b>${esc(new Date(settings.lastBackup).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }))}</b>` : "<b>No backup yet.</b>"}</p>
+    <ul class="notelist">
+      <li><b>Save backup file</b> saves a .json file. Keep it in your files or cloud drive, then use <b>Restore from a file</b> to open it.</li>
+      <li><b>Copy backup</b> copies the same backup as text. Paste it somewhere safe, such as a note or a chat to yourself, then use <b>Paste a backup</b> to bring it back.</li>
+      <li>Both hold exactly the same data. After either one, you choose <b>Add</b> or <b>Replace</b>.</li>
+    </ul>
     <div class="row"><button class="btn primary" id="backupSave">Save backup file</button><button class="btn" id="backupCopy">Copy backup</button></div>
     <textarea id="backupBox" rows="4" hidden aria-label="Backup text"></textarea>
     <div class="row"><label class="btn" for="restoreFile">Restore from a file…</label><input type="file" id="restoreFile" accept=".json,application/json" hidden><button class="btn" id="restorePasteToggle">Paste a backup</button></div>
