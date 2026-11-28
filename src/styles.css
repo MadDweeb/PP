@@ -408,6 +408,10 @@ details.fold[open] > summary { margin-bottom: 0; }
 .quickbar .qs.fine small { font-size: 0.8125rem; color: var(--muted); }
 .quickbar .qs.fine { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .quickbar .qs.wide { flex: 1 0 100%; }
+/* Play: one-word buttons, so a shorter bar (still a 44px touch target); the 0.1° sits beside the arrow */
+.quickbar.play .qs { min-height: 44px; padding: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.quickbar.play .qs.fine { flex-direction: row; gap: 3px; flex-basis: 64px; font-size: 1.0625rem; }
+.quickbar.play .qs.fine small { display: inline; font-size: 0.75rem; }
 .callrow { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 .calllbl small { color: var(--muted); }
 .chip.bnchip { padding: 4px 6px; min-width: 44px; justify-content: center; display: inline-flex; align-items: center; }
