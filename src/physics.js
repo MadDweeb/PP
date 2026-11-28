@@ -253,21 +253,31 @@ function simulate(spec, params) {
   let seed = (spec.seed == null ? 12345 : spec.seed) >>> 0;
   const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let x = seed; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
   let t = 0, nextS = sample;
+  const N = balls.length, R4 = 4 * R * R;
   while (t < tMax) {
     let moving = false;
     for (const b of balls) { b._t = t; clothStep(b, dt, P); }
     // find touching pairs, then resolve them in random order so that a ball touching two others
     // at once (a racked ball) doesn't always favour the same side
-    const hits = [];
-    for (let i = 0; i < balls.length; i++) for (let j = i + 1; j < balls.length; j++) {
-      const A = balls[i], B = balls[j];
-      if (A.potted || B.potted) continue;
-      if (A.state === "still" && B.state === "still") continue;
-      const dx = B.x - A.x, dy = B.y - A.y;
-      if (dx * dx + dy * dy < 4 * R * R) hits.push([A, B]);
+    // Only pairs with a moving ball can touch, so each moving ball is checked against the rest (two moving balls once).
+    // The pairs are then put in the same order as checking every pair would give, so the shuffle and the result don't change.
+    let hits = null;
+    for (let i = 0; i < N; i++) {
+      const A = balls[i];
+      if (A.potted || A.state === "still") continue;
+      for (let j = 0; j < N; j++) {
+        if (j === i) continue;
+        const B = balls[j];
+        if (B.potted || (j < i && B.state !== "still")) continue;   // two moving balls: counted once, from the lower index
+        const dx = B.x - A.x, dy = B.y - A.y;
+        if (dx * dx + dy * dy < R4) (hits || (hits = [])).push(i < j ? i * N + j : j * N + i);
+      }
     }
-    for (let k = hits.length - 1; k > 0; k--) { const m = Math.floor(rnd() * (k + 1)); [hits[k], hits[m]] = [hits[m], hits[k]]; }
-    for (const [A, B] of hits) ballBall(A, B, P, t);
+    if (hits) {
+      if (hits.length > 1) hits.sort((a, b) => a - b);
+      for (let k = hits.length - 1; k > 0; k--) { const m = Math.floor(rnd() * (k + 1)); const h = hits[k]; hits[k] = hits[m]; hits[m] = h; }
+      for (const h of hits) ballBall(balls[Math.floor(h / N)], balls[h % N], P, t);
+    }
     for (const b of balls) railStep(b, geo, P, t);
     for (const b of balls) if (b.state !== "still") moving = true;
     t += dt;

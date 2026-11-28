@@ -102,15 +102,20 @@ const cuePlayer = () => !S.game || soloPlay() ? 0 : S.game.turn;
 /* Behind the cue ball along the aim: the shaft (28.9 in) and the first 22.7 in of the butt. The butt's pieces are drawn 23% long
    (a tenth of the shaft's length moved over to the butt, then the butt made a tenth longer). */
 const CUE_SHAFT_TABLE = 28.9, CUE_BUTT_TABLE = 22.7, CUE_SHAFT_MODEL = 28.7, CUE_BUTT_SCALE = 1.23;
-function cueStickSvg(cb, aim) {
-  const g = S.game, q = toSvg(cb), deg = -(aim + Math.PI) * 180 / Math.PI;
-  return `<g transform="translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)">${drawCue(cueLook(g ? cuePlayer() : 0), CUE_SHAFT_TABLE, CUE_BUTT_TABLE, 1, CUE_BUTT_SCALE)}</g>`;
+/* the cue on the table, in parts: its look (drawn once) and where it lies (changes as you aim) */
+function cueStickParts(cb, aim) {
+  const g = S.game, q = toSvg(cb), deg = -(aim + Math.PI) * 180 / Math.PI, look = cueLook(g ? cuePlayer() : 0);
+  return {
+    key: JSON.stringify(look), inner: () => drawCue(look, CUE_SHAFT_TABLE, CUE_BUTT_TABLE, 1, CUE_BUTT_SCALE),
+    t: `translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)`,
+  };
 }
 /* the shooter's whole cue standing upright beside the table (tip at the top); tap it to change it */
 function renderCueSide() {
   const el = $("vcue"); el.hidden = !playMode(); if (!playMode()) return;
   const p = cuePlayer();
-  $("cueModel").innerHTML = `<g transform="rotate(90)">${drawCue(cueLook(p), CUE_SHAFT_MODEL, null, 2, CUE_BUTT_SCALE)}</g>`;
+  const m = $("cueModel"), k = JSON.stringify(cueLook(p));
+  if (m._k !== k) { m._k = k; m.innerHTML = `<g transform="rotate(90)">${drawCue(cueLook(p), CUE_SHAFT_MODEL, null, 2, CUE_BUTT_SCALE)}</g>`; }
   $("cueModel").setAttribute("aria-label", soloPlay() ? "Your cue. Tap to change it." : `${playerName(p)}'s cue. Tap to change it.`);
 }
 let cueFor = 0;

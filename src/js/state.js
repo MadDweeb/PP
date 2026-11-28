@@ -1,4 +1,5 @@
 // App state: settings, the shot being set up (S), Log modes, shots and drills, and the store that saves them.
+let saveWorkT = 0;   // a save waiting (saveWorkLater)
 const settings = Object.assign({ W: 50, L: 100, wc: 4.25, ws: 4.75, grid: "8x4", labels: false, theme: "system", units: "imperial" }, COLOR_DEFAULTS, ls.get(LS.settings, {}));
 const S = Object.assign({
   drill: "", drillId: "", tz: "point", sessionId: "", sessionStart: "", lastShotTs: 0, vspin: "stun", side: "C", speed: 2, pocket: "FR", tool: "result",
@@ -140,5 +141,10 @@ const store = {
     myDrills = myDrills.filter(d => d.id !== id); ls.set(LS.drills, myDrills);
   }
 };
-function saveWork() { ls.set(LS.work, S); }
+function saveWork() { clearTimeout(saveWorkT); saveWorkT = 0; ls.set(LS.work, S); }
+/* For changes that come many times a second (dragging the speed bar, holding a fine-aim button): save once things
+   settle rather than writing the whole work area, Play's undo history and all, on every move. Leaving the page saves at once. */
+function saveWorkLater() { if (!saveWorkT) saveWorkT = setTimeout(saveWork, 400); }
+addEventListener("pagehide", () => { if (saveWorkT) saveWork(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && saveWorkT) saveWork(); });
 function saveSettings() { ls.set(LS.settings, settings); }

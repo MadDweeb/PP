@@ -96,6 +96,9 @@ function schedulePrediction() {
   const key = JSON.stringify(predInputs());
   if (key === predKey) return;
   predKey = key; clearTimeout(predT);
+  /* off the page when it can: the newest setup is the one worked out, and the screen updates when it arrives */
+  const j = predJob();
+  if (physAsk("pred", j.spec, j.params, r => { pred = predFrom(r); pred.key = key; predLast = performance.now(); if (brkMode()) { renderTable(); renderPredText(); } })) return;
   const wait = Math.max(0, 90 - (performance.now() - predLast));      // at most about 11 updates a second while you drag
   predT = setTimeout(() => { if (JSON.stringify(predInputs()) !== predKey) return; pred = runPrediction(); pred.key = predKey; predLast = performance.now(); renderTable(); renderPredText(); }, wait);
 }
@@ -136,11 +139,14 @@ function breakAimAngle(cb, head, h) {
   const d = unit(sub(head, cb)), right = { x: d.y, y: -d.x }, aimPt = add(head, mul(right, h * 2 * R_BALL));
   return Math.atan2(aimPt.y - cb.y, aimPt.x - cb.x);
 }
-function runPrediction() {
-  const PP = window.PoolPhysics, rack = rackBalls(S.rack);
+function predJob() {
+  const rack = rackBalls(S.rack);
   const balls = [{ id: "cb", x: S.cb.x, y: S.cb.y }].concat(rack.map(b => ({ id: "b" + b.n, x: b.x, y: b.y })));
-  const r = PP.simulate({ balls, cue: 0, aim: breakAimAngle(S.cb, rack[0], S.hit || 0), tip: S.tip, speed: S.speedPct / 100, tMax: 15, sample: 1 / 60, seed: 1 },
-    Object.assign({}, tune, { W: settings.W, L: settings.L, wc: settings.wc, ws: settings.ws, vmax: tune.vbreak || BREAK_VMAX }));
+  return { spec: { balls, cue: 0, aim: breakAimAngle(S.cb, rack[0], S.hit || 0), tip: S.tip, speed: S.speedPct / 100, tMax: 15, sample: 1 / 60, seed: 1 },
+    params: Object.assign({}, tune, { W: settings.W, L: settings.L, wc: settings.wc, ws: settings.ws, vmax: tune.vbreak || BREAK_VMAX }) };
+}
+function runPrediction() { const j = predJob(); return predFrom(window.PoolPhysics.simulate(j.spec, j.params)); }
+function predFrom(r) {
   const one = r.balls.find(b => b.id === "b1"), cb = r.balls[0];
   // where the 1-ball first reaches the target side rail, from its cushion and pocket events (path samples can skip a bounce)
   const nearL = p => p.x <= R_BALL + .05, nearR = p => p.x >= settings.W - R_BALL - .05;

@@ -18,7 +18,7 @@ SRC, DIST = ROOT / "src", ROOT / "dist"
 
 # The order matters: a file can use names from files above it while the page loads.
 JS_ORDER = [
-    "constants.js", "state.js", "util.js", "appearance.js", "geometry.js",
+    "constants.js", "state.js", "util.js", "physworker.js", "appearance.js", "geometry.js",
     "rules.js", "table.js", "log.js", "records.js", "csv.js", "export.js", "feedback.js",
     "backup.js", "stats.js", "stats-breaks.js", "shots-list.js", "settings-view.js",
     "examples.js", "cutbreak.js", "simulator.js", "cue.js", "play.js", "views.js", "device.js", "events.js", "boot.js",
@@ -41,7 +41,7 @@ def app_js():
 
 def fragment():
     return (read("head.html") + "<style>\n" + read("styles.css") + "</style>\n\n" + read("markup.html") +
-            "\n<script>\n" + read("physics.js") + "</script>\n<script>\n(() => {\n\"use strict\";\n" + app_js() + "})();\n</script>\n")
+            "\n<script id=\"physSrc\">\n" + read("physics.js") + "</script>\n<script>\n(() => {\n\"use strict\";\n" + app_js() + "})();\n</script>\n")
 
 
 def version():

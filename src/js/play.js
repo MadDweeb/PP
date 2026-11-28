@@ -82,16 +82,49 @@ function playRun() {
   const g = S.game; if (!g || !g.cb || !window.PoolPhysics || g.over) return null;
   const r = window.PoolPhysics.simulate(playSpec(g), simParams()); r.kind = "play"; return r;
 }
-/* the prediction for what is on screen: worked out again up to about 25 times a second while you drag, less on a slow phone */
+const playRackKey = g => [JSON.stringify(g.balls), g.phase, g.rackNo, g.shots].join("|");
+const playKeyOf = g => JSON.stringify([g.cb, g.aim, S.tip, S.speedPct, g.balls, g.phase, g.rackNo, g.shots, settings.W, settings.L, settings.wc, settings.ws, tuneKey()]);
+/* The prediction for what is on screen. With a worker it is worked out off the page: until it comes back the last one
+   stays on screen, so the cue follows the finger at full speed and the paths catch up. Without one it runs here, up to
+   about 25 times a second while you drag, less on a slow phone. */
+let playWant = null, playRedraw = 0;
 function playLive() {
   const g = S.game; if (!g || !g.cb) return null;
-  const key = JSON.stringify([g.cb, g.aim, S.tip, S.speedPct, g.balls, g.phase, settings.W, settings.L, settings.wc, settings.ws, tuneKey()]);
+  const key = playKeyOf(g);
   if (key === playKey && playRes) return playRes;
+  /* while the new one is worked out, the last one stays up, but only if it was for these balls: a late one from
+     before the last shot must not show over the new layout */
+  const stale = () => playRes && playRes.rackKey === playRackKey(g) ? playRes : null;
+  if (key === playWant) return stale();
+  const rk = playRackKey(g);
+  if (physAsk("play", playSpec(g), simParams(), r => playGot(key, r, rk))) { playWant = key; return stale(); }
   const now = performance.now();
   /* a slow phone gets fewer updates rather than a stuck screen: leave the phone at least half again as long as the last one took to draw in between */
   if (!playRes || now - playLast > playGap) { clearTimeout(playT); playRes = playRun(); playKey = key; const t = performance.now(); playGap = Math.max(40, (t - now) * 1.6); playLast = t; }
   else { clearTimeout(playT); playT = setTimeout(() => requestAnimationFrame(() => { playLoupe(); renderTable(); renderPlayInfo(); }), playGap + 5 - (now - playLast)); }
   return playRes;
+}
+/* a prediction came back from the worker: show it on the next frame (once, however many arrive) */
+function playGot(key, r, rk) {
+  if (playWant === key) playWant = null;
+  r.kind = "play"; r.rackKey = rk; playRes = r; playKey = key;
+  if (!playRedraw) playRedraw = requestAnimationFrame(() => {
+    playRedraw = 0;
+    if (!playMode() || simAnim || !S.game || playKeyOf(S.game) !== playKey) return;
+    playLoupe(); renderTable(); renderPlayInfo();
+  });
+}
+/* the break shows no paths, but working it out early means Break starts the moment it is tapped */
+function playPrefetch() {
+  const g = S.game; if (!g || !g.cb || g.over || g.choice || simAnim) return;
+  const key = playKeyOf(g); if (key === playKey || key === playWant) return;
+  const rk = playRackKey(g);
+  if (physAsk("play", playSpec(g), simParams(), r => playGot(key, r, rk))) playWant = key;
+}
+/* the run for the shot about to be played: the prediction on screen when it is for exactly this shot */
+function playRunNow() {
+  const g = S.game; if (!g) return null;
+  return playRes && playKey === playKeyOf(g) ? playRes : playRun();
 }
 /* the first ball the cue ball hits in the prediction, and the cue ball's centre at that moment (the ghost ball) */
 function playContact(r) {
@@ -143,45 +176,99 @@ function kitchenSvg(g) {
   return `<rect x="0" y="${t.y}" width="${settings.W}" height="${settings.L / 4}" fill="#ffffff" fill-opacity=".07" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.2" stroke-dasharray="5 3" vector-effect="non-scaling-stroke"/>`;
 }
 const playCol = n => n ? BALL_COL[n] : "#ffffff";
-function dynPlay() {
-  const g = ensureGame(), A = simAnim, mode = pathMode(); let s = kitchenSvg(g);
-  const dash = (pts, col, w, op) => `<path d="${pathD(pts)}" fill="none" stroke="${col}" stroke-width="${w}" stroke-opacity="${op}" ${A ? "" : 'stroke-dasharray="5 3"'} stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
-  const ring = (p, col, op, w) => { const q = toSvg(p); return `<circle cx="${q.x}" cy="${q.y}" r="${R_BALL}" fill="none" stroke="${col}" stroke-opacity="${op}" stroke-width="${w || 2}" vector-effect="non-scaling-stroke"/>`; };
-  if (A && A.r.kind === "play") {
+/* ---------- drawing the Play table ----------
+   The table is drawn in layers whose elements are kept from frame to frame. A frame changes only what moved: a ball's
+   position, the cue's angle, the paths. So a phone repaints a small part of the table instead of building it all again,
+   which matters most in full screen, where the table has the most pixels. */
+function playScene() {
+  const d = $("tDyn"); if (!d) return null;
+  if (pScene && pScene.root === d && d.firstChild === pScene.under) return pScene;
+  d.innerHTML = "<g></g><g></g><g></g><g></g><g></g><g></g><g></g>"; d._h = null;
+  const [under, cue, paths, trails, balls, over, top] = d.children;
+  pScene = { root: d, under, cue, paths, trails, balls, over, top, html: {}, ball: {}, cueKey: null, cueT: "", trail: null, stamp: 0 };
+  return pScene;
+}
+/* a layer drawn from markup: only touched when its markup changes */
+function scHtml(sc, k, h) { if (sc.html[k] !== h) { sc.html[k] = h; sc[k].innerHTML = h; } }
+function svgEl(tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+/* a ball drawn once and then only moved; key says when its look changes (a cue ball in hand gets a ring) */
+function scBall(sc, layer, id, p, key, inner) {
+  let o = sc.ball[id];
+  if (!o || o.el.parentNode !== layer) { if (o) o.el.remove(); o = sc.ball[id] = { el: svgEl("g", {}), key: null, t: "", on: true }; layer.appendChild(o.el); }
+  if (o.key !== key) { o.key = key; o.el.innerHTML = inner(); }
+  const q = toSvg(p), t = `translate(${q.x.toFixed(3)} ${q.y.toFixed(3)})`;
+  if (o.t !== t) { o.t = t; o.el.setAttribute("transform", t); }
+  if (!o.on) { o.on = true; o.el.removeAttribute("display"); }
+  o.stamp = sc.stamp;
+}
+const ORIGIN = () => ({ x: 0, y: settings.L });   // toSvg of this is (0, 0): a ball drawn here is moved by its transform
+/* the paths drawn behind the balls as they roll: each frame adds to the end of a short piece, and a full piece is left
+   as it is, so a frame draws a few new points instead of every path from the start */
+function scTrails(sc, A, mode) {
+  let T = sc.trail;
+  if (!T || T.r !== A.r) {
+    sc.trails.textContent = ""; T = sc.trail = { r: A.r, b: {} };
     for (const b of A.r.balls.slice().reverse()) {
       if (mode === "none" || mode === "ghost" || (mode === "cue" && b.id !== "cb")) continue;
-      const pts = b.path.slice(0, (A.i[b.id] || 0) + 1); if (pts.length > 1) s += dash(pts, playCol(b.id === "cb" ? 0 : +b.id.slice(1)), b.id === "cb" ? 2.2 : 1.6, .7);
-    }
-    for (const b of A.r.balls) { const q = A.pos[b.id]; if (!q) continue; s += b.id === "cb" ? cueBallSvg(q, false) : numBall(q, +b.id.slice(1)); }
-    return s;
-  }
-  const call = playCall(), P = pockets();
-  if (call && call.pocket && P[call.pocket]) { const pk = P[call.pocket], pc = toSvg(pk.c); s += `<circle cx="${pc.x}" cy="${pc.y}" r="${pk.w / 2 + 1}" fill="none" stroke="var(--marker)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>` }
-  const r = g.cb && !g.over && !g.choice ? (g.phase === "break" ? null : playLive()) : null, c = playContact(r);
-  if (g.cb && !g.over) {
-    // the cue stick behind the ball, along the aim
-    s += cueStickSvg(g.cb, g.aim);
-    if (g.phase === "break" && mode !== "none") {
-      const hit = rayFirst(g.cb, g.aim, g.balls);
-      if (hit) s += line(g.cb, hit.ghost, "#ffffff", "4 3", .7) + ring(hit.ghost, "#ffffff", .75, 1.4);
-    } else if (r) {
-      if (mode === "all") for (const b of r.balls.slice(1)) if (b.path.length > 1) s += dash(b.path, playCol(+b.id.slice(1)), 1.6, .85);
-      if (mode === "all" || mode === "cue") s += dash(r.balls[0].path, "#ffffff", 2.2, .9);
-      /* the ghost ball: where the cue ball meets the first ball, or else the first rail (or where it stops) */
-      const ghost = playGhost(r);
-      /* Ghost ball paths: the cue ball's own route up to the ghost ball, rails and all */
-      if (mode === "ghost" && ghost) s += dash(r.balls[0].path.filter(q => q.t == null || ghost.t == null || q.t < ghost.t).concat([ghost]), "#ffffff", 1.6, .8);
-      if (ghost && mode !== "none") s += ring(ghost, "#ffffff", .85, 1.4);
-      if (mode === "all") { for (const b of r.balls.slice(1)) if (b.path.length > 1 && !b.potted) s += ring(b.path[b.path.length - 1], playCol(+b.id.slice(1)), .9); if (!r.balls[0].potted) s += ring(r.balls[0].path[r.balls[0].path.length - 1], "#ffffff", .8); }
+      const g = svgEl("g", { fill: "none", stroke: playCol(b.id === "cb" ? 0 : +b.id.slice(1)), "stroke-width": b.id === "cb" ? 2.2 : 1.6, "stroke-opacity": .7, "stroke-linejoin": "round" });
+      sc.trails.appendChild(g); T.b[b.id] = { g, b, from: 0, upto: 0, el: null };
     }
   }
-  for (const b of g.balls) s += numBall(b, b.n);
-  /* 9- and 10-ball: a white ring round the lowest ball, which must be hit first. The called ball gets the marker colour. */
-  const low = g.kind !== "8" && !g.over ? g.balls.find(b => b.n === lowestBall(g)) : null;
-  if (low) s += ring(low, "#ffffff", .95, 2.4).replace(`r="${R_BALL}"`, `r="${R_BALL + .7}"`);
-  if (call && call.ball != null) { const b = g.balls.find(x => x.n === call.ball); if (b) s += ring(b, "var(--marker)", .95, 2.6).replace(`r="${R_BALL}"`, `r="${R_BALL + (b === low ? 1.3 : .7)}"`); }
-  if (g.cb) s += cueBallSvg(g.cb, !!g.inHand && !g.over);
-  return s;
+  for (const id in T.b) {
+    const s = T.b[id], i = A.i[id] || 0; if (i <= s.upto) continue;
+    if (!s.el || i - s.from > 24) { if (s.el) s.from = s.upto; s.el = svgEl("path", { "vector-effect": "non-scaling-stroke" }); s.g.appendChild(s.el); }
+    s.el.setAttribute("d", pathD(s.b.path.slice(s.from, i + 1))); s.upto = i;
+  }
+}
+function drawPlay() {
+  const sc = playScene(); if (!sc) return;
+  const g = ensureGame(), A = simAnim && simAnim.r.kind === "play" ? simAnim : null, mode = pathMode();
+  const ring = (p, col, op, w, r) => { const q = toSvg(p); return `<circle cx="${q.x}" cy="${q.y}" r="${r || R_BALL}" fill="none" stroke="${col}" stroke-opacity="${op}" stroke-width="${w || 2}" vector-effect="non-scaling-stroke"/>`; };
+  const dash = (pts, col, w, op) => `<path d="${pathD(pts)}" fill="none" stroke="${col}" stroke-width="${w}" stroke-opacity="${op}" stroke-dasharray="5 3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+  sc.stamp++;
+  let under = "", paths = "", over = "", cueOn = false;
+  if (A) {
+    scTrails(sc, A, mode);
+    for (const b of A.r.balls) { const q = A.pos[b.id]; if (!q) continue; if (b.id === "cb") scBall(sc, sc.top, "cb", q, "cb", () => cueBallSvg(ORIGIN(), false)); else { const n = +b.id.slice(1); scBall(sc, sc.balls, b.id, q, "n", () => numBall(ORIGIN(), n)); } }
+  } else {
+    if (sc.trail) { sc.trail = null; sc.trails.textContent = ""; }
+    under = kitchenSvg(g);
+    const call = playCall(), P = pockets();
+    if (call && call.pocket && P[call.pocket]) { const pk = P[call.pocket]; under += ring(pk.c, "var(--marker)", 1, 2.5, pk.w / 2 + 1); }
+    const r = g.cb && !g.over && !g.choice ? (g.phase === "break" ? null : playLive()) : null;
+    if (g.cb && !g.over) {
+      cueOn = true;
+      if (g.phase === "break" && mode !== "none") {
+        const hit = rayFirst(g.cb, g.aim, g.balls);
+        if (hit) paths += line(g.cb, hit.ghost, "#ffffff", "4 3", .7) + ring(hit.ghost, "#ffffff", .75, 1.4);
+      } else if (r) {
+        if (mode === "all") for (const b of r.balls.slice(1)) if (b.path.length > 1) paths += dash(b.path, playCol(+b.id.slice(1)), 1.6, .85);
+        if (mode === "all" || mode === "cue") paths += dash(r.balls[0].path, "#ffffff", 2.2, .9);
+        /* the ghost ball: where the cue ball meets the first ball, or else the first rail (or where it stops) */
+        const ghost = playGhost(r);
+        /* Ghost ball paths: the cue ball's own route up to the ghost ball, rails and all */
+        if (mode === "ghost" && ghost) paths += dash(r.balls[0].path.filter(q => q.t == null || ghost.t == null || q.t < ghost.t).concat([ghost]), "#ffffff", 1.6, .8);
+        if (ghost && mode !== "none") paths += ring(ghost, "#ffffff", .85, 1.4);
+        if (mode === "all") { for (const b of r.balls.slice(1)) if (b.path.length > 1 && !b.potted) paths += ring(b.path[b.path.length - 1], playCol(+b.id.slice(1)), .9); if (!r.balls[0].potted) paths += ring(r.balls[0].path[r.balls[0].path.length - 1], "#ffffff", .8); }
+      }
+      if (g.phase === "break") playPrefetch();
+    }
+    for (const b of g.balls) scBall(sc, sc.balls, "b" + b.n, b, "n", () => numBall(ORIGIN(), b.n));
+    /* 9- and 10-ball: a white ring round the lowest ball, which must be hit first. The called ball gets the marker colour. */
+    const low = g.kind !== "8" && !g.over ? g.balls.find(b => b.n === lowestBall(g)) : null;
+    if (low) over += ring(low, "#ffffff", .95, 2.4, R_BALL + .7);
+    if (call && call.ball != null) { const b = g.balls.find(x => x.n === call.ball); if (b) over += ring(b, "var(--marker)", .95, 2.6, R_BALL + (b === low ? 1.3 : .7)); }
+    if (g.cb) { const inHand = !!g.inHand && !g.over; scBall(sc, sc.top, "cb", g.cb, inHand ? "cb-hand" : "cb", () => cueBallSvg(ORIGIN(), inHand)); }
+  }
+  scHtml(sc, "under", under); scHtml(sc, "paths", paths); scHtml(sc, "over", over);
+  /* the cue: drawn once for each look, then only turned and moved */
+  if (cueOn) {
+    const c = cueStickParts(g.cb, g.aim);
+    if (sc.cueKey !== c.key) { sc.cueKey = c.key; sc.cue.innerHTML = `<g>${c.inner()}</g>`; sc.cueT = ""; }
+    if (sc.cueT !== c.t) { sc.cueT = c.t; sc.cue.firstChild.setAttribute("transform", c.t); }
+    if (sc.cue.hasAttribute("display")) sc.cue.removeAttribute("display");
+  } else if (!sc.cue.hasAttribute("display")) sc.cue.setAttribute("display", "none");
+  for (const id in sc.ball) { const o = sc.ball[id]; if (o.stamp !== sc.stamp && o.on) { o.on = false; o.el.setAttribute("display", "none"); } }
 }
 /* straight-line first contact (used only to show the aim at the break, where paths are hidden) */
 function rayFirst(cb, aim, balls) {
@@ -239,7 +326,8 @@ function renderGameCard() {
   if (log.length) h += `<div class="glog"><span class="k">Last shots</span><ol>${log.map(e => `<li class="${e.fouls && e.fouls.length ? "bad" : ""}"><b>Rack ${e.rack}, shot ${e.shot}:</b> ${esc(e.fouls && e.fouls.length ? "Foul. " + e.fouls.join(". ") : soloText(e.text) || "Shot played")}</li>`).join("")}</ol></div>`;
   h += `<div class="tunerow"><span>${esc(GAME_NAMES[g.kind])}, rack ${g.rackNo}</span><button class="btn small" data-play="newgame">${playConfirm === "newgame" ? "Tap again to reset the score" : "New game"}</button></div>`;
   h += `<details class="tunebox"><summary>The rules</summary><ul class="rules">${rulesText(g.kind).map(t => `<li>${esc(t)}</li>`).join("")}</ul></details>`;
-  el.innerHTML = h;
+  /* rebuilt only when it changes: it is asked for on every aim update, and a rebuild would close The rules and drop a name being typed */
+  if (el._h !== h) { el._h = h; el.innerHTML = h; }
   $("gameSub").textContent = `${soloPlay() ? "Solo practice" : "Two players on one phone"}, ${GAME_NAMES[g.kind]}, WPA rules`;
 }
 function rulesText(k) {
@@ -317,7 +405,7 @@ function hideCallout() { clearTimeout(calloutT); clearInterval(calloutTick); $("
 function playShoot() {
   const g = S.game; if (!g || !g.cb || g.over || g.choice || simAnim) return;
   hideCallout();
-  const r = playRun(); if (!r) return;
+  const r = playRunNow(); if (!r) return;
   const ctx = { push: playArm === "push" && pushAvailable(g), call: playCall(), W: settings.W, L: settings.L };
   simPlay(r, () => playApply(r, ctx)); renderPlayBar();
 }
@@ -404,7 +492,7 @@ function playFs(on, auto = false) {
     const leave = () => { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); };
     if (o && o.lock && !auto) o.lock("portrait").catch(() => {}).finally(() => setTimeout(leave, 150)); else leave();
   }
-  $("loupe").hidden = true; placeColumns(); buildTable(); renderLog(); updatePin(); scrollTo(0, 0);
+  hideLoupe(); placeColumns(); buildTable(); renderLog(); updatePin(); scrollTo(0, 0);
 }
 /* leaving the browser's full screen (back gesture, Esc) leaves ours, unless turning the phone put us in it: then the
    browser may never have gone full screen, and the layout stays until the phone is upright */
@@ -426,7 +514,7 @@ function fineStop() { clearTimeout(fineT); fineT = 0; }
 /* left = anticlockwise as you look at the screen */
 function nudgeAim(dir, deg) {
   const g = S.game; if (!g || !g.cb || simAnim) return;
-  g.aim += dir * deg * Math.PI / 180; saveWork(); renderTable(); renderPlayInfo();
+  g.aim += dir * deg * Math.PI / 180; saveWorkLater(); renderTable(); renderPlayInfo();
 }
 function playRack(k) {
   const g = S.game;
@@ -507,7 +595,7 @@ function playFrame() {
   renderTable(); renderPlayBar(); renderQuick();
 }
 function playUp(e) {
-  const d = playDrag; if (!d || d.id !== e.pointerId) return; playDrag = null; $("loupe").hidden = true;
+  const d = playDrag; if (!d || d.id !== e.pointerId) return; playDrag = null; hideLoupe();
   cancelAnimationFrame(playFrameReq); playFrameReq = 0;
   const g = S.game;
   if (d.kind === "aim" && !d.moved && e.type === "pointerup") { const p = svgPt($("tbl"), e, $("tblContent")); if (p && len(sub(p, g.cb)) >= AIM_DEAD) {

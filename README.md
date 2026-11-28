@@ -57,10 +57,11 @@ The app is a web app: HTML for the structure, CSS for the look, JavaScript for t
 - `src/head.html`: page title and fonts
 - `src/styles.css`: all styles
 - `src/markup.html`: the page structure (tabs, Log sections, sheets)
-- `src/physics.js`: the ball physics engine, a standalone module the tests load directly
+- `src/physics.js`: the ball physics engine, a standalone module the tests load directly. The page also runs it in a Web Worker (`src/js/physworker.js`, made from the same script) so predictions don't hold up dragging; where a worker isn't allowed it runs on the page.
 - `src/js/`: the app, one file per job. The build joins them in the order listed in `JS_ORDER` in `tools/build.py`, inside one function, so they share names as if they were one file. A file can use another file's functions anywhere, but a top-level value (`const`, `let`) only from a file above it.
   - Core files with no side effects, so the tests load them without a page: `constants.js`, `util.js` (helpers and units), `geometry.js` (pockets, zones, cut angle, pocket offset), `rules.js` (the Play referee), `csv.js`, `backup.js`, `stats.js`, `stats-breaks.js`
   - App state and storage: `state.js`
+  - Running the physics off the main thread: `physworker.js`
   - Screens and drawing: `appearance.js`, `table.js`, `log.js`, `records.js`, `export.js`, `feedback.js`, `shots-list.js`, `settings-view.js`, `examples.js`, `cutbreak.js`, `simulator.js`, `cue.js`, `play.js`, `views.js`
   - Wiring and start-up: `events.js`, `boot.js`
 - `src/sw.js`, `src/manifest.webmanifest`, `src/icon-*.png`: the installable app shell
