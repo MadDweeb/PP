@@ -157,9 +157,12 @@ function buildTable() {
   svg.style.aspectRatio = aspect();
   svg.innerHTML = `<g transform="${rotAttr()}"><g id="tblContent"><g>${staticTable()}</g><g id="tDyn"></g></g></g>`;
   $("loupeRot").setAttribute("transform", rotAttr());
+  pulseReset(); pulseWatch();
   renderTable();
 }
-function renderTable() { const d = $("tDyn"); if (d) d.innerHTML = dynTable(); }
+/* the pulse rings that the drawing asks for go on an HTML layer over the table (see pulseRing in play.js) */
+let pulseList = [], pulseGeo = null, pulseRO = null;
+function renderTable() { const d = $("tDyn"); if (!d) return; pulseList = []; d.innerHTML = dynTable(); pulseDraw(); }
 
 /* ---------- pointer handling on the table ---------- */
 function svgPt(svg, e, el) {
@@ -223,8 +226,9 @@ function onTableUp(e) {
   if (!drag || e.pointerId !== drag.id) return;
   drag = null; $("loupe").hidden = true; saveWork(); renderLog();
 }
-function showLoupe(p, e, at) {
-  const l = $("loupe"), wrap = $("tablewrap").getBoundingClientRect();
+/* wrapBox: the table area's box, when the caller already has it (Play measures it once per drag, so a move never forces a layout) */
+function showLoupe(p, e, at, wrapBox) {
+  const l = $("loupe"), wrap = wrapBox || $("tablewrap").getBoundingClientRect();
   const q = disp(toSvg(at || (playMode() ? p : S[S.tool] || p))); const half = 6;
   const sv = $("loupeSvg"); sv.setAttribute("viewBox", `${q.x - half} ${q.y - half} ${half * 2} ${half * 2}`);
   $("loupeX").innerHTML = `<path d="M${q.x - 2.4} ${q.y}h1.6M${q.x + .8} ${q.y}h1.6M${q.x} ${q.y - 2.4}v1.6M${q.x} ${q.y + .8}v1.6" stroke="#ff4d3d" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;

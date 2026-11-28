@@ -196,7 +196,23 @@ function renderSimRes() {
     ["Pockets that take the most", top || "–", "", true]
   ].map(cellHtml).join("") + `</div><p class="note" style="margin:6px 0 0">Each break gets a slightly loose rack and a real stroke's wobble (aim ±0.15°, speed ±2 %). Dots on the table show where the cue ball finished; red ones are scratches.</p>`;
 }
-const pathD = pts => pts.map((q, i) => { const v = toSvg(q); return (i ? "L" : "M") + v.x.toFixed(2) + " " + v.y.toFixed(2); }).join("");
+/* A path is sampled 60 times a second, so a long roll has hundreds of points, most on a straight line. Keep only the ones
+   that bend it by more than a few hundredths of an inch (Douglas-Peucker): it looks the same and is far cheaper to draw. */
+function thinPath(pts, tol = .03) {
+  const n = pts.length; if (n < 3) return pts;
+  const keep = new Uint8Array(n); keep[0] = keep[n - 1] = 1; const st = [[0, n - 1]];
+  while (st.length) {
+    const [i, j] = st.pop(), a = pts[i], b = pts[j], dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy; let far = -1, fd = tol * tol;
+    for (let k = i + 1; k < j; k++) {
+      const p = pts[k]; let ex = p.x - a.x, ey = p.y - a.y;
+      if (L2 > 0) { const t = Math.max(0, Math.min(1, (ex * dx + ey * dy) / L2)); ex -= t * dx; ey -= t * dy; }
+      const d = ex * ex + ey * ey; if (d > fd) { fd = d; far = k; }
+    }
+    if (far > 0) { keep[far] = 1; st.push([i, far], [far, j]); }
+  }
+  return pts.filter((_, k) => keep[k]);
+}
+const pathD = pts => thinPath(pts).map((q, i) => { const v = toSvg(q); return (i ? "L" : "M") + v.x.toFixed(2) + " " + v.y.toFixed(2); }).join("");
 function dynSim() {
   if (playMode()) return dynPlay();
   const r = simLive(), A = simAnim, paths = S.simPaths !== false; let g = "";
