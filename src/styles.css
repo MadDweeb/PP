@@ -570,5 +570,5 @@ svg, .vstrack, .quickbar, .tabs, .modeseg, .chip, .btn { -webkit-touch-callout: 
 button, a, .chip, svg { -webkit-tap-highlight-color: transparent; }
 body.fs .ioshint { display: none !important; }
 /* New game resets the score: red so it can't be missed, solid red when a second tap will reset */
-.btn.newgame { color: var(--bad); border: 2px solid var(--bad); font-weight: 700; padding: 8px 16px; }
+.btn.newgame { flex: 1 1 100%; width: 100%; color: var(--bad); border: 2px solid var(--bad); font-weight: 700; padding: 8px 16px; }
 .btn.newgame.armed { background: var(--bad); color: var(--on-bad); }
