@@ -202,9 +202,8 @@ function renderQuick() {
   if (playMode()) return renderPlayQuick(q);
   q._h = null;
   if (simMode()) {
-    const b = simBrk(), playing = !!simAnim, running = sum50 && sum50.done < sum50.n;
+    const b = simBrk(), playing = !!simAnim;
     q.innerHTML = `<button class="qs good" data-simq="shoot">${playing ? "Stop" : b ? "Break" : "Shoot"}</button>` +
-      (b ? `<button class="qs plain" data-simq="run50">${running ? "Cancel" : "Run 50"}<small>${running ? sum50.done + " of 50 done" : "random racks, real-stroke wobble"}</small></button>` : "") +
       `<button class="qs plain" data-simq="paths" aria-pressed="${S.simPaths !== false}">${S.simPaths !== false ? "Hide paths" : "Show paths"}<small>dashed lines</small></button>`;
     return;
   }
