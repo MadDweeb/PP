@@ -453,10 +453,10 @@ body.land .vspeed { contain: size; }
 body.land .vstrack { min-height: 100px; }   /* the column takes the table's height instead of making the row taller */
 body.land #cueModel { min-height: 40px; }
 .cueprev { width: 100%; height: auto; display: block; flex: 0 0 auto; }
-#cueFull { aspect-ratio: 62 / 4.8; }
+#cueFull { aspect-ratio: 64 / 4.8; }
 .cuezoom { display: grid; grid-template-columns: 1fr 3fr; gap: 10px; align-items: center; margin-bottom: 6px; }
 #cueTip { aspect-ratio: 4.2 / 2.1; background: var(--panel); border-radius: 8px; }
-#cueButt { aspect-ratio: 31 / 3.8; }
+#cueButt { aspect-ratio: 34 / 3.8; }
 #cueSheet .card { max-height: 88dvh; overflow-y: auto; }
 #cueWho { margin: 6px 0 10px; }
 .chip.matl { display: inline-flex; align-items: center; gap: 6px; }

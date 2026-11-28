@@ -99,9 +99,9 @@ function drawCue(look, shaftLen, butt, k, bs = 1) {
 /* ---------- the cue on the table and beside it ---------- */
 /* whose cue is in use: the shooter's, or always the first one when you play both sides yourself */
 const cuePlayer = () => !S.game || soloPlay() ? 0 : S.game.turn;
-/* Behind the cue ball along the aim: the shaft (28.9 in) and the first 20.6 in of the butt. The butt is drawn 11.8% long so it
-   takes a tenth of the shaft's length (the whole cue stays the same length). */
-const CUE_SHAFT_TABLE = 28.9, CUE_BUTT_TABLE = 20.6, CUE_SHAFT_MODEL = 28.7, CUE_BUTT_SCALE = 1.118;
+/* Behind the cue ball along the aim: the shaft (28.9 in) and the first 22.7 in of the butt. The butt's pieces are drawn 23% long
+   (a tenth of the shaft's length moved over to the butt, then the butt made a tenth longer). */
+const CUE_SHAFT_TABLE = 28.9, CUE_BUTT_TABLE = 22.7, CUE_SHAFT_MODEL = 28.7, CUE_BUTT_SCALE = 1.23;
 function cueStickSvg(cb, aim) {
   const g = S.game, q = toSvg(cb), deg = -(aim + Math.PI) * 180 / Math.PI;
   return `<g transform="translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)">${drawCue(cueLook(g ? cuePlayer() : 0), CUE_SHAFT_TABLE, CUE_BUTT_TABLE, 1, CUE_BUTT_SCALE)}</g>`;
