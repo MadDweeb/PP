@@ -431,20 +431,31 @@ function playUndo() {
    full screen and a landscape lock; where it can't (an iPhone, an embedded preview) the layout still fills the page.
    Exit locks portrait for a moment before leaving, so the phone turns back. */
 let fsOn = false;
-function playFs(on) {
+/* auto: full screen because the phone was turned sideways (see fsRotate). Then the screen isn't locked to landscape,
+   so turning the phone upright again can leave it. */
+let fsAuto = false;
+function playFs(on, auto = false) {
   if (on === fsOn) return;
-  fsOn = on; document.body.classList.toggle("fs", on);
+  fsOn = on; fsAuto = on && auto; document.body.classList.toggle("fs", on);
   const el = document.documentElement, o = screen.orientation;
   if (on) {
     if (el.requestFullscreen && !document.fullscreenElement)
-      el.requestFullscreen({ navigationUI: "hide" }).then(() => o && o.lock ? o.lock("landscape") : null).catch(() => {});
+      el.requestFullscreen({ navigationUI: "hide" }).then(() => o && o.lock && !auto ? o.lock("landscape") : null).catch(() => {});
   } else if (document.fullscreenElement) {
     const leave = () => { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); };
-    if (o && o.lock) o.lock("portrait").catch(() => {}).finally(() => setTimeout(leave, 150)); else leave();
+    if (o && o.lock && !auto) o.lock("portrait").catch(() => {}).finally(() => setTimeout(leave, 150)); else leave();
   }
   $("loupe").hidden = true; placeColumns(); buildTable(); renderLog(); updatePin(); scrollTo(0, 0);
 }
-document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && fsOn) playFs(false); });
+/* leaving the browser's full screen (back gesture, Esc) leaves ours, unless turning the phone put us in it: then the
+   browser may never have gone full screen, and the layout stays until the phone is upright */
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && fsOn && !fsAuto) playFs(false); });
+/* In Play, turning the phone sideways goes full screen, like the ⛶ button; turning it upright leaves (only if turning went in).
+   The browser may refuse its own full screen without a tap, so its bar can stay, but the layout is the same. */
+function fsRotate(nowLand) {
+  if (nowLand && view === "log" && playMode() && !fsOn) playFs(true, true);
+  else if (!nowLand && fsOn && fsAuto) playFs(false, true);
+}
 /* Fine aim: a tap turns 0.1°; holding repeats, faster after a second */
 let fineT = 0, fineStart = 0, fineDir = 0;
 function fineHold(dir) {
