@@ -103,11 +103,12 @@ const cuePlayer = () => !S.game || soloPlay() ? 0 : S.game.turn;
    (a tenth of the shaft's length moved over to the butt, then the butt made a tenth longer). */
 const CUE_SHAFT_TABLE = 28.9, CUE_BUTT_TABLE = 22.7, CUE_SHAFT_MODEL = 28.7, CUE_BUTT_SCALE = 1.23;
 /* the cue on the table, in parts: its look (drawn once) and where it lies (changes as you aim) */
-function cueStickParts(cb, aim) {
+/* back: how far the cue is drawn back from where it rests at address (inches; less than 0 is through the cue ball) */
+function cueStickParts(cb, aim, back = 0) {
   const g = S.game, q = toSvg(cb), deg = -(aim + Math.PI) * 180 / Math.PI, look = cueLook(g ? cuePlayer() : 0);
   return {
     key: JSON.stringify(look), inner: () => drawCue(look, CUE_SHAFT_TABLE, CUE_BUTT_TABLE, 1, CUE_BUTT_SCALE),
-    t: `translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9).toFixed(2)} 0)`,
+    t: `translate(${q.x.toFixed(3)} ${q.y.toFixed(3)}) rotate(${deg.toFixed(3)}) translate(${(R_BALL + .9 + back).toFixed(2)} 0)`,
   };
 }
 /* the shooter's whole cue standing upright beside the table (tip at the top); tap it to change it */

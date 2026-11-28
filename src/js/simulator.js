@@ -74,19 +74,22 @@ function simStopAnim() { if (simAnim) { cancelAnimationFrame(simAnim.id); const 
 /* stop the playback without finishing the shot: Play's Undo during a shot */
 function simCancelAnim() { if (simAnim) { cancelAnimationFrame(simAnim.id); simAnim = null; renderQuick(); renderTable(); } }
 function simStop() { simStopAnim(); clearTimeout(simT); }
-function simPlay(r, done) {
+/* stroke: Play's cue stroke (see cueStroke in play.js); the balls wait for its forward swing to reach the cue ball */
+function simPlay(r, done, stroke) {
   simStopAnim();
   const t0 = performance.now(), reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  simAnim = { r, pos: {}, i: {}, id: 0, done };
+  if (reduce) stroke = null;
+  const lead = stroke ? stroke.lead : 0;
+  simAnim = { r, pos: {}, i: {}, id: 0, done, stroke, t0 };
   const step = now => {
     if (!simAnim) return;
-    const t = reduce ? r.t : (now - t0) / 1000;
+    const el = now - t0, t = reduce ? r.t : Math.max(0, (el - lead) / 1000);
     for (const b of r.balls) {
       let i = simAnim.i[b.id] || 0; while (i + 1 < b.path.length && b.path[i + 1].t <= t) i++;   // the last point reached; time only goes forward
       simAnim.i[b.id] = i; simAnim.pos[b.id] = b.potted && i >= b.path.length - 1 ? null : b.path[i];
     }
     renderTable();
-    if (t < r.t) simAnim.id = requestAnimationFrame(step);
+    if (t < r.t || el < lead) simAnim.id = requestAnimationFrame(step);
     else { simAnim = null; if (done) done(); else { renderTable(); renderQuick(); } }
   };
   simAnim.id = requestAnimationFrame(step); renderQuick();

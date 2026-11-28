@@ -227,7 +227,10 @@ function drawPlay() {
   const dash = (pts, col, w, op) => `<path d="${pathD(pts)}" fill="none" stroke="${col}" stroke-width="${w}" stroke-opacity="${op}" stroke-dasharray="5 3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
   sc.stamp++;
   let under = "", paths = "", over = "", cueOn = false;
+  let stroke = null;
   if (A) {
+    stroke = A.stroke ? cueStrokeAt(A.stroke, performance.now() - A.t0) : null;
+    cueOn = !!stroke;
     scTrails(sc, A, mode);
     for (const b of A.r.balls) { const q = A.pos[b.id]; if (!q) continue; if (b.id === "cb") scBall(sc, sc.top, "cb", q, "cb", () => cueBallSvg(ORIGIN(), false)); else { const n = +b.id.slice(1); scBall(sc, sc.balls, b.id, q, "n", () => numBall(ORIGIN(), n)); } }
   } else {
@@ -263,7 +266,8 @@ function drawPlay() {
   scHtml(sc, "under", under); scHtml(sc, "paths", paths); scHtml(sc, "over", over);
   /* the cue: drawn once for each look, then only turned and moved */
   if (cueOn) {
-    const c = cueStickParts(g.cb, g.aim);
+    const c = cueStickParts(g.cb, g.aim, stroke ? stroke.back : 0), op = stroke ? String(+stroke.op.toFixed(2)) : "1";
+    if (sc.cue.getAttribute("opacity") !== op) sc.cue.setAttribute("opacity", op);
     if (sc.cueKey !== c.key) { sc.cueKey = c.key; sc.cue.innerHTML = `<g>${c.inner()}</g>`; sc.cueT = ""; }
     if (sc.cueT !== c.t) { sc.cueT = c.t; sc.cue.firstChild.setAttribute("transform", c.t); }
     if (sc.cue.hasAttribute("display")) sc.cue.removeAttribute("display");
@@ -378,7 +382,7 @@ function playQuickBody() {
   const g = S.game;
   if (!g) return "";
   const undo = `<button class="qs fine undo" data-play="undo" aria-label="Undo the last shot">Undo</button>`;
-  if (simAnim) return undo + `<button class="qs plain" data-play="skip">Skip</button>`;
+  if (simAnim) return `<button class="qs plain" data-play="skip">Skip</button>` + undo;   // Undo stays on the right, as before the shot
   const solo = soloPlay(), canUndo = undoList().length > 0;
   if (g.over) return `<button class="qs good" data-play="next">New rack${solo ? "" : `<small>${esc(playerName(otherP(g.breaker)))} breaks</small>`}</button>` + (canUndo ? undo : "");
   if (g.choice && fsLand()) return canUndo ? undo : "";   // full screen, landscape: the choice is under the table
@@ -423,7 +427,28 @@ function playShoot() {
   hideCallout();
   const r = playRunNow(); if (!r) return;
   const ctx = { push: playArm === "push" && pushAvailable(g), call: playCall(), W: settings.W, L: settings.L };
-  simPlay(r, () => playApply(r, ctx)); renderPlayBar();
+  simPlay(r, () => playApply(r, ctx), cueStroke(S.speedPct)); renderPlayBar();
+}
+/* The cue's stroke before a Play shot, like good form at the table: a smooth backswing that goes further the harder you
+   hit, a still moment at the back, then a forward swing that speeds up into the cue ball and follows through.
+   Times in ms, distances in inches behind where the cue rests at address. */
+function cueStroke(pct) {
+  const s = Math.max(0, Math.min(1, pct / 100));
+  const back = 1.6 + 9 * s, tb = 420 + 260 * s, tp = 280, tf = 230 - 120 * s;
+  const thru = 1.2 + 4.5 * s, tt = 170, hold = 120, fade = 320;
+  return { lead: tb + tp + tf, back, tb, tp, tf, thru, tt, hold, fade };
+}
+/* where the cue is at el ms into the stroke: { back, op }, or null once it has gone */
+function cueStrokeAt(k, el) {
+  const ease = x => .5 - .5 * Math.cos(Math.PI * x);              // smooth start and stop
+  const touch = -.9;                                               // the tip on the cue ball
+  if (el < k.tb) return { back: k.back * ease(el / k.tb), op: 1 };
+  el -= k.tb; if (el < k.tp) return { back: k.back, op: 1 };
+  el -= k.tp; if (el < k.tf) { const x = el / k.tf; return { back: k.back + (touch - k.back) * Math.pow(x, 2.2), op: 1 }; }   // speeding up
+  el -= k.tf; if (el < k.tt) { const x = el / k.tt; return { back: touch - k.thru * (1 - Math.pow(1 - x, 3)), op: 1 }; }      // follow through, easing off
+  el -= k.tt; if (el < k.hold) return { back: touch - k.thru, op: 1 };
+  el -= k.hold; if (el < k.fade) return { back: touch - k.thru, op: 1 - el / k.fade };
+  return null;
 }
 /* a Play shot is rolling: it hasn't been refereed yet, so Undo just stops it and leaves the balls where they were */
 const playRolling = () => !!(simAnim && simAnim.r && simAnim.r.kind === "play");
