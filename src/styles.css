@@ -558,3 +558,14 @@ body.fs #playBar .callout { position: static; pointer-events: auto; }
 .chip[data-theme-set="system"] { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); color: var(--ink); }
 .chip .halfmoon { width: 18px; height: 18px; flex: 0 0 18px; }
 .chip[data-theme-set][aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+
+/* ---------- iPhone ---------- */
+.ioshint { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 0.8125rem; line-height: 1.4; }
+.ioshint p { margin: 0; flex: 1; min-width: 0; }
+.ioshint .share { width: 16px; height: 16px; vertical-align: -3px; color: var(--accent); }
+/* iOS Safari zooms the page into any text box under 16px when it gets focus; 16px stops that */
+@supports (-webkit-touch-callout: none) { input, select, textarea { font-size: 16px !important; } }
+/* no press-and-hold copy menu or text selection while dragging balls, the tip, the hit or the speed bar */
+svg, .vstrack, .quickbar, .tabs, .modeseg, .chip, .btn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+button, a, .chip, svg { -webkit-tap-highlight-color: transparent; }
+body.fs .ioshint { display: none !important; }

@@ -9,7 +9,7 @@ function setView(v) {
   try { history.replaceState(null, "", v === "log" ? location.pathname + location.search : "#" + v); } catch (e) {}
   renderAll();
   window.scrollTo(0, 0);
-  updateWakeLock();
+  updateWakeLock(); renderIosHint();
 }
 function renderAll() {
   if (view === "log") renderLog();

@@ -8,6 +8,13 @@ async function saveFile(name, data, mime, what) {
     try { await dl.save({ filename: name, data }); toast(what + " saved"); return true; }
     catch (e) { if (e && e.code === "declined") return false; if (e && e.code === "host_unavailable") { toast(`This app can't save files. Use Copy ${what} instead.`); return false; } }
   }
+  /* iPhone: the share sheet, which has Save to Files, works in Safari and from the Home Screen alike */
+  if (isIOS() && navigator.canShare && navigator.share) {
+    try {
+      const file = new File([data], name, { type: mime });
+      if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); toast(what + " ready. Pick Save to Files to keep it"); return true; }
+    } catch (e) { if (e && e.name === "AbortError") return false; }   // cancelled; any other failure tries the download below
+  }
   try {
     const url = URL.createObjectURL(new Blob([data], { type: mime }));
     const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
