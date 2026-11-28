@@ -206,7 +206,7 @@ function renderPlayBar() {
   const two = g.kind !== "8" && !g.over && g.fouls[g.turn] === 2;
   if (two) detail.push("on two fouls");
   const sc = solo ? "" : `<span class="score num" aria-label="Score ${g.score[0]} to ${g.score[1]}">${g.score[0]}<i style="background:var(--accent)"></i>–<i style="background:var(--p2)"></i>${g.score[1]}</span>`;
-  const undo = undoList().length && !simAnim ? `<button class="btn small" id="undoBtn" data-play="undo">Undo shot</button>` : "";
+  const undo = playRolling() || (undoList().length && !simAnim) ? `<button class="btn small" id="undoBtn" data-play="undo">Undo shot</button>` : "";
   const hint = (settings.playShots || 0) < AIM_HINT_SHOTS && !g.over && !g.choice
     ? `<div class="plhint">${g.inHand ? "Drag the cue ball to place it. " : ""}The aim line follows your finger: drag or tap where to aim. ↺ ↻ fine-tune.</div>` : "";
   $("playStatus").innerHTML = `<div class="plturn ${solo ? "solo" : p ? "p2" : "p1"}"><div class="who"><b>${head}</b>${detail.length ? `<span class="${two ? "warn" : ""}">${esc(detail.join(", "))}</span>` : ""}</div>${sc}${undo}</div>${hint}`;
@@ -250,7 +250,7 @@ function rulesText(k) {
 function renderPlayQuick(q) {
   const g = S.game;
   if (!g) { q.innerHTML = ""; return; }
-  if (simAnim) { q.innerHTML = `<button class="qs plain" data-play="skip">Skip to the end<small>the shot still counts</small></button>`; return; }
+  if (simAnim) { q.innerHTML = `<button class="qs plain" data-play="undo">Undo shot<small>put the balls back</small></button><button class="qs plain" data-play="skip">Skip to the end<small>the shot still counts</small></button>`; return; }
   const solo = soloPlay();
   if (g.over) { q.innerHTML = `<button class="qs good" data-play="next">Next rack<small>${solo ? "rack them up" : esc(playerName(otherP(g.breaker))) + " breaks"}</small></button>`; return; }
   if (g.choice) { q.innerHTML = g.choice.options.map(([id, l]) => `<button class="qs plain" data-choice="${id}">${esc(l)}${solo ? "" : `<small>${esc(playerName(g.choice.by))}</small>`}</button>`).join(""); return; }
@@ -294,8 +294,10 @@ function playShoot() {
   hideCallout();
   const r = playRun(); if (!r) return;
   const ctx = { push: playArm === "push" && pushAvailable(g), call: playCall(), W: settings.W, L: settings.L };
-  simPlay(r, () => playApply(r, ctx));
+  simPlay(r, () => playApply(r, ctx)); renderPlayBar();
 }
+/* a Play shot is rolling: it hasn't been refereed yet, so Undo just stops it and leaves the balls where they were */
+const playRolling = () => !!(simAnim && simAnim.r && simAnim.r.kind === "play");
 function playApply(r, ctx) {
   const g = S.game, wasBreak = g.phase === "break";
   pushUndo(g, true);
@@ -347,6 +349,7 @@ function pushUndo(g, logged) {
   if (h.length > UNDO_MAX) h.splice(0, h.length - UNDO_MAX);
 }
 function playUndo() {
+  if (playRolling()) { simCancelAnim(); playArm = null; hideCallout(); renderLog(); toast("Shot undone"); return; }
   const h = undoList(), u = h[h.length - 1]; if (!u || simAnim) return;
   h.pop();
   const log = (S.game && S.game.log) || u.game.log || [];
